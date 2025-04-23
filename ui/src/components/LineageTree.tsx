@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Tree from 'react-d3-tree';
+import Tree, { RenderCustomNodeElementFn, CustomNodeElementProps } from 'react-d3-tree';
 import { Passage } from '../api';
 
 interface TreeNode {
@@ -16,12 +16,18 @@ interface LineageTreeProps {
   onSelectPassage?: (passage: Passage) => void;
 }
 
+interface RenderNodeDatum extends TreeNode {
+  name: string;
+  attributes?: {
+    [key: string]: string | number;
+  };
+  children?: RenderNodeDatum[];
+}
+
 const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) => {
   const [collapsedNodes, setCollapsedNodes] = useState<{ [key: string]: boolean }>({});
 
-  // Transform passages into tree structure
   const transformToTree = (passages: Passage[]): TreeNode => {
-    // Find all root passages (no parent)
     const rootPassages = passages.filter(p => !p.parent_id);
     
     if (rootPassages.length === 0) {
@@ -35,16 +41,13 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
         attributes: {
           'Cumulative PD': passage.generation.toFixed(2),
           'This Passage PD': currentPD.toFixed(2),
-          'Seed Count': passage.seed_count,
-          'Harvest Count': passage.harvest_count,
-          'Doubling Time': passage.doubling_time_hours?.toFixed(2) || 'N/A',
-          'Measurements': passage.measurements?.length || 0,
-          'Freeze Events': passage.freeze_events?.length || 0,
+          'Cells': `${passage.seed_count} → ${passage.harvest_count}`,
+          'Time': passage.doubling_time_hours ? `${passage.doubling_time_hours.toFixed(1)}h` : 'N/A',
+          'Data': `${passage.measurements?.length || 0} measurements, ${passage.freeze_events?.length || 0} freezes`,
         },
         isCollapsed: collapsedNodes[`P${passage.id}`],
       };
 
-      // Find children
       const children = passages.filter(p => p.parent_id === passage.id);
       if (children.length > 0 && !node.isCollapsed) {
         node.children = children.map(buildTree);
@@ -53,7 +56,6 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
       return node;
     };
 
-    // Create a root node that contains all lineages
     return {
       name: 'Lineages',
       children: rootPassages.map(buildTree),
@@ -62,7 +64,7 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
   };
 
   const handleNodeClick = (nodeDatum: any) => {
-    if (nodeDatum.name === 'Lineages') return; // Skip the root node
+    if (nodeDatum.name === 'Lineages') return;
     
     const passageId = parseInt(nodeDatum.name.slice(1));
     const passage = passages.find(p => p.id === passageId);
@@ -73,7 +75,7 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
   };
 
   const handleNodeToggle = (nodeDatum: any) => {
-    if (nodeDatum.name === 'Lineages') return; // Skip the root node
+    if (nodeDatum.name === 'Lineages') return;
     
     setCollapsedNodes(prev => ({
       ...prev,
@@ -83,59 +85,115 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
 
   const treeData = transformToTree(passages);
 
+  const renderNode: RenderCustomNodeElementFn = ({ nodeDatum, toggleNode }: CustomNodeElementProps) => {
+    const isRoot = nodeDatum.name === 'Lineages';
+    const hasChildren = nodeDatum.children && nodeDatum.children.length > 0;
+    
+    return (
+      <g>
+        {/* Node circle */}
+        <circle
+          r={isRoot ? 20 : 25}
+          fill={isRoot ? '#9E9E9E' : (hasChildren ? '#4CAF50' : '#2196F3')}
+          stroke={isRoot ? 'none' : '#FFF'}
+          strokeWidth={2}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isRoot) {
+              handleNodeToggle(nodeDatum);
+              toggleNode();
+            }
+          }}
+          style={{ 
+            cursor: isRoot ? 'default' : 'pointer',
+            filter: 'drop-shadow(0px 2px 3px rgba(0,0,0,0.2))'
+          }}
+        />
+
+        {/* Node title */}
+        <text
+          dy=".35em"
+          x={isRoot ? 30 : 35}
+          y={0}
+          style={{ 
+            fontSize: isRoot ? '16px' : '14px',
+            fontWeight: 'normal',
+            cursor: isRoot ? 'default' : 'pointer',
+            fill: '#333'
+          }}
+          onClick={() => handleNodeClick(nodeDatum)}
+        >
+          {nodeDatum.name}
+        </text>
+
+        {/* Node attributes */}
+        {!isRoot && Object.entries(nodeDatum.attributes || {}).map(([key, value], i) => {
+          const y = 25 + i * 20;
+          const isPD = key.includes('PD');
+          
+          return (
+            <g key={key}>
+              {/* Background for PD values */}
+              {isPD && (
+                <rect
+                  x={35}
+                  y={y - 14}
+                  width={180}
+                  height={20}
+                  fill={key === 'Cumulative PD' ? '#E3F2FD' : '#F1F8E9'}
+                  rx={4}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+              {/* Key */}
+              <text
+                dy=".35em"
+                x={35}
+                y={y}
+                style={{ 
+                  fontSize: '12px',
+                  fontWeight: 'normal',
+                  fill: '#666',
+                  pointerEvents: 'none'
+                }}
+              >
+                {key}:
+              </text>
+              {/* Value */}
+              <text
+                dy=".35em"
+                x={135}
+                y={y}
+                style={{ 
+                  fontSize: '12px',
+                  fontWeight: 'normal',
+                  fill: '#333',
+                  pointerEvents: 'none'
+                }}
+              >
+                {value}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
+
   return (
-    <div style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '4px' }}>
+    <div className="relative" style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
+      <div className="absolute top-2 left-2 text-sm text-gray-500">
+        Click nodes to expand/collapse. Double-click to center.
+      </div>
       <Tree
         data={treeData}
         orientation="vertical"
         pathFunc="step"
-        translate={{ x: 500, y: 50 }}
-        nodeSize={{ x: 200, y: 120 }}
-        separation={{ siblings: 2, nonSiblings: 2 }}
-        renderCustomNodeElement={({ nodeDatum, toggleNode }) => (
-          <g>
-            <circle
-              r={15}
-              fill={nodeDatum.name === 'Lineages' ? '#9E9E9E' : (nodeDatum.children ? '#4CAF50' : '#2196F3')}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (nodeDatum.name !== 'Lineages') {
-                  handleNodeToggle(nodeDatum);
-                  toggleNode();
-                }
-              }}
-              style={{ cursor: nodeDatum.name === 'Lineages' ? 'default' : 'pointer' }}
-            />
-            <text
-              dy=".35em"
-              x={20}
-              y={0}
-              style={{ 
-                fontSize: '12px', 
-                cursor: nodeDatum.name === 'Lineages' ? 'default' : 'pointer',
-                fontWeight: nodeDatum.name === 'Lineages' ? 'bold' : 'normal'
-              }}
-              onClick={() => handleNodeClick(nodeDatum)}
-            >
-              {nodeDatum.name}
-            </text>
-            {nodeDatum.name !== 'Lineages' && Object.entries(nodeDatum.attributes || {}).map(([key, value], i) => (
-              <text
-                key={key}
-                dy=".35em"
-                x={20}
-                y={20 + i * 15}
-                style={{ 
-                  fontSize: '10px',
-                  fontWeight: key === 'Cumulative PD' ? 'bold' : 'normal',
-                  fill: key === 'Cumulative PD' ? '#000' : '#666'
-                }}
-              >
-                {`${key}: ${value}`}
-              </text>
-            ))}
-          </g>
-        )}
+        translate={{ x: 500, y: 80 }}
+        nodeSize={{ x: 250, y: 150 }}
+        separation={{ siblings: 2, nonSiblings: 2.5 }}
+        renderCustomNodeElement={renderNode}
+        pathClassFunc={() => 'stroke-current text-gray-400'}
       />
     </div>
   );
