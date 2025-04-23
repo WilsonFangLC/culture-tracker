@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
 
 from ..database import get_session
 from ..models import Passage, GrowthMeasurement, FreezeEvent
@@ -32,23 +31,6 @@ def create_passage_endpoint(
     passage: PassageCreate,
     session: Session = Depends(get_session),
 ):
-    # Validate parent-child time relationship if parent exists
-    if passage.parent_id is not None:
-        parent = get_passage_with_related(session, passage.parent_id)
-        if parent is None:
-            raise HTTPException(status_code=404, detail="Parent passage not found")
-        
-        # Convert times to datetime objects
-        parent_harvest = datetime.strptime(parent.harvest_time, "%Y-%m-%dT%H:%M")
-        child_start = datetime.strptime(passage.start_time, "%Y-%m-%dT%H:%M")
-        
-        # Only check basic sequence
-        if child_start <= parent_harvest:
-            raise HTTPException(
-                status_code=400,
-                detail="Child passage must start after parent's harvest time"
-            )
-    
     return create_passage(session, passage)
 
 @router.get("/", response_model=List[PassageRead])

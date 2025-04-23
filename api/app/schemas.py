@@ -46,25 +46,11 @@ class PassageBase(BaseModel):
             try:
                 start = datetime.strptime(values['start_time'], "%Y-%m-%dT%H:%M")
                 harvest = datetime.strptime(v, "%Y-%m-%dT%H:%M")
-                
-                # Only check basic sequence
                 if harvest <= start:
                     raise ValueError("harvest_time must be later than start_time")
-                    
             except ValueError as e:
                 if "harvest_time must be later than start_time" in str(e):
                     raise
-                raise ValueError("Invalid datetime format. Use ISO format: YYYY-MM-DDTHH:MM")
-        return v
-
-    @validator('start_time')
-    def start_time_must_be_after_parent_harvest(cls, v, values):
-        if 'parent_id' in values and values['parent_id'] is not None:
-            try:
-                # This will be validated in the route handler where we have access to the database
-                # We'll add the actual validation in the route handler
-                pass
-            except ValueError as e:
                 raise ValueError("Invalid datetime format. Use ISO format: YYYY-MM-DDTHH:MM")
         return v
 
