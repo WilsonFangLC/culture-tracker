@@ -56,13 +56,8 @@ export default function StateLineage({ state, states, onSelectState }: StateLine
               >
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">State {s.id}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    s.parameters.status === 'culturing' ? 'bg-green-100 text-green-800' :
-                    s.parameters.status === 'frozen' ? 'bg-blue-100 text-blue-800' :
-                    s.parameters.status === 'thawed' ? 'bg-orange-100 text-orange-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {s.parameters.status}
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
+                    Status {s.parameters.status}
                   </span>
                 </div>
                 <div className="text-sm text-gray-500">
