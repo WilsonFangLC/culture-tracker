@@ -35,8 +35,30 @@ export default function PassageForm({ onSubmit }: PassageFormProps) {
       }
     }
 
+    // Validate parent passage timing
+    if (formData.parent_id) {
+      const parentPassage = passages.find(p => p.id === formData.parent_id)
+      if (parentPassage) {
+        const parentHarvestTime = new Date(parentPassage.harvest_time)
+        const childStartTime = new Date(formData.start_time)
+        if (childStartTime < parentHarvestTime) {
+          errors.start_time = `Start time must be after parent passage's harvest time (${new Date(parentPassage.harvest_time).toLocaleString()})`
+        }
+      }
+    }
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
+  }
+
+  const handleParentChange = (parentId: string) => {
+    const newParentId = parentId ? parseInt(parentId) : undefined
+    setFormData({
+      ...formData,
+      parent_id: newParentId,
+    })
+    // Clear validation errors when parent changes
+    setValidationErrors(prev => ({ ...prev, start_time: '' }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,12 +110,7 @@ export default function PassageForm({ onSubmit }: PassageFormProps) {
           id="parent_id"
           name="parent_id"
           value={formData.parent_id || ''}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              parent_id: e.target.value ? parseInt(e.target.value) : undefined,
-            })
-          }
+          onChange={(e) => handleParentChange(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         >
           <option value="">No Parent</option>
