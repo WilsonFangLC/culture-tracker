@@ -1,36 +1,52 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Dict, List
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, JSON
 
 
-class GrowthMeasurement(SQLModel, table=True):
+class CellState(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    passage_id: int = Field(foreign_key="passage.id", index=True)
-    timestamp: str = Field(index=True)  # ISO format
-    cell_density: float = Field(ge=0)
+    timestamp: datetime = Field(default_factory=datetime.now)
+    parent_id: Optional[int] = Field(default=None, foreign_key="cellstate.id")
+    parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     notes: Optional[str] = Field(default=None)
-    # Relationship
-    passage: "Passage" = Relationship(back_populates="measurements")
-
-
-class Passage(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    start_time: str = Field(index=True)
-    harvest_time: str = Field(index=True)
-    seed_count: int = Field(ge=1)
-    harvest_count: int = Field(ge=1)
-    generation: Optional[float] = Field(default=None)
-    doubling_time_hours: Optional[float] = Field(default=None)
-    cumulative_pd: Optional[float] = Field(default=None)
-    
-    # Use Column for self-referential foreign key
-    parent_id: Optional[int] = Field(sa_column=Column(Integer, ForeignKey("passage.id"), index=True))
     
     # Relationships
-    parent: Optional["Passage"] = Relationship(
+    parent: Optional["CellState"] = Relationship(
         back_populates="children",
-        sa_relationship_kwargs={"remote_side": "Passage.id"}
+        sa_relationship_kwargs={"remote_side": "CellState.id"}
     )
-    children: List["Passage"] = Relationship(back_populates="parent")
-    measurements: List[GrowthMeasurement] = Relationship(back_populates="passage") 
+    children: List["CellState"] = Relationship(back_populates="parent")
+    transitions: List["StateTransition"] = Relationship(back_populates="state")
+
+
+class StateTransition(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    state_id: int = Field(foreign_key="cellstate.id")
+    timestamp: datetime = Field(default_factory=datetime.now)
+    transition_type: str
+    parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+    notes: Optional[str] = Field(default=None)
+    
+    # Relationship
+    state: CellState = Relationship(back_populates="transitions")
+
+
+# Pydantic models for request/response validation
+class StateTransitionBase(SQLModel):
+    state_id: int
+    transition_type: str
+    parameters: Dict = Field(default_factory=dict)
+    notes: Optional[str] = None
+
+class StateTransitionCreate(StateTransitionBase):
+    pass
+
+class StateTransitionUpdate(SQLModel):
+    transition_type: Optional[str] = None
+    parameters: Optional[Dict] = None
+    notes: Optional[str] = None
+
+class StateTransitionRead(StateTransitionBase):
+    id: int
+    timestamp: datetime 

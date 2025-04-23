@@ -1,58 +1,53 @@
-from typing import Optional, List
+from typing import Optional, Dict, List
 from pydantic import BaseModel, validator
 from datetime import datetime
 
-class GrowthMeasurementBase(BaseModel):
-    timestamp: str
-    cell_density: float
-    notes: Optional[str] = None
-
-class GrowthMeasurementCreate(GrowthMeasurementBase):
-    pass
-
-class GrowthMeasurementRead(GrowthMeasurementBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-class PassageBase(BaseModel):
-    start_time: str
-    harvest_time: str
-    seed_count: int
-    harvest_count: int
+class CellStateBase(BaseModel):
+    timestamp: datetime
+    parameters: Dict
     parent_id: Optional[int] = None
 
-    @validator('harvest_time')
-    def harvest_time_must_be_later_than_start_time(cls, v, values):
-        if 'start_time' in values:
-            try:
-                start = datetime.strptime(values['start_time'], "%Y-%m-%dT%H:%M")
-                harvest = datetime.strptime(v, "%Y-%m-%dT%H:%M")
-                if harvest <= start:
-                    raise ValueError("harvest_time must be later than start_time")
-            except ValueError as e:
-                if "harvest_time must be later than start_time" in str(e):
-                    raise
-                raise ValueError("Invalid datetime format. Use ISO format: YYYY-MM-DDTHH:MM")
+    @validator('parameters')
+    def validate_parameters(cls, v):
+        required_fields = ['status', 'temperature_c', 'volume_ml', 'location']
+        for field in required_fields:
+            if field not in v:
+                raise ValueError(f"Missing required parameter: {field}")
         return v
 
-class PassageCreate(PassageBase):
+class CellStateCreate(CellStateBase):
     pass
 
-class PassageRead(PassageBase):
+class CellStateRead(CellStateBase):
     id: int
-    generation: Optional[float]
-    doubling_time_hours: Optional[float] = None  # Will be computed
-    cumulative_pd: Optional[float] = None        # Will be computed
+    children: List["CellStateRead"] = []
+    transitions: List["StateTransitionRead"] = []
 
     class Config:
         from_attributes = True
 
-# Extended read model that includes related data
-class PassageReadExtended(PassageRead):
-    measurements: List[GrowthMeasurementRead] = []
-    children: List["PassageRead"] = []
+class StateTransitionBase(BaseModel):
+    timestamp: datetime
+    transition_type: str
+    parameters: Dict
+    notes: Optional[str] = None
 
-# Required for forward reference to PassageRead
-PassageReadExtended.model_rebuild() 
+    @validator('transition_type')
+    def validate_transition_type(cls, v):
+        valid_types = {'freeze', 'thaw', 'passage', 'split', 'measurement', 'idle'}
+        if v not in valid_types:
+            raise ValueError(f"Invalid transition type. Must be one of: {valid_types}")
+        return v
+
+class StateTransitionCreate(StateTransitionBase):
+    state_id: int
+
+class StateTransitionRead(StateTransitionBase):
+    id: int
+    state_id: int
+
+    class Config:
+        from_attributes = True
+
+# Required for forward references
+CellStateRead.model_rebuild() 

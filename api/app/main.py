@@ -1,58 +1,123 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, select
+from typing import List, Optional
 from datetime import datetime
+import logging
 
+from .models import (
+    CellState, StateTransition,
+    StateTransitionCreate, StateTransitionUpdate, StateTransitionRead
+)
 from .database import engine, create_db
-from .models import Passage
-from .routers import passages
+from .migrations import migrate_old_to_new
 
-app = FastAPI(title="Lab Passage Tracker")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# CORS middleware
+app = FastAPI(title="Cell Culture Tracker API")
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=False,  # Disable credentials for now
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create database tables
-create_db()
+# Initialize database and run migrations
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting up application...")
+    try:
+        create_db()
+        migrate_old_to_new()
+        logger.info("Database initialization and migration completed successfully")
+    except Exception as e:
+        logger.error(f"Error during startup: {str(e)}")
+        raise
 
-# Include passages router
-app.include_router(
-    passages.router,
-    prefix="/passages",
-    tags=["passages"],
-)
+# Dependency to get database session
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 @app.get("/")
-def root():
-    return {"message": "Lab Passage Tracker API"}
+async def root():
+    return {"message": "Cell Culture Tracker API"}
 
-@app.get("/health")
-def health_check():
-    """
-    Health check endpoint to monitor the backend status.
-    Returns:
-        dict: Status information including:
-            - status: "healthy" if the API is running
-            - database: "connected" if database connection is working
-    """
+@app.get("/states/", response_model=List[CellState])
+def get_states(session: Session = Depends(get_session)):
     try:
-        # Test database connection
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "timestamp": datetime.now().isoformat()
-        }
+        states = session.exec(select(CellState)).all()
+        return states
     except Exception as e:
-        return {
-            "status": "unhealthy",
-            "database": "disconnected",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        } 
+        logger.error(f"Error fetching states: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/states/{state_id}", response_model=CellState)
+def get_state(state_id: int, session: Session = Depends(get_session)):
+    state = session.get(CellState, state_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="State not found")
+    return state
+
+@app.get("/transitions/", response_model=List[StateTransitionRead])
+def get_transitions(
+    state_id: Optional[int] = None,
+    transition_type: Optional[str] = None,
+    session: Session = Depends(get_session)
+):
+    query = select(StateTransition)
+    if state_id:
+        query = query.where(StateTransition.state_id == state_id)
+    if transition_type:
+        query = query.where(StateTransition.transition_type == transition_type)
+    transitions = session.exec(query).all()
+    return transitions
+
+@app.post("/transitions/", response_model=StateTransitionRead)
+def create_transition(
+    transition: StateTransitionCreate,
+    session: Session = Depends(get_session)
+):
+    # Verify parent state exists
+    state = session.get(CellState, transition.state_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Parent state not found")
+
+    db_transition = StateTransition.from_orm(transition)
+    session.add(db_transition)
+    session.commit()
+    session.refresh(db_transition)
+    return db_transition
+
+@app.patch("/transitions/{transition_id}", response_model=StateTransitionRead)
+def update_transition(
+    transition_id: int,
+    transition: StateTransitionUpdate,
+    session: Session = Depends(get_session)
+):
+    db_transition = session.get(StateTransition, transition_id)
+    if not db_transition:
+        raise HTTPException(status_code=404, detail="Transition not found")
+
+    transition_data = transition.dict(exclude_unset=True)
+    for key, value in transition_data.items():
+        setattr(db_transition, key, value)
+
+    session.add(db_transition)
+    session.commit()
+    session.refresh(db_transition)
+    return db_transition
+
+@app.delete("/transitions/{transition_id}")
+def delete_transition(transition_id: int, session: Session = Depends(get_session)):
+    transition = session.get(StateTransition, transition_id)
+    if not transition:
+        raise HTTPException(status_code=404, detail="Transition not found")
+    
+    session.delete(transition)
+    session.commit()
+    return {"message": "Transition deleted successfully"} 

@@ -1,119 +1,144 @@
 from sqlmodel import select
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from sqlalchemy import delete
+from typing import List, Optional, Dict
+from datetime import datetime
 
-from .models import Passage, GrowthMeasurement
-from .schemas import PassageCreate, GrowthMeasurementCreate
-from .calcs import calc_generation, calc_doubling_time_hours, calc_cumulative_pd
+from .models import CellState, StateTransition
+from .schemas import CellStateCreate, StateTransitionCreate
 
-def create_passage(session: Session, passage: PassageCreate) -> Passage:
-    # Calculate this passage's PD
-    parent_generation = None
-    if passage.parent_id is not None:
-        parent = session.get(Passage, passage.parent_id)
-        if parent:
-            parent_generation = parent.generation
-    
-    pd = calc_generation(
-        passage.seed_count, 
-        passage.harvest_count,
-        parent_generation
-    )
-    
-    # If there's a parent, get its cumulative PD
-    parent_cumulative_pd = None
-    if passage.parent_id is not None:
-        parent = session.get(Passage, passage.parent_id)
-        if parent:
-            parent_cumulative_pd = parent.cumulative_pd
-
-    # Create the passage with computed fields
-    db_passage = Passage(
-        **passage.model_dump(),
-        generation=pd,
-        doubling_time_hours=calc_doubling_time_hours(
-            passage.start_time,
-            passage.harvest_time,
-            pd
-        ),
-        cumulative_pd=calc_cumulative_pd(pd, parent_cumulative_pd)
-    )
-    session.add(db_passage)
+def create_cell_state(session: Session, state: CellStateCreate) -> CellState:
+    """
+    Create a new cell state with validation of parent relationship.
+    """
+    db_state = CellState(**state.model_dump())
+    session.add(db_state)
     session.commit()
-    session.refresh(db_passage)
-    return db_passage
+    session.refresh(db_state)
+    return db_state
 
-def get_passages(session: Session, skip: int = 0, limit: int = 100) -> List[Passage]:
+def get_cell_states(
+    session: Session,
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None
+) -> List[CellState]:
+    """
+    Get paginated list of cell states, optionally filtered by status.
+    """
+    query = select(CellState)
+    if status:
+        query = query.where(CellState.parameters['status'].astext == status)
     result = session.execute(
-        select(Passage)
-        .offset(skip)
-        .limit(limit)
+        query.offset(skip).limit(limit)
     )
     return result.scalars().all()
 
-def get_passage(session: Session, passage_id: int) -> Optional[Passage]:
-    """Get a single passage by ID."""
-    return session.get(Passage, passage_id)
-
-def get_passage_with_related(session: Session, passage_id: int) -> Optional[Passage]:
-    """
-    Get a passage with all its related data (measurements, children).
-    SQLModel will automatically load relationships thanks to the Relationship definitions.
-    """
-    passage = session.get(Passage, passage_id)
-    if passage:
+def get_cell_state(session: Session, state_id: int) -> Optional[CellState]:
+    """Get a single cell state by ID with all relationships loaded."""
+    state = session.get(CellState, state_id)
+    if state:
         # Access relationships to ensure they're loaded
-        _ = passage.measurements
-        _ = passage.children
-        return passage
+        _ = state.children
+        _ = state.transitions
+        return state
     return None
 
-def create_growth_measurement(
+def get_cell_state_lineage(
     session: Session,
-    measurement: GrowthMeasurementCreate
-) -> GrowthMeasurement:
-    db_measurement = GrowthMeasurement(**measurement.model_dump())
-    session.add(db_measurement)
-    session.commit()
-    session.refresh(db_measurement)
-    return db_measurement
-
-def get_passage_measurements(
-    session: Session,
-    passage_id: int
-) -> List[GrowthMeasurement]:
-    result = session.execute(
-        select(GrowthMeasurement)
-        .where(GrowthMeasurement.passage_id == passage_id)
-        .order_by(GrowthMeasurement.timestamp)
-    )
-    return result.scalars().all()
-
-def delete_passage(session: Session, passage_id: int) -> bool:
+    state_id: int,
+    direction: str = "both"
+) -> List[CellState]:
     """
-    Delete a passage and all its related data (measurements).
-    Also updates any child passages to remove the parent reference.
+    Get the lineage of cell states (ancestors and/or descendants).
     
     Args:
         session: Database session
-        passage_id: ID of passage to delete
-        
+        state_id: ID of the starting state
+        direction: "ancestors", "descendants", or "both"
+    
     Returns:
-        bool: True if passage was deleted, False if not found
+        List of CellState objects in the lineage
     """
-    passage = session.get(Passage, passage_id)
-    if passage is None:
+    state = session.get(CellState, state_id)
+    if not state:
+        return []
+
+    result = []
+    if direction in ["ancestors", "both"]:
+        current = state
+        while current.parent_id:
+            current = session.get(CellState, current.parent_id)
+            if current:
+                result.append(current)
+            else:
+                break
+
+    if direction in ["descendants", "both"]:
+        # Get all descendants using a recursive CTE would be more efficient
+        # but for simplicity we'll do it this way for now
+        def get_descendants(s: CellState):
+            for child in s.children:
+                result.append(child)
+                get_descendants(child)
+        get_descendants(state)
+
+    return result
+
+def create_state_transition(
+    session: Session,
+    transition: StateTransitionCreate
+) -> StateTransition:
+    """
+    Create a new state transition and update the associated state's parameters.
+    """
+    db_transition = StateTransition(**transition.model_dump())
+    session.add(db_transition)
+    
+    # Update the state's parameters with the transition's parameters
+    state = session.get(CellState, transition.state_id)
+    if state:
+        state.parameters.update(transition.parameters)
+        state.timestamp = transition.timestamp
+    
+    session.commit()
+    session.refresh(db_transition)
+    return db_transition
+
+def get_state_transitions(
+    session: Session,
+    state_id: int,
+    transition_type: Optional[str] = None
+) -> List[StateTransition]:
+    """
+    Get all transitions for a state, optionally filtered by type.
+    """
+    query = select(StateTransition).where(StateTransition.state_id == state_id)
+    if transition_type:
+        query = query.where(StateTransition.transition_type == transition_type)
+    result = session.execute(query.order_by(StateTransition.timestamp))
+    return result.scalars().all()
+
+def delete_cell_state(session: Session, state_id: int) -> bool:
+    """
+    Delete a cell state and all its transitions.
+    Updates child states to remove parent reference.
+    """
+    state = session.get(CellState, state_id)
+    if state is None:
         return False
 
-    # Delete associated growth measurements explicitly
-    session.execute(delete(GrowthMeasurement).where(GrowthMeasurement.passage_id == passage_id))
+    # Delete associated transitions
+    session.execute(
+        select(StateTransition)
+        .where(StateTransition.state_id == state_id)
+        .delete()
+    )
 
-    # Update child passages to remove parent reference
-    for child in passage.children:
+    # Update child states to remove parent reference
+    for child in state.children:
         child.parent_id = None
 
-    # Delete the passage itself
-    session.delete(passage)
+    # Delete the state itself
+    session.delete(state)
     session.commit()
     return True 

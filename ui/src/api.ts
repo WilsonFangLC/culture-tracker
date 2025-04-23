@@ -2,7 +2,11 @@ import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 const api = axios.create({
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  withCredentials: false,  // Disable credentials for now
+  headers: {
+    'Content-Type': 'application/json',
+  },
 })
 
 // Add error interceptor
@@ -35,94 +39,105 @@ api.interceptors.response.use(
   }
 )
 
-export interface GrowthMeasurement {
+export interface CellState {
   id: number
-  passage_id: number
   timestamp: string
-  cell_density: number
+  parent_id?: number
+  parameters: Record<string, any>
+  notes?: string
+  children?: CellState[]
+  transitions?: StateTransition[]
+}
+
+export interface StateTransition {
+  id: number
+  state_id: number
+  timestamp: string
+  transition_type: string
+  parameters: Record<string, any>
   notes?: string
 }
 
-export interface Passage {
-  id: number
-  start_time: string
-  harvest_time: string
-  seed_count: number
-  harvest_count: number
-  generation: number
-  doubling_time_hours?: number
-  cumulative_pd?: number
-  parent_id?: number
-  measurements?: GrowthMeasurement[]
-  children?: Passage[]
+export interface StateTransitionCreate {
+  state_id: number
+  transition_type: string
+  parameters: Record<string, any>
+  notes?: string
 }
 
-export interface PassageCreate {
-  start_time: string
-  harvest_time: string
-  seed_count: number
-  harvest_count: number
-  parent_id?: number
+export interface StateTransitionUpdate {
+  transition_type?: string
+  parameters?: Record<string, any>
+  notes?: string
 }
 
-export const usePassages = () => {
+export const useStates = () => {
   return useQuery({
-    queryKey: ['passages'],
+    queryKey: ['states'],
     queryFn: async () => {
-      const { data } = await api.get<Passage[]>('/passages/api/')
+      const { data } = await api.get<CellState[]>('/states/')
       return data
     },
   })
 }
 
-export const useCreatePassage = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (passage: PassageCreate) => {
-      const { data } = await api.post<Passage>('/passages/api/', passage)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['passages'] })
-    },
-  })
-}
-
-export const useCreateGrowthMeasurement = (passageId: number) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (measurement: Omit<GrowthMeasurement, 'id'>) => {
-      const { data } = await api.post<GrowthMeasurement>(
-        `/passages/api/${passageId}/measurements/`,
-        measurement
-      )
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['passages'] })
-      queryClient.invalidateQueries({ queryKey: ['passage', passageId] })
-    },
-  })
-}
-
-export const usePassage = (passageId: number) => {
+export const useState = (stateId: number) => {
   return useQuery({
-    queryKey: ['passage', passageId],
+    queryKey: ['state', stateId],
     queryFn: async () => {
-      const { data } = await api.get<Passage>(`/passages/api/${passageId}/`)
+      const { data } = await api.get<CellState>(`/states/${stateId}/`)
       return data
     },
   })
 }
 
-export const useDeletePassage = () => {
+export const useTransitions = (stateId?: number, transitionType?: string) => {
+  return useQuery({
+    queryKey: ['transitions', stateId, transitionType],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (stateId) params.append('state_id', stateId.toString())
+      if (transitionType) params.append('transition_type', transitionType)
+      const { data } = await api.get<StateTransition[]>(`/transitions/?${params.toString()}`)
+      return data
+    },
+  })
+}
+
+export const useCreateTransition = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (passageId: number) => {
-      await api.delete(`/passages/api/${passageId}/`)
+    mutationFn: async (transition: StateTransitionCreate) => {
+      const { data } = await api.post<StateTransition>('/transitions/', transition)
+      return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['passages'] })
+      queryClient.invalidateQueries({ queryKey: ['transitions'] })
+    },
+  })
+}
+
+export const useUpdateTransition = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...data }: StateTransitionUpdate & { id: number }) => {
+      const { data: response } = await api.patch<StateTransition>(`/transitions/${id}/`, data)
+      return response
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transitions'] })
+    },
+  })
+}
+
+export const useDeleteTransition = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (transitionId: number) => {
+      await api.delete(`/transitions/${transitionId}/`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transitions'] })
     },
   })
 } 
