@@ -8,19 +8,10 @@ class GrowthMeasurement(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     passage_id: int = Field(foreign_key="passage.id", index=True)
     timestamp: str = Field(index=True)  # ISO format
-    cell_density: float = Field(gt=0)
+    cell_density: float = Field(ge=0)
+    notes: Optional[str] = Field(default=None)
     # Relationship
     passage: "Passage" = Relationship(back_populates="measurements")
-
-
-class FreezeEvent(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    passage_id: int = Field(foreign_key="passage.id", index=True)
-    timestamp: str = Field(index=True)  # ISO format
-    vial_count: int = Field(default=1, ge=1)
-    label: Optional[str] = Field(default=None)
-    # Relationship
-    passage: "Passage" = Relationship(back_populates="freeze_events")
 
 
 class Passage(SQLModel, table=True):
@@ -39,8 +30,7 @@ class Passage(SQLModel, table=True):
     # Relationships
     parent: Optional["Passage"] = Relationship(
         back_populates="children",
-        sa_relationship_kwargs=dict(remote_side="Passage.id")
+        sa_relationship_kwargs={"remote_side": "Passage.id"}
     )
     children: List["Passage"] = Relationship(back_populates="parent")
-    measurements: List[GrowthMeasurement] = Relationship(back_populates="passage")
-    freeze_events: List[FreezeEvent] = Relationship(back_populates="passage") 
+    measurements: List[GrowthMeasurement] = Relationship(back_populates="passage") 

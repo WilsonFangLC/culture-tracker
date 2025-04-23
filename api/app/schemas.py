@@ -3,9 +3,9 @@ from pydantic import BaseModel, validator
 from datetime import datetime
 
 class GrowthMeasurementBase(BaseModel):
-    passage_id: int
     timestamp: str
     cell_density: float
+    notes: Optional[str] = None
 
 class GrowthMeasurementCreate(GrowthMeasurementBase):
     pass
@@ -15,23 +15,6 @@ class GrowthMeasurementRead(GrowthMeasurementBase):
 
     class Config:
         from_attributes = True
-
-
-class FreezeEventBase(BaseModel):
-    passage_id: int
-    timestamp: str
-    vial_count: int = 1
-    label: Optional[str] = None
-
-class FreezeEventCreate(FreezeEventBase):
-    pass
-
-class FreezeEventRead(FreezeEventBase):
-    id: int
-
-    class Config:
-        from_attributes = True
-
 
 class PassageBase(BaseModel):
     start_time: str
@@ -69,11 +52,7 @@ class PassageRead(PassageBase):
 # Extended read model that includes related data
 class PassageReadExtended(PassageRead):
     measurements: List[GrowthMeasurementRead] = []
-    freeze_events: List[FreezeEventRead] = []
     children: List["PassageRead"] = []
-
-    class Config:
-        from_attributes = True
 
 # Required for forward reference to PassageRead
 PassageReadExtended.model_rebuild() 

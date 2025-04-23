@@ -40,14 +40,7 @@ export interface GrowthMeasurement {
   passage_id: number
   timestamp: string
   cell_density: number
-}
-
-export interface FreezeEvent {
-  id: number
-  passage_id: number
-  timestamp: string
-  vial_count: number
-  label?: string
+  notes?: string
 }
 
 export interface Passage {
@@ -61,7 +54,6 @@ export interface Passage {
   cumulative_pd?: number
   parent_id?: number
   measurements?: GrowthMeasurement[]
-  freeze_events?: FreezeEvent[]
   children?: Passage[]
 }
 
@@ -103,23 +95,6 @@ export const useCreateGrowthMeasurement = (passageId: number) => {
       const { data } = await api.post<GrowthMeasurement>(
         `/passages/api/${passageId}/measurements/`,
         measurement
-      )
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['passages'] })
-      queryClient.invalidateQueries({ queryKey: ['passage', passageId] })
-    },
-  })
-}
-
-export const useCreateFreezeEvent = (passageId: number) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (event: Omit<FreezeEvent, 'id'>) => {
-      const { data } = await api.post<FreezeEvent>(
-        `/passages/api/${passageId}/freeze-events/`,
-        event
       )
       return data
     },

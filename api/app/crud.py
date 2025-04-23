@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from sqlalchemy import delete
 
-from .models import Passage, GrowthMeasurement, FreezeEvent
-from .schemas import PassageCreate, GrowthMeasurementCreate, FreezeEventCreate
+from .models import Passage, GrowthMeasurement
+from .schemas import PassageCreate, GrowthMeasurementCreate
 from .calcs import calc_generation, calc_doubling_time_hours, calc_cumulative_pd
 
 def create_passage(session: Session, passage: PassageCreate) -> Passage:
@@ -58,14 +58,13 @@ def get_passage(session: Session, passage_id: int) -> Optional[Passage]:
 
 def get_passage_with_related(session: Session, passage_id: int) -> Optional[Passage]:
     """
-    Get a passage with all its related data (measurements, freeze events, children).
+    Get a passage with all its related data (measurements, children).
     SQLModel will automatically load relationships thanks to the Relationship definitions.
     """
     passage = session.get(Passage, passage_id)
     if passage:
         # Access relationships to ensure they're loaded
         _ = passage.measurements
-        _ = passage.freeze_events
         _ = passage.children
         return passage
     return None
@@ -91,30 +90,9 @@ def get_passage_measurements(
     )
     return result.scalars().all()
 
-def create_freeze_event(
-    session: Session,
-    freeze_event: FreezeEventCreate
-) -> FreezeEvent:
-    db_event = FreezeEvent(**freeze_event.model_dump())
-    session.add(db_event)
-    session.commit()
-    session.refresh(db_event)
-    return db_event
-
-def get_passage_freeze_events(
-    session: Session,
-    passage_id: int
-) -> List[FreezeEvent]:
-    result = session.execute(
-        select(FreezeEvent)
-        .where(FreezeEvent.passage_id == passage_id)
-        .order_by(FreezeEvent.timestamp)
-    )
-    return result.scalars().all()
-
 def delete_passage(session: Session, passage_id: int) -> bool:
     """
-    Delete a passage and all its related data (measurements, freeze events).
+    Delete a passage and all its related data (measurements).
     Also updates any child passages to remove the parent reference.
     
     Args:
@@ -128,9 +106,8 @@ def delete_passage(session: Session, passage_id: int) -> bool:
     if passage is None:
         return False
 
-    # Delete associated growth measurements and freeze events explicitly
+    # Delete associated growth measurements explicitly
     session.execute(delete(GrowthMeasurement).where(GrowthMeasurement.passage_id == passage_id))
-    session.execute(delete(FreezeEvent).where(FreezeEvent.passage_id == passage_id))
 
     # Update child passages to remove parent reference
     for child in passage.children:

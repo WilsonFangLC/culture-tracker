@@ -14,7 +14,7 @@ def get_session():
 def create_db():
     """Create all database tables. Use with caution - this will drop existing tables."""
     # Import all models to ensure they are registered with SQLModel
-    from .models import Passage, GrowthMeasurement, FreezeEvent
+    from .models import Passage, GrowthMeasurement
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
 

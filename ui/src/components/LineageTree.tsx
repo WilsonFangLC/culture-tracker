@@ -43,7 +43,7 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
           'This Passage PD': currentPD.toFixed(2),
           'Cells': `${passage.seed_count} → ${passage.harvest_count}`,
           'Time': passage.doubling_time_hours ? `${passage.doubling_time_hours.toFixed(1)}h` : 'N/A',
-          'Data': `${passage.measurements?.length || 0} measurements, ${passage.freeze_events?.length || 0} freezes`,
+          'Data': `${passage.measurements?.length || 0} measurements`,
         },
         isCollapsed: collapsedNodes[`P${passage.id}`],
       };
