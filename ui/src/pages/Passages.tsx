@@ -17,6 +17,7 @@ import {
 import PassageForm from '../components/PassageForm'
 import PassageDetails from '../components/PassageDetails'
 import { Passage, PassageCreate } from '../api'
+import React from 'react'
 
 export default function Passages() {
   const { data: passages = [], isLoading } = usePassages()
@@ -135,8 +136,8 @@ export default function Passages() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {table.getRowModel().rows.map((row) => (
-              <>
-                <tr key={row.id}>
+              <React.Fragment key={row.id}>
+                <tr>
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
@@ -153,7 +154,7 @@ export default function Passages() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

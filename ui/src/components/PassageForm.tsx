@@ -13,20 +13,70 @@ export default function PassageForm({ onSubmit }: PassageFormProps) {
     seed_count: 1,
     harvest_count: 1,
   })
+  const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {}
+    
+    // Validate start time
+    if (!formData.start_time) {
+      errors.start_time = 'Start time is required'
+    }
+
+    // Validate harvest time
+    if (!formData.harvest_time) {
+      errors.harvest_time = 'Harvest time is required'
+    } else if (formData.start_time && formData.harvest_time) {
+      const start = new Date(formData.start_time)
+      const harvest = new Date(formData.harvest_time)
+      if (harvest <= start) {
+        errors.harvest_time = 'Harvest time must be later than start time'
+      }
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await onSubmit(formData)
-    setFormData({
-      start_time: new Date().toISOString().slice(0, 16),
-      harvest_time: new Date().toISOString().slice(0, 16),
-      seed_count: 1,
-      harvest_count: 1,
-    })
+    setError(null)
+    
+    if (!validateForm()) {
+      return
+    }
+
+    try {
+      await onSubmit(formData)
+      setFormData({
+        start_time: new Date().toISOString().slice(0, 16),
+        harvest_time: new Date().toISOString().slice(0, 16),
+        seed_count: 1,
+        harvest_count: 1,
+      })
+      setValidationErrors({})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="rounded-md bg-red-50 p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Validation Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                {error.split('\n').map((line, i) => (
+                  <p key={i} className="mt-1">{line}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <label
           htmlFor="parent_id"
@@ -67,11 +117,17 @@ export default function PassageForm({ onSubmit }: PassageFormProps) {
           id="start_time"
           name="start_time"
           value={formData.start_time}
-          onChange={(e) =>
+          onChange={(e) => {
             setFormData({ ...formData, start_time: e.target.value })
-          }
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            setValidationErrors(prev => ({ ...prev, start_time: '' }))
+          }}
+          className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+            validationErrors.start_time ? 'border-red-500' : 'border-gray-300'
+          }`}
         />
+        {validationErrors.start_time && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.start_time}</p>
+        )}
       </div>
 
       <div>
@@ -86,11 +142,17 @@ export default function PassageForm({ onSubmit }: PassageFormProps) {
           id="harvest_time"
           name="harvest_time"
           value={formData.harvest_time}
-          onChange={(e) =>
+          onChange={(e) => {
             setFormData({ ...formData, harvest_time: e.target.value })
-          }
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            setValidationErrors(prev => ({ ...prev, harvest_time: '' }))
+          }}
+          className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${
+            validationErrors.harvest_time ? 'border-red-500' : 'border-gray-300'
+          }`}
         />
+        {validationErrors.harvest_time && (
+          <p className="mt-1 text-sm text-red-600">{validationErrors.harvest_time}</p>
+        )}
       </div>
 
       <div>

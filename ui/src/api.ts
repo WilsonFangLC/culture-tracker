@@ -9,6 +9,27 @@ const api = axios.create({
 api.interceptors.response.use(
   res => res,
   err => {
+    if (err.response?.status === 422) {
+      // Handle validation errors from FastAPI
+      const detail = err.response.data.detail
+      if (Array.isArray(detail)) {
+        // Handle multiple validation errors
+        const messages = detail.map(error => {
+          if (error.loc && error.msg) {
+            // Format: "field_name: error message"
+            const field = error.loc[error.loc.length - 1]
+            return `${field}: ${error.msg}`
+          }
+          return error.msg || error.message
+        }).join('\n')
+        throw new Error(messages)
+      } else if (typeof detail === 'string') {
+        // Handle single validation error
+        throw new Error(detail)
+      }
+      // If we can't parse the error, throw a generic message
+      throw new Error('Validation failed. Please check your input.')
+    }
     console.error("API error:", err.response?.status, err.response?.data);
     return Promise.reject(err);
   }
