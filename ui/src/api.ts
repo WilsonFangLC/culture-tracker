@@ -2,7 +2,6 @@ import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',  // Use full URL to backend
   withCredentials: true,
 })
 
@@ -57,7 +56,7 @@ export const usePassages = () => {
   return useQuery({
     queryKey: ['passages'],
     queryFn: async () => {
-      const { data } = await api.get<Passage[]>('/passages/')
+      const { data } = await api.get<Passage[]>('/passages/api/')
       return data
     },
   })
@@ -67,7 +66,7 @@ export const useCreatePassage = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (passage: PassageCreate) => {
-      const { data } = await api.post<Passage>('/passages/', passage)
+      const { data } = await api.post<Passage>('/passages/api/', passage)
       return data
     },
     onSuccess: () => {
@@ -81,7 +80,7 @@ export const useCreateGrowthMeasurement = (passageId: number) => {
   return useMutation({
     mutationFn: async (measurement: Omit<GrowthMeasurement, 'id'>) => {
       const { data } = await api.post<GrowthMeasurement>(
-        `/passages/${passageId}/measurements/`,
+        `/passages/api/${passageId}/measurements/`,
         measurement
       )
       return data
@@ -98,7 +97,7 @@ export const useCreateFreezeEvent = (passageId: number) => {
   return useMutation({
     mutationFn: async (event: Omit<FreezeEvent, 'id'>) => {
       const { data } = await api.post<FreezeEvent>(
-        `/passages/${passageId}/freeze-events/`,
+        `/passages/api/${passageId}/freeze-events/`,
         event
       )
       return data
@@ -114,7 +113,7 @@ export const usePassage = (passageId: number) => {
   return useQuery({
     queryKey: ['passage', passageId],
     queryFn: async () => {
-      const { data } = await api.get<Passage>(`/passages/${passageId}/`)
+      const { data } = await api.get<Passage>(`/passages/api/${passageId}/`)
       return data
     },
   })
@@ -124,7 +123,7 @@ export const useDeletePassage = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (passageId: number) => {
-      await api.delete(`/passages/${passageId}/`)
+      await api.delete(`/passages/api/${passageId}/`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passages'] })

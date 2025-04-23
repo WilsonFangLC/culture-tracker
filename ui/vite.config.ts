@@ -6,7 +6,12 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/passages': {
+      '^/passages/api/': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/passages\/api/, '/passages'),
+      },
+      '^/api/': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
