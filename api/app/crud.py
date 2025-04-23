@@ -9,7 +9,17 @@ from .calcs import calc_generation, calc_doubling_time_hours, calc_cumulative_pd
 
 def create_passage(session: Session, passage: PassageCreate) -> Passage:
     # Calculate this passage's PD
-    pd = calc_generation(passage.seed_count, passage.harvest_count)
+    parent_generation = None
+    if passage.parent_id is not None:
+        parent = session.get(Passage, passage.parent_id)
+        if parent:
+            parent_generation = parent.generation
+    
+    pd = calc_generation(
+        passage.seed_count, 
+        passage.harvest_count,
+        parent_generation
+    )
     
     # If there's a parent, get its cumulative PD
     parent_cumulative_pd = None

@@ -5,20 +5,28 @@ from typing import Optional
 # ISO format used in our API
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M"
 
-def calc_generation(seed_count: int, harvest_count: int) -> float:
+def calc_generation(
+    seed_count: int, 
+    harvest_count: int,
+    parent_generation: Optional[float] = None
+) -> float:
     """
     Calculate the generation number using log2(harvest/seed).
+    If parent_generation is provided, adds to the parent's generation.
     
     Args:
         seed_count: Initial number of cells
         harvest_count: Final number of cells
+        parent_generation: Generation number of parent passage (if exists)
         
     Returns:
-        float: The generation number (population doublings, PD)
+        float: The cumulative generation number (population doublings, PD)
     """
     if seed_count <= 0 or harvest_count <= 0:
         raise ValueError("Seed and harvest counts must be positive")
-    return math.log2(harvest_count / seed_count)
+    
+    current_pd = math.log2(harvest_count / seed_count)
+    return current_pd if parent_generation is None else parent_generation + current_pd
 
 def calc_doubling_time_hours(start_time: str, harvest_time: str, pd: float) -> Optional[float]:
     """
