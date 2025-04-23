@@ -1,0 +1,15 @@
+node_modules/
+node_modules/
+*.pdf
+*.mp4
+venv/
+node_modules/
+venv/
+*.pdf
+*.mp4
+ui/node_modules/
+api/venv/
+ui/node_modules/
+api/venv/
+*.pdf
+*.mp4
