@@ -29,14 +29,15 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
     }
 
     const buildTree = (passage: Passage): TreeNode => {
+      const currentPD = Math.log2(passage.harvest_count / passage.seed_count);
       const node: TreeNode = {
         name: `P${passage.id}`,
         attributes: {
-          'Generation': passage.generation,
+          'Cumulative PD': passage.generation.toFixed(2),
+          'This Passage PD': currentPD.toFixed(2),
           'Seed Count': passage.seed_count,
           'Harvest Count': passage.harvest_count,
           'Doubling Time': passage.doubling_time_hours?.toFixed(2) || 'N/A',
-          'Cumulative PD': passage.cumulative_pd?.toFixed(2) || 'N/A',
           'Measurements': passage.measurements?.length || 0,
           'Freeze Events': passage.freeze_events?.length || 0,
         },
@@ -89,7 +90,7 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
         orientation="vertical"
         pathFunc="step"
         translate={{ x: 500, y: 50 }}
-        nodeSize={{ x: 200, y: 100 }}
+        nodeSize={{ x: 200, y: 120 }}
         separation={{ siblings: 2, nonSiblings: 2 }}
         renderCustomNodeElement={({ nodeDatum, toggleNode }) => (
           <g>
@@ -124,7 +125,11 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
                 dy=".35em"
                 x={20}
                 y={20 + i * 15}
-                style={{ fontSize: '10px' }}
+                style={{ 
+                  fontSize: '10px',
+                  fontWeight: key === 'Cumulative PD' ? 'bold' : 'normal',
+                  fill: key === 'Cumulative PD' ? '#000' : '#666'
+                }}
               >
                 {`${key}: ${value}`}
               </text>

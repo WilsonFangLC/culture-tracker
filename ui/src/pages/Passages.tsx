@@ -57,21 +57,26 @@ export default function Passages() {
       header: 'Harvest Count',
     }),
     columnHelper.accessor('generation', {
-      header: 'PD',
-      cell: (info) => (info.getValue() as number).toFixed(2),
+      header: 'Cumulative PD',
+      cell: (info) => {
+        const value = info.getValue() as number;
+        const row = info.row.original;
+        const currentPD = Math.log2(row.harvest_count / row.seed_count);
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium">{value.toFixed(2)}</span>
+            <span className="text-xs text-gray-500">
+              (This passage: {currentPD.toFixed(2)})
+            </span>
+          </div>
+        );
+      },
     }),
     columnHelper.accessor('doubling_time_hours', {
       header: 'Doubling Time (h)',
       cell: (info) => {
-        const value = info.getValue() as number | undefined
-        return value ? value.toFixed(1) : '-'
-      },
-    }),
-    columnHelper.accessor('cumulative_pd', {
-      header: 'Cumulative PD',
-      cell: (info) => {
-        const value = info.getValue() as number | undefined
-        return value ? value.toFixed(2) : '-'
+        const value = info.getValue() as number | undefined;
+        return value ? value.toFixed(1) : '-';
       },
     }),
     columnHelper.display({
@@ -80,7 +85,7 @@ export default function Passages() {
         <button
           onClick={async () => {
             if (window.confirm('Are you sure you want to delete this passage?')) {
-              await deletePassage.mutateAsync(row.original.id)
+              await deletePassage.mutateAsync(row.original.id);
             }
           }}
           className="text-red-600 hover:text-red-900"
