@@ -1,6 +1,6 @@
 import { CellState } from '../api'
 import LineageGraph from './LineageGraph'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EditStateForm from './EditStateForm'
 
 interface StateLineageProps {
@@ -20,6 +20,12 @@ export default function StateLineage({
   isUpdating,
   updateError 
 }: StateLineageProps) {
+  // Sync editingState if the state prop updates after an update
+  useEffect(() => {
+    if (editingState && editingState.id === state.id) {
+      setEditingState(state)
+    }
+  }, [state])
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph')
   const [editingState, setEditingState] = useState<CellState | null>(null)
 
@@ -95,11 +101,11 @@ export default function StateLineage({
           )}
           <EditStateForm
             state={editingState}
-            onSubmit={(data) => {
-              onUpdateState(editingState.id, data.parameters)
-              if (!isUpdating) {
-                setEditingState(null)
-              }
+            onSubmit={async (data) => {
+              // Perform the update and wait for completion
+              await onUpdateState(editingState.id, data.parameters)
+              // Close the edit form once update succeeds
+              setEditingState(null)
             }}
             onCancel={() => setEditingState(null)}
           />

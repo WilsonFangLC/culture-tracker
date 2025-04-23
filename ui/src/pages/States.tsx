@@ -152,18 +152,17 @@ export default function States() {
     createNextState(0)
   }
 
-  const handleUpdateState = (stateId: number, parameters: any) => {
-    updateState.mutate(
-      {
-        id: stateId,
-        parameters,
-      },
-      {
-        onError: (error) => {
-          console.error('Error updating state:', error)
-        }
-      }
-    )
+  const handleUpdateState = async (stateId: number, parameters: any) => {
+    console.log('handleUpdateState called with', stateId, parameters)
+    try {
+      const updated = await updateState.mutateAsync({ id: stateId, parameters })
+      console.log('updateState.mutateAsync returned', updated)
+      console.log('updateState.parameters:', updated.parameters, 'stringified:', JSON.stringify(updated.parameters, null, 2))
+      setSelectedState(updated)
+      console.log('setSelectedState to', updated)
+    } catch (error) {
+      console.error('handleUpdateState error', error)
+    }
   }
 
   return (
@@ -247,6 +246,7 @@ export default function States() {
           {selectedState ? (
             <>
               <StateLineage
+                key={selectedState.id}
                 state={selectedState}
                 states={states}
                 onSelectState={setSelectedState}

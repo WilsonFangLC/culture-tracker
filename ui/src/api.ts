@@ -19,6 +19,15 @@ api.interceptors.response.use(
   }
 )
 
+// Add request interceptor for debugging
+api.interceptors.request.use(
+  req => {
+    console.log(`[API Request] ${req.method?.toUpperCase()} ${req.url}`, req.data)
+    return req
+  },
+  err => Promise.reject(err)
+)
+
 export interface CellState {
   id: number
   name: string
@@ -171,11 +180,17 @@ export const useUpdateState = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, parameters }: { id: number; parameters: Record<string, any> }) => {
+      console.log(`[useUpdateState] mutationFn called for state ${id} with parameters:`, parameters)
       const { data } = await api.patch<CellState>(`/states/${id}/`, { parameters })
+      console.log(`[useUpdateState] api.patch response for state ${id}:`, data)
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['states'] })
+    onSuccess: (data) => {
+      queryClient.setQueryData(['state', data.id], data)
+      queryClient.setQueryData(['states'], (oldData?: CellState[]) => {
+        if (!oldData) return [data]
+        return oldData.map(s => s.id === data.id ? data : s)
+      })
     },
   })
 } 

@@ -20,21 +20,27 @@ interface EditStateFormProps {
 
 export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFormProps) {
   const [formData, setFormData] = useState({
-    status: state.parameters.status,
-    temperature_c: state.parameters.temperature_c,
-    volume_ml: state.parameters.volume_ml,
-    location: state.parameters.location,
-    cell_density: state.parameters.cell_density,
-    viability: state.parameters.viability,
-    split_ratio: state.parameters.split_ratio,
-    storage_location: state.parameters.storage_location,
+    status: state.parameters.status || '1',
+    temperature_c: state.parameters.temperature_c || 0,
+    volume_ml: state.parameters.volume_ml || 0,
+    location: state.parameters.location || '',
+    cell_density: state.parameters.cell_density || 0,
+    viability: state.parameters.viability || 0,
+    split_ratio: state.parameters.split_ratio || 1,
+    storage_location: state.parameters.storage_location || '',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Submitting form with data:', formData)
     onSubmit({
       parameters: formData
     })
+  }
+
+  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof typeof formData) => {
+    const value = e.target.value === '' ? 0 : parseFloat(e.target.value)
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   return (
@@ -69,7 +75,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             min="0"
             className="mt-1 w-full p-2 border rounded"
             value={formData.cell_density}
-            onChange={(e) => setFormData({ ...formData, cell_density: parseFloat(e.target.value) })}
+            onChange={(e) => handleNumericChange(e, 'cell_density')}
           />
         </div>
         <div>
@@ -82,7 +88,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             max="100"
             className="mt-1 w-full p-2 border rounded"
             value={formData.viability}
-            onChange={(e) => setFormData({ ...formData, viability: parseFloat(e.target.value) })}
+            onChange={(e) => handleNumericChange(e, 'viability')}
           />
         </div>
         <div>
@@ -95,7 +101,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             min="0.1"
             className="mt-1 w-full p-2 border rounded"
             value={formData.split_ratio}
-            onChange={(e) => setFormData({ ...formData, split_ratio: parseFloat(e.target.value) })}
+            onChange={(e) => handleNumericChange(e, 'split_ratio')}
           />
         </div>
         <div>
@@ -121,7 +127,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             type="number"
             className="mt-1 w-full p-2 border rounded"
             value={formData.temperature_c}
-            onChange={(e) => setFormData({ ...formData, temperature_c: parseFloat(e.target.value) })}
+            onChange={(e) => handleNumericChange(e, 'temperature_c')}
           />
         </div>
 
@@ -133,7 +139,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             type="number"
             className="mt-1 w-full p-2 border rounded"
             value={formData.volume_ml}
-            onChange={(e) => setFormData({ ...formData, volume_ml: parseFloat(e.target.value) })}
+            onChange={(e) => handleNumericChange(e, 'volume_ml')}
           />
         </div>
 
