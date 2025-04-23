@@ -5,7 +5,9 @@ import CreateStateForm from '../components/CreateStateForm'
 
 export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
-  const { data: transitionsData, isLoading: transitionsLoading, error: transitionsError } = useTransitions()
+  const [selectedState, setSelectedState] = useState<CellState | null>(null)
+  const { data: transitionsData, isLoading: transitionsLoading, error: transitionsError } = useTransitions(selectedState?.id)
+  
   const createTransition = useCreateTransition()
   const updateTransition = useUpdateTransition()
   const deleteTransition = useDeleteTransition()
@@ -15,7 +17,6 @@ export default function States() {
   const states = Array.isArray(statesData) ? statesData : []
   const transitions = Array.isArray(transitionsData) ? transitionsData : []
 
-  const [selectedState, setSelectedState] = useState<CellState | null>(null)
   const [showCreateState, setShowCreateState] = useState(false)
   const [newTransition, setNewTransition] = useState<Partial<StateTransitionCreate>>({
     state_id: 0,
@@ -25,11 +26,16 @@ export default function States() {
 
   const validTransitionTypes = ['freeze', 'thaw', 'passage', 'split', 'measurement', 'idle']
 
-  // Debug logging
+  // Reset transition form when selected state changes
   useEffect(() => {
-    console.log('States data:', statesData)
-    console.log('Transitions data:', transitionsData)
-  }, [statesData, transitionsData])
+    if (selectedState) {
+      setNewTransition({
+        state_id: selectedState.id,
+        transition_type: '',
+        parameters: {},
+      })
+    }
+  }, [selectedState])
 
   const getTransitionDetails = (transition: StateTransition) => {
     switch (transition.transition_type) {
@@ -48,14 +54,14 @@ export default function States() {
     }
   }
 
-  if (statesLoading || transitionsLoading) {
-    return <div>Loading...</div>
+  if (statesLoading) {
+    return <div>Loading states...</div>
   }
 
-  if (statesError || transitionsError) {
+  if (statesError) {
     return (
       <div className="text-red-500">
-        Error loading data: {statesError?.message || transitionsError?.message}
+        Error loading states: {statesError.message}
       </div>
     )
   }
@@ -71,15 +77,25 @@ export default function States() {
     } as StateTransitionCreate)
     
     setNewTransition({
-      state_id: 0,
+      state_id: selectedState.id,
       transition_type: '',
       parameters: {},
     })
   }
 
   const handleCreateState = (data: CellStateCreate) => {
+    // First create the state
     createState.mutate(data, {
-      onSuccess: () => {
+      onSuccess: (newState) => {
+        // Then create the transition
+        if (data.transition_type) {
+          createTransition.mutate({
+            state_id: newState.id,
+            transition_type: data.transition_type,
+            parameters: data.transition_parameters || {},
+            timestamp: new Date().toISOString(),
+          })
+        }
         setShowCreateState(false)
       },
     })
@@ -87,9 +103,10 @@ export default function States() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Cell States</h1>
+      <h1 className="text-3xl font-bold">Cell Culture States</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* States Column */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">States</h2>
@@ -138,6 +155,7 @@ export default function States() {
                         <span className={`px-2 py-0.5 rounded-full text-xs ${
                           state.parameters.status === 'culturing' ? 'bg-green-100 text-green-800' :
                           state.parameters.status === 'frozen' ? 'bg-blue-100 text-blue-800' :
+                          state.parameters.status === 'thawed' ? 'bg-orange-100 text-orange-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {state.parameters.status}
@@ -146,6 +164,11 @@ export default function States() {
                       <div>Temperature: {state.parameters.temperature_c}°C</div>
                       <div>Volume: {state.parameters.volume_ml}ml</div>
                       <div>Location: {state.parameters.location}</div>
+                      {state.parent_id && (
+                        <div className="text-xs text-gray-500">
+                          Parent: State {state.parent_id}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -154,47 +177,60 @@ export default function States() {
           )}
         </div>
 
+        {/* Transitions Column */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Transitions</h2>
+          <h2 className="text-xl font-semibold">
+            {selectedState ? `Transitions for State ${selectedState.id}` : 'Transitions'}
+          </h2>
           
           {selectedState ? (
             <>
-              <div className="space-y-2">
-                {transitions.length === 0 ? (
-                  <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
-                    No transitions found
-                  </div>
-                ) : (
-                  transitions.map((transition) => (
-                    <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${
-                              transition.transition_type === 'measurement' ? 'bg-purple-100 text-purple-800' :
-                              transition.transition_type === 'passage' ? 'bg-green-100 text-green-800' :
-                              transition.transition_type === 'freeze' ? 'bg-blue-100 text-blue-800' :
-                              transition.transition_type === 'thaw' ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {transition.transition_type}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-500 mt-1">
-                            {new Date(transition.timestamp).toLocaleString()}
+              {transitionsLoading ? (
+                <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                  Loading transitions...
+                </div>
+              ) : transitionsError ? (
+                <div className="p-4 bg-red-100 rounded-lg text-red-500">
+                  Error loading transitions: {transitionsError.message}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {transitions.length === 0 ? (
+                    <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                      No transitions found for this state
+                    </div>
+                  ) : (
+                    transitions.map((transition) => (
+                      <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                transition.transition_type === 'measurement' ? 'bg-purple-100 text-purple-800' :
+                                transition.transition_type === 'passage' ? 'bg-green-100 text-green-800' :
+                                transition.transition_type === 'freeze' ? 'bg-blue-100 text-blue-800' :
+                                transition.transition_type === 'thaw' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {transition.transition_type}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {new Date(transition.timestamp).toLocaleString()}
+                            </div>
                           </div>
                         </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          {getTransitionDetails(transition)}
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-gray-600">
-                        {getTransitionDetails(transition)}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              )}
 
               <div className="mt-8 space-y-4 p-4 bg-white rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold">Create Transition</h3>
+                <h3 className="text-lg font-semibold">Create New Transition</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">

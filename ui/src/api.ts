@@ -53,12 +53,15 @@ export interface StateTransitionUpdate {
 
 export interface CellStateCreate {
   timestamp: string;
+  parent_id?: number;
   parameters: {
     status: string;
     temperature_c: number;
     volume_ml: number;
     location: string;
   };
+  transition_type?: string;
+  transition_parameters?: Record<string, any>;
 }
 
 export const useStates = () => {
@@ -81,16 +84,16 @@ export const useState = (stateId: number) => {
   })
 }
 
-export const useTransitions = (stateId?: number, transitionType?: string) => {
+export const useTransitions = (stateId?: number) => {
   return useQuery({
-    queryKey: ['transitions', stateId, transitionType],
+    queryKey: ['transitions', stateId],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (stateId) params.append('state_id', stateId.toString())
-      if (transitionType) params.append('transition_type', transitionType)
       const { data } = await api.get<StateTransition[]>(`/transitions/?${params.toString()}`)
       return data
     },
+    enabled: stateId !== undefined,
   })
 }
 
