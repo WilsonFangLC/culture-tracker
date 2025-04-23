@@ -33,15 +33,31 @@ export interface StateTransition {
   id: number
   state_id: number
   timestamp: string
-  transition_type: string
-  parameters: Record<string, any>
+  parameters: {
+    status?: string;
+    temperature_c?: number;
+    volume_ml?: number;
+    location?: string;
+    split_ratio?: number;
+    cell_density?: number;
+    viability?: number;
+    storage_location?: string;
+  }
   notes?: string
 }
 
 export interface StateTransitionCreate {
   state_id: number
-  transition_type: string
-  parameters: Record<string, any>
+  parameters: {
+    status?: string;
+    temperature_c?: number;
+    volume_ml?: number;
+    location?: string;
+    split_ratio?: number;
+    cell_density?: number;
+    viability?: number;
+    storage_location?: string;
+  }
   notes?: string
 }
 

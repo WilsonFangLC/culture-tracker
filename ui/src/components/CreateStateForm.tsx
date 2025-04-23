@@ -11,8 +11,16 @@ interface CreateStateFormProps {
       volume_ml: number;
       location: string;
     };
-    transition_type: string;
-    transition_parameters: Record<string, any>;
+    transition_parameters: {
+      status?: string;
+      temperature_c?: number;
+      volume_ml?: number;
+      location?: string;
+      split_ratio?: number;
+      cell_density?: number;
+      viability?: number;
+      storage_location?: string;
+    };
   }) => void;
   onCancel: () => void;
 }
@@ -22,35 +30,42 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
   const states = Array.isArray(statesData) ? statesData : []
 
   const [formData, setFormData] = useState({
-    parent_id: states.length > 0 ? states[0].id : undefined,
+    parent_id: undefined as number | undefined,
     temperature_c: 37,
     volume_ml: 20,
     location: 'incubator',
     status: 'culturing',
-    transition_type: '',
-    transition_parameters: {},
+    transition_parameters: {} as Record<string, any>,
   })
 
-  const validTransitions = {
-    'culturing': ['passage', 'freeze', 'measurement', 'idle'],
-    'frozen': ['thaw'],
-    'thawed': ['culturing', 'idle'],
-    'idle': ['culturing', 'freeze']
-  }
-
-  const getAvailableTransitions = (currentStatus: string) => {
-    return validTransitions[currentStatus as keyof typeof validTransitions] || []
-  }
+  // Get the parent state's parameters
+  const parentState = states.find(s => s.id === formData.parent_id)
+  const parentParameters = parentState?.parameters || {}
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validate transition
-    const availableTransitions = getAvailableTransitions(formData.status)
-    if (!availableTransitions.includes(formData.transition_type)) {
-      alert('Invalid transition for current status')
-      return
+    // Calculate which parameters changed
+    const changedParameters: Record<string, any> = {}
+    if (formData.status !== parentParameters.status) {
+      changedParameters.status = formData.status
     }
+    if (formData.temperature_c !== parentParameters.temperature_c) {
+      changedParameters.temperature_c = formData.temperature_c
+    }
+    if (formData.volume_ml !== parentParameters.volume_ml) {
+      changedParameters.volume_ml = formData.volume_ml
+    }
+    if (formData.location !== parentParameters.location) {
+      changedParameters.location = formData.location
+    }
+
+    // Add any additional transition parameters
+    Object.entries(formData.transition_parameters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        changedParameters[key] = value
+      }
+    })
 
     onSubmit({
       timestamp: new Date().toISOString(),
@@ -61,34 +76,55 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
         volume_ml: formData.volume_ml,
         location: formData.location,
       },
-      transition_type: formData.transition_type,
-      transition_parameters: formData.transition_parameters,
+      transition_parameters: changedParameters,
     })
   }
+
+  // Determine which additional fields to show based on the status change
+  const showAdditionalFields = () => {
+    if (!parentState) return 'new_cell_line'
+    const oldStatus = parentState.parameters.status
+    const newStatus = formData.status
+
+    if (oldStatus === 'culturing' && newStatus === 'frozen') {
+      return 'freeze'
+    }
+    if (oldStatus === 'frozen' && newStatus === 'thawed') {
+      return 'thaw'
+    }
+    if (oldStatus === 'culturing' && newStatus === 'culturing') {
+      return 'passage'
+    }
+    if (newStatus === 'culturing') {
+      return 'measurement'
+    }
+    return 'parameter_change'
+  }
+
+  const additionalFieldsType = showAdditionalFields()
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg">
       <h3 className="text-lg font-semibold">Create New State</h3>
       
       {/* Parent State Selection */}
-      {states.length > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Parent State
-          </label>
-          <select
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.parent_id}
-            onChange={(e) => setFormData({ ...formData, parent_id: Number(e.target.value) })}
-          >
-            {states.map((state) => (
-              <option key={state.id} value={state.id}>
-                State {state.id} ({state.parameters.status})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Parent State (Optional)
+        </label>
+        <select
+          className="mt-1 w-full p-2 border rounded"
+          value={formData.parent_id || ''}
+          onChange={(e) => setFormData({ ...formData, parent_id: e.target.value ? Number(e.target.value) : undefined })}
+        >
+          <option value="">New Cell Line</option>
+          {states.map((state) => (
+            <option key={state.id} value={state.id}>
+              State {state.id} ({state.parameters.status})
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Status Selection */}
       <div>
@@ -107,27 +143,54 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
         </select>
       </div>
 
-      {/* Transition Type Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Transition Type
-        </label>
-        <select
-          className="mt-1 w-full p-2 border rounded"
-          value={formData.transition_type}
-          onChange={(e) => setFormData({ ...formData, transition_type: e.target.value })}
-        >
-          <option value="">Select a transition type</option>
-          {getAvailableTransitions(formData.status).map((type) => (
-            <option key={type} value={type}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Additional Fields based on Status Change */}
+      {additionalFieldsType === 'new_cell_line' && (
+        <div className="space-y-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Initial Cell Density (cells/ml)
+            </label>
+            <input
+              type="number"
+              min="0"
+              className="mt-1 w-full p-2 border rounded"
+              value={formData.transition_parameters.cell_density || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  transition_parameters: {
+                    ...formData.transition_parameters,
+                    cell_density: parseFloat(e.target.value),
+                  },
+                })
+              }
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Initial Viability (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="mt-1 w-full p-2 border rounded"
+              value={formData.transition_parameters.viability || ''}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  transition_parameters: {
+                    ...formData.transition_parameters,
+                    viability: parseFloat(e.target.value),
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      )}
 
-      {/* Transition Parameters */}
-      {formData.transition_type === 'passage' && (
+      {additionalFieldsType === 'passage' && (
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Split Ratio
@@ -151,7 +214,7 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
         </div>
       )}
 
-      {formData.transition_type === 'measurement' && (
+      {additionalFieldsType === 'measurement' && (
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Cell Density (cells/ml)
@@ -167,6 +230,52 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
                 transition_parameters: {
                   ...formData.transition_parameters,
                   cell_density: parseFloat(e.target.value),
+                },
+              })
+            }
+          />
+        </div>
+      )}
+
+      {additionalFieldsType === 'freeze' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Storage Location
+          </label>
+          <input
+            type="text"
+            className="mt-1 w-full p-2 border rounded"
+            value={formData.transition_parameters.storage_location || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                transition_parameters: {
+                  ...formData.transition_parameters,
+                  storage_location: e.target.value,
+                },
+              })
+            }
+          />
+        </div>
+      )}
+
+      {additionalFieldsType === 'thaw' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Viability (%)
+          </label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            className="mt-1 w-full p-2 border rounded"
+            value={formData.transition_parameters.viability || ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                transition_parameters: {
+                  ...formData.transition_parameters,
+                  viability: parseFloat(e.target.value),
                 },
               })
             }

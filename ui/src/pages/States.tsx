@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStates, useTransitions, useCreateTransition, useUpdateTransition, useDeleteTransition, useCreateState } from '../api'
 import { CellState, StateTransition, StateTransitionCreate, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
+import StateLineage from '../components/StateLineage'
 
 export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
@@ -37,21 +38,59 @@ export default function States() {
     }
   }, [selectedState])
 
-  const getTransitionDetails = (transition: StateTransition) => {
-    switch (transition.transition_type) {
-      case 'measurement':
-        return `Cell Density: ${transition.parameters.cell_density?.toLocaleString() || 'N/A'} cells/ml`;
-      case 'passage':
-        return `Split Ratio: ${transition.parameters.split_ratio || 'N/A'}`;
-      case 'freeze':
-        return `Location: ${transition.parameters.storage_location || 'N/A'}`;
-      case 'thaw':
-        return `Recovery: ${transition.parameters.viability || 'N/A'}%`;
-      default:
-        return Object.entries(transition.parameters)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
+  const getTransitionType = (transition: StateTransition) => {
+    const parameters = transition.parameters
+    
+    // Check for status changes first
+    if (parameters.status) {
+      if (parameters.status === 'frozen') return 'freeze'
+      if (parameters.status === 'thawed') return 'thaw'
     }
+    
+    // Check for specific parameters
+    if (parameters.split_ratio !== undefined) return 'passage'
+    if (parameters.cell_density !== undefined) return 'measurement'
+    if (parameters.storage_location !== undefined) return 'freeze'
+    if (parameters.viability !== undefined) return 'thaw'
+    
+    return 'parameter_change'
+  }
+
+  const getTransitionDetails = (transition: StateTransition) => {
+    const parameters = transition.parameters
+    const details = []
+
+    // Status change
+    if (parameters.status) {
+      details.push(`Status: ${parameters.status}`)
+    }
+
+    // Parameter changes
+    if (parameters.temperature_c !== undefined) {
+      details.push(`Temperature: ${parameters.temperature_c}°C`)
+    }
+    if (parameters.volume_ml !== undefined) {
+      details.push(`Volume: ${parameters.volume_ml}ml`)
+    }
+    if (parameters.location) {
+      details.push(`Location: ${parameters.location}`)
+    }
+
+    // Special parameters
+    if (parameters.split_ratio !== undefined) {
+      details.push(`Split Ratio: ${parameters.split_ratio}`)
+    }
+    if (parameters.cell_density !== undefined) {
+      details.push(`Cell Density: ${parameters.cell_density.toLocaleString()} cells/ml`)
+    }
+    if (parameters.storage_location) {
+      details.push(`Storage Location: ${parameters.storage_location}`)
+    }
+    if (parameters.viability !== undefined) {
+      details.push(`Viability: ${parameters.viability}%`)
+    }
+
+    return details.join(', ')
   }
 
   if (statesLoading) {
@@ -87,14 +126,13 @@ export default function States() {
     // First create the state
     createState.mutate(data, {
       onSuccess: (newState) => {
-        // Then create the transition
+        // Then create the transition if specified
         if (data.transition_type) {
           createTransition.mutate({
             state_id: newState.id,
             transition_type: data.transition_type,
             parameters: data.transition_parameters || {},
-            timestamp: new Date().toISOString(),
-          })
+          } as StateTransitionCreate)
         }
         setShowCreateState(false)
       },
@@ -177,187 +215,72 @@ export default function States() {
           )}
         </div>
 
-        {/* Transitions Column */}
+        {/* Right Column */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">
-            {selectedState ? `Transitions for State ${selectedState.id}` : 'Transitions'}
-          </h2>
-          
           {selectedState ? (
             <>
-              {transitionsLoading ? (
-                <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
-                  Loading transitions...
-                </div>
-              ) : transitionsError ? (
-                <div className="p-4 bg-red-100 rounded-lg text-red-500">
-                  Error loading transitions: {transitionsError.message}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {transitions.length === 0 ? (
-                    <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
-                      No transitions found for this state
-                    </div>
-                  ) : (
-                    transitions.map((transition) => (
-                      <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                transition.transition_type === 'measurement' ? 'bg-purple-100 text-purple-800' :
-                                transition.transition_type === 'passage' ? 'bg-green-100 text-green-800' :
-                                transition.transition_type === 'freeze' ? 'bg-blue-100 text-blue-800' :
-                                transition.transition_type === 'thaw' ? 'bg-orange-100 text-orange-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {transition.transition_type}
-                              </span>
+              <StateLineage
+                state={selectedState}
+                states={states}
+                onSelectState={setSelectedState}
+              />
+              
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">
+                  Transitions for State {selectedState.id}
+                </h2>
+                
+                {transitionsLoading ? (
+                  <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                    Loading transitions...
+                  </div>
+                ) : transitionsError ? (
+                  <div className="p-4 bg-red-100 rounded-lg text-red-500">
+                    Error loading transitions: {transitionsError.message}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {transitions.length === 0 ? (
+                      <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                        No transitions found for this state
+                      </div>
+                    ) : (
+                      transitions.map((transition) => {
+                        const transitionType = getTransitionType(transition)
+                        return (
+                          <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                    transitionType === 'measurement' ? 'bg-purple-100 text-purple-800' :
+                                    transitionType === 'passage' ? 'bg-green-100 text-green-800' :
+                                    transitionType === 'freeze' ? 'bg-blue-100 text-blue-800' :
+                                    transitionType === 'thaw' ? 'bg-orange-100 text-orange-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {transitionType}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  {new Date(transition.timestamp).toLocaleString()}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">
-                              {new Date(transition.timestamp).toLocaleString()}
+                            <div className="mt-2 text-sm text-gray-600">
+                              {getTransitionDetails(transition)}
                             </div>
                           </div>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600">
-                          {getTransitionDetails(transition)}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              <div className="mt-8 space-y-4 p-4 bg-white rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold">Create New Transition</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Transition Type
-                    </label>
-                    <select
-                      className="mt-1 w-full p-2 border rounded"
-                      value={newTransition.transition_type}
-                      onChange={(e) =>
-                        setNewTransition({
-                          ...newTransition,
-                          transition_type: e.target.value,
-                          state_id: selectedState.id,
-                        })
-                      }
-                    >
-                      <option value="">Select type...</option>
-                      {validTransitionTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
+                        )
+                      })
+                    )}
                   </div>
-
-                  {newTransition.transition_type === 'measurement' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Cell Density (cells/ml)
-                      </label>
-                      <input
-                        type="number"
-                        className="mt-1 w-full p-2 border rounded"
-                        value={newTransition.parameters?.cell_density || ''}
-                        onChange={(e) =>
-                          setNewTransition({
-                            ...newTransition,
-                            parameters: {
-                              ...newTransition.parameters,
-                              cell_density: parseFloat(e.target.value),
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {newTransition.transition_type === 'passage' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Split Ratio (e.g., 1:3)
-                      </label>
-                      <input
-                        type="text"
-                        className="mt-1 w-full p-2 border rounded"
-                        value={newTransition.parameters?.split_ratio || ''}
-                        onChange={(e) =>
-                          setNewTransition({
-                            ...newTransition,
-                            parameters: {
-                              ...newTransition.parameters,
-                              split_ratio: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {newTransition.transition_type === 'freeze' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Storage Location
-                      </label>
-                      <input
-                        type="text"
-                        className="mt-1 w-full p-2 border rounded"
-                        placeholder="e.g., Tank 1, Box A3"
-                        value={newTransition.parameters?.storage_location || ''}
-                        onChange={(e) =>
-                          setNewTransition({
-                            ...newTransition,
-                            parameters: {
-                              ...newTransition.parameters,
-                              storage_location: e.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  {newTransition.transition_type === 'thaw' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Viability (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="mt-1 w-full p-2 border rounded"
-                        value={newTransition.parameters?.viability || ''}
-                        onChange={(e) =>
-                          setNewTransition({
-                            ...newTransition,
-                            parameters: {
-                              ...newTransition.parameters,
-                              viability: parseFloat(e.target.value),
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  )}
-
-                  <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleCreateTransition}
-                    disabled={!newTransition.transition_type}
-                  >
-                    Create Transition
-                  </button>
-                </div>
+                )}
               </div>
             </>
           ) : (
             <div className="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
-              Select a state to view and create transitions
+              Select a state to view lineage and transitions
             </div>
           )}
         </div>
