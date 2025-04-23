@@ -21,10 +21,11 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
 
   // Transform passages into tree structure
   const transformToTree = (passages: Passage[]): TreeNode => {
-    // Find root passage (no parent)
-    const rootPassage = passages.find(p => !p.parent_id);
-    if (!rootPassage) {
-      return { name: 'No root passage found' };
+    // Find all root passages (no parent)
+    const rootPassages = passages.filter(p => !p.parent_id);
+    
+    if (rootPassages.length === 0) {
+      return { name: 'No passages found' };
     }
 
     const buildTree = (passage: Passage): TreeNode => {
@@ -51,10 +52,17 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
       return node;
     };
 
-    return buildTree(rootPassage);
+    // Create a root node that contains all lineages
+    return {
+      name: 'Lineages',
+      children: rootPassages.map(buildTree),
+      isCollapsed: false
+    };
   };
 
   const handleNodeClick = (nodeDatum: any) => {
+    if (nodeDatum.name === 'Lineages') return; // Skip the root node
+    
     const passageId = parseInt(nodeDatum.name.slice(1));
     const passage = passages.find(p => p.id === passageId);
     
@@ -64,6 +72,8 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
   };
 
   const handleNodeToggle = (nodeDatum: any) => {
+    if (nodeDatum.name === 'Lineages') return; // Skip the root node
+    
     setCollapsedNodes(prev => ({
       ...prev,
       [nodeDatum.name]: !prev[nodeDatum.name]
@@ -85,24 +95,30 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
           <g>
             <circle
               r={15}
-              fill={nodeDatum.children ? '#4CAF50' : '#2196F3'}
+              fill={nodeDatum.name === 'Lineages' ? '#9E9E9E' : (nodeDatum.children ? '#4CAF50' : '#2196F3')}
               onClick={(e) => {
                 e.stopPropagation();
-                handleNodeToggle(nodeDatum);
-                toggleNode();
+                if (nodeDatum.name !== 'Lineages') {
+                  handleNodeToggle(nodeDatum);
+                  toggleNode();
+                }
               }}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: nodeDatum.name === 'Lineages' ? 'default' : 'pointer' }}
             />
             <text
               dy=".35em"
               x={20}
               y={0}
-              style={{ fontSize: '12px', cursor: 'pointer' }}
+              style={{ 
+                fontSize: '12px', 
+                cursor: nodeDatum.name === 'Lineages' ? 'default' : 'pointer',
+                fontWeight: nodeDatum.name === 'Lineages' ? 'bold' : 'normal'
+              }}
               onClick={() => handleNodeClick(nodeDatum)}
             >
               {nodeDatum.name}
             </text>
-            {Object.entries(nodeDatum.attributes || {}).map(([key, value], i) => (
+            {nodeDatum.name !== 'Lineages' && Object.entries(nodeDatum.attributes || {}).map(([key, value], i) => (
               <text
                 key={key}
                 dy=".35em"

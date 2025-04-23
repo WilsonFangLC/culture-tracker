@@ -16,6 +16,7 @@ import {
 } from '../api'
 import PassageForm from '../components/PassageForm'
 import PassageDetails from '../components/PassageDetails'
+import LineageTree from '../components/LineageTree'
 import { Passage, PassageCreate } from '../api'
 import React from 'react'
 
@@ -24,6 +25,7 @@ export default function Passages() {
   const createPassage = useCreatePassage()
   const deletePassage = useDeletePassage()
   const [expanded, setExpanded] = useState<ExpandedState>({})
+  const [selectedPassage, setSelectedPassage] = useState<Passage | null>(null)
 
   const columnHelper = createColumnHelper<Passage>()
   const columns = [
@@ -112,37 +114,49 @@ export default function Passages() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Passages</h1>
-      <PassageForm onSubmit={handleSubmit} />
-      <div className="mt-4 overflow-x-auto">
+    <div className="p-4">
+      {/* Global Lineage Tree Section */}
+      <div className="mb-6 bg-white p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-4">Lineage Tree</h2>
+        <div className="h-[400px]">
+          <LineageTree 
+            passages={passages} 
+            onSelectPassage={setSelectedPassage}
+          />
+        </div>
+      </div>
+
+      {/* Passage Form */}
+      <div className="mb-6">
+        <PassageForm onSubmit={handleSubmit} isSubmitting={createPassage.isPending} />
+      </div>
+
+      {/* Passages Table */}
+      <div className="bg-white rounded shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+                {headerGroup.headers.map(header => (
                   <th
                     key={header.id}
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
               </tr>
             ))}
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map(row => (
               <React.Fragment key={row.id}>
-                <tr>
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                    >
+                <tr
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedPassage(row.original)}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -150,7 +164,9 @@ export default function Passages() {
                 {row.getIsExpanded() && (
                   <tr>
                     <td colSpan={row.getVisibleCells().length}>
-                      <PassageDetails passage={row.original} />
+                      <div className="px-6 py-4">
+                        <PassageDetails passage={row.original} />
+                      </div>
                     </td>
                   </tr>
                 )}

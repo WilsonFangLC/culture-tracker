@@ -3,6 +3,7 @@ import { PassageCreate, usePassages } from '../api'
 
 interface PassageFormProps {
   onSubmit: (data: PassageCreate) => Promise<void>
+  isSubmitting?: boolean
 }
 
 export default function PassageForm({ onSubmit }: PassageFormProps) {

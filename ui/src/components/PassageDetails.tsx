@@ -2,7 +2,6 @@ import { useCreateGrowthMeasurement, useCreateFreezeEvent, usePassage, usePassag
 import { Passage, GrowthMeasurement, FreezeEvent } from '../api'
 import GrowthMeasurementForm from './GrowthMeasurementForm'
 import FreezeEventForm from './FreezeEventForm'
-import LineageTree from './LineageTree'
 
 interface PassageDetailsProps {
   passage: Passage
@@ -82,20 +81,6 @@ export default function PassageDetails({ passage }: PassageDetailsProps) {
             <p>Generation: {passageData.generation}</p>
             <p>Cumulative PD: {passageData.cumulative_pd?.toFixed(2) || '-'}</p>
           </div>
-        </div>
-      </div>
-
-      {/* Lineage Visualization Section */}
-      <div className="mb-6 bg-white p-4 rounded shadow">
-        <h3 className="font-semibold mb-4">Lineage Tree Visualization</h3>
-        <div className="h-[600px]">
-          <LineageTree 
-            passages={allPassages} 
-            onSelectPassage={(selectedPassage) => {
-              // You can add navigation logic here if needed
-              console.log('Selected passage:', selectedPassage);
-            }}
-          />
         </div>
       </div>
 
