@@ -2,9 +2,18 @@ import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: 'http://localhost:8000',  // Use full URL to backend
   withCredentials: true,
 })
+
+// Add error interceptor
+api.interceptors.response.use(
+  res => res,
+  err => {
+    console.error("API error:", err.response?.status, err.response?.data);
+    return Promise.reject(err);
+  }
+)
 
 export interface GrowthMeasurement {
   id: number
@@ -48,7 +57,7 @@ export const usePassages = () => {
   return useQuery({
     queryKey: ['passages'],
     queryFn: async () => {
-      const { data } = await api.get<Passage[]>('/passages')
+      const { data } = await api.get<Passage[]>('/passages/')
       return data
     },
   })
@@ -58,7 +67,7 @@ export const useCreatePassage = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (passage: PassageCreate) => {
-      const { data } = await api.post<Passage>('/passages', passage)
+      const { data } = await api.post<Passage>('/passages/', passage)
       return data
     },
     onSuccess: () => {
@@ -105,7 +114,7 @@ export const usePassage = (passageId: number) => {
   return useQuery({
     queryKey: ['passage', passageId],
     queryFn: async () => {
-      const { data } = await api.get<Passage>(`/passages/${passageId}`)
+      const { data } = await api.get<Passage>(`/passages/${passageId}/`)
       return data
     },
   })
@@ -115,7 +124,7 @@ export const useDeletePassage = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (passageId: number) => {
-      await api.delete(`/passages/${passageId}`)
+      await api.delete(`/passages/${passageId}/`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passages'] })

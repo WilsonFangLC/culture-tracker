@@ -1,5 +1,6 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+from datetime import datetime
 
 class GrowthMeasurementBase(BaseModel):
     passage_id: int
@@ -38,6 +39,20 @@ class PassageBase(BaseModel):
     seed_count: int
     harvest_count: int
     parent_id: Optional[int] = None
+
+    @validator('harvest_time')
+    def harvest_time_must_be_later_than_start_time(cls, v, values):
+        if 'start_time' in values:
+            try:
+                start = datetime.strptime(values['start_time'], "%Y-%m-%dT%H:%M")
+                harvest = datetime.strptime(v, "%Y-%m-%dT%H:%M")
+                if harvest <= start:
+                    raise ValueError("harvest_time must be later than start_time")
+            except ValueError as e:
+                if "harvest_time must be later than start_time" in str(e):
+                    raise
+                raise ValueError("Invalid datetime format. Use ISO format: YYYY-MM-DDTHH:MM")
+        return v
 
 class PassageCreate(PassageBase):
     pass

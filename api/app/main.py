@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from .database import engine
+from .database import engine, create_db
 from .models import Passage
 from .routers import passages
 
@@ -11,11 +11,14 @@ app = FastAPI(title="Lab Passage Tracker")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create database tables
+create_db()
 
 # Include passages router
 app.include_router(
@@ -23,9 +26,6 @@ app.include_router(
     prefix="/passages",
     tags=["passages"],
 )
-
-# Create tables
-Passage.metadata.create_all(bind=engine)
 
 @app.get("/")
 def root():
