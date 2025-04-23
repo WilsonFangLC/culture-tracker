@@ -51,6 +51,16 @@ export interface StateTransitionUpdate {
   notes?: string
 }
 
+export interface CellStateCreate {
+  timestamp: string;
+  parameters: {
+    status: string;
+    temperature_c: number;
+    volume_ml: number;
+    location: string;
+  };
+}
+
 export const useStates = () => {
   return useQuery({
     queryKey: ['states'],
@@ -118,6 +128,19 @@ export const useDeleteTransition = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transitions'] })
+    },
+  })
+}
+
+export const useCreateState = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (state: CellStateCreate) => {
+      const { data } = await api.post<CellState>('/states/', state)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['states'] })
     },
   })
 } 
