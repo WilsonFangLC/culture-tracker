@@ -6,6 +6,7 @@ from sqlalchemy import Column, JSON
 
 class CellState(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(default="")
     timestamp: datetime = Field(default_factory=datetime.now)
     parent_id: Optional[int] = Field(default=None, foreign_key="cellstate.id")
     parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))

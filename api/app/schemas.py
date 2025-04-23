@@ -3,6 +3,7 @@ from pydantic import BaseModel, validator
 from datetime import datetime
 
 class CellStateBase(BaseModel):
+    name: str = ""
     timestamp: datetime
     parameters: Dict
     parent_id: Optional[int] = None

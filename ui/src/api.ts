@@ -21,6 +21,7 @@ api.interceptors.response.use(
 
 export interface CellState {
   id: number
+  name: string
   timestamp: string
   parent_id?: number
   parameters: Record<string, any>
@@ -69,6 +70,7 @@ export interface StateTransitionUpdate {
 }
 
 export interface CellStateCreate {
+  name: string;
   timestamp: string;
   parent_id?: number;
   parameters: {

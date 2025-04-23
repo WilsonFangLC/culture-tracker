@@ -3,6 +3,7 @@ import { useStates } from '../api'
 
 interface CreateStateFormProps {
   onSubmit: (data: {
+    name: string;
     timestamp: string;
     parent_id?: number;
     parameters: {
@@ -34,6 +35,7 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
   const states = Array.isArray(statesData) ? statesData : []
 
   const [formData, setFormData] = useState({
+    name: "",
     parent_id: undefined as number | undefined,
     temperature_c: 37,
     volume_ml: 20,
@@ -47,6 +49,7 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
   })
 
   const [splitStates, setSplitStates] = useState<Array<{
+    name: string;
     status: string;
     temperature_c: number;
     volume_ml: number;
@@ -55,7 +58,7 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
     viability: number;
     split_ratio: number;
     storage_location: string;
-    distribution: number; // percentage of cells going to this state
+    distribution: number;
   }>>([])
 
   // Get the parent state's parameters
@@ -65,92 +68,37 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const timestamp = new Date().toISOString()
-    
     if (splitStates.length > 0) {
-      // Handle split transition
+      // Validate total distribution
       const totalDistribution = splitStates.reduce((sum, state) => sum + state.distribution, 0)
       if (totalDistribution !== 100) {
         alert('Total distribution must equal 100%')
         return
       }
 
-      const statesToCreate = splitStates.map(state => {
-        // Calculate which parameters changed from parent
-        const changedParameters: Record<string, any> = {}
-        if (state.status !== parentParameters.status) {
-          changedParameters.status = state.status
-        }
-        if (state.temperature_c !== parentParameters.temperature_c) {
-          changedParameters.temperature_c = state.temperature_c
-        }
-        if (state.volume_ml !== parentParameters.volume_ml) {
-          changedParameters.volume_ml = state.volume_ml
-        }
-        if (state.location !== parentParameters.location) {
-          changedParameters.location = state.location
-        }
-        if (state.cell_density !== parentParameters.cell_density) {
-          changedParameters.cell_density = state.cell_density
-        }
-        if (state.viability !== parentParameters.viability) {
-          changedParameters.viability = state.viability
-        }
-        if (state.split_ratio !== parentParameters.split_ratio) {
-          changedParameters.split_ratio = state.split_ratio
-        }
-        if (state.storage_location !== parentParameters.storage_location) {
-          changedParameters.storage_location = state.storage_location
-        }
-
-        return {
-          timestamp,
-          parent_id: formData.parent_id,
-          parameters: {
-            status: state.status,
-            temperature_c: state.temperature_c,
-            volume_ml: state.volume_ml,
-            location: state.location,
-            cell_density: state.cell_density,
-            viability: state.viability,
-            split_ratio: state.split_ratio,
-            storage_location: state.storage_location,
-          },
-          transition_parameters: changedParameters,
-        }
-      })
-
-      onSubmit(statesToCreate)
+      // Create states for each split
+      const states = splitStates.map(state => ({
+        name: state.name,
+        timestamp: new Date().toISOString(),
+        parent_id: formData.parent_id,
+        parameters: {
+          status: state.status,
+          temperature_c: state.temperature_c,
+          volume_ml: state.volume_ml,
+          location: state.location,
+          cell_density: state.cell_density,
+          viability: state.viability,
+          split_ratio: state.split_ratio,
+          storage_location: state.storage_location,
+        },
+        transition_parameters: formData.transition_parameters,
+      }))
+      onSubmit(states)
     } else {
-      // Handle single transition (existing code)
-      const changedParameters: Record<string, any> = {}
-      if (formData.status !== parentParameters.status) {
-        changedParameters.status = formData.status
-      }
-      if (formData.temperature_c !== parentParameters.temperature_c) {
-        changedParameters.temperature_c = formData.temperature_c
-      }
-      if (formData.volume_ml !== parentParameters.volume_ml) {
-        changedParameters.volume_ml = formData.volume_ml
-      }
-      if (formData.location !== parentParameters.location) {
-        changedParameters.location = formData.location
-      }
-      if (formData.cell_density !== parentParameters.cell_density) {
-        changedParameters.cell_density = formData.cell_density
-      }
-      if (formData.viability !== parentParameters.viability) {
-        changedParameters.viability = formData.viability
-      }
-      if (formData.split_ratio !== parentParameters.split_ratio) {
-        changedParameters.split_ratio = formData.split_ratio
-      }
-      if (formData.storage_location !== parentParameters.storage_location) {
-        changedParameters.storage_location = formData.storage_location
-      }
-
+      // Single state creation
       onSubmit([{
-        timestamp,
+        name: formData.name,
+        timestamp: new Date().toISOString(),
         parent_id: formData.parent_id,
         parameters: {
           status: formData.status,
@@ -162,13 +110,14 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
           split_ratio: formData.split_ratio,
           storage_location: formData.storage_location,
         },
-        transition_parameters: changedParameters,
+        transition_parameters: formData.transition_parameters,
       }])
     }
   }
 
   const addSplitState = () => {
     setSplitStates([...splitStates, {
+      name: "",
       status: '1',
       temperature_c: 37,
       volume_ml: 20,
@@ -195,6 +144,21 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg">
       <h3 className="text-lg font-semibold">Create New State</h3>
       
+      {/* State Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          State Name
+        </label>
+        <input
+          type="text"
+          className="mt-1 w-full p-2 border rounded"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Enter a descriptive name for this state"
+          required
+        />
+      </div>
+
       {/* Parent State Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700">
@@ -240,7 +204,7 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
         <div className="space-y-4">
           {splitStates.map((state, index) => (
             <div key={index} className="p-4 border rounded-lg">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-4">
                 <h4 className="font-medium">Split State {index + 1}</h4>
                 <button
                   type="button"
@@ -251,21 +215,38 @@ export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormP
                 </button>
               </div>
 
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Distribution (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="mt-1 w-full p-2 border rounded"
-                    value={state.distribution}
-                    onChange={(e) => updateSplitState(index, 'distribution', parseFloat(e.target.value))}
-                  />
-                </div>
+              {/* Split State Name */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  State Name
+                </label>
+                <input
+                  type="text"
+                  className="mt-1 w-full p-2 border rounded"
+                  value={state.name}
+                  onChange={(e) => updateSplitState(index, 'name', e.target.value)}
+                  placeholder="Enter a descriptive name for this split state"
+                  required
+                />
+              </div>
 
+              {/* Distribution */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Distribution (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  className="mt-1 w-full p-2 border rounded"
+                  value={state.distribution}
+                  onChange={(e) => updateSplitState(index, 'distribution', parseFloat(e.target.value))}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Status

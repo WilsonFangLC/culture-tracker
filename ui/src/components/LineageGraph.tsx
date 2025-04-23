@@ -10,6 +10,7 @@ interface LineageGraphProps {
 
 interface CustomNodeDatum extends TreeNodeDatum {
   stateId: number
+  stateName: string
   attributes: {
     status: string
     temperature: string
@@ -25,8 +26,9 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
     const children = states.filter(s => s.parent_id === currentState.id)
     
     return {
-      name: `State ${currentState.id}`,
+      name: currentState.name || `State ${currentState.id}`,
       stateId: currentState.id,
+      stateName: currentState.name || `State ${currentState.id}`,
       attributes: {
         status: `Status ${currentState.parameters.status}`,
         temperature: `${currentState.parameters.temperature_c}°C`,
@@ -93,12 +95,21 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                   y="40"
                   style={{ fontSize: '12px', fontWeight: 'bold' }}
                 >
-                  {customNode.name}
+                  {customNode.stateName}
                 </text>
                 <text
                   className="rd3t-label__attributes"
                   x="0"
-                  y="60"
+                  y="55"
+                  textAnchor="middle"
+                  style={{ fontSize: '10px' }}
+                >
+                  ID: {customNode.stateId}
+                </text>
+                <text
+                  className="rd3t-label__attributes"
+                  x="0"
+                  y="70"
                   textAnchor="middle"
                   style={{ fontSize: '10px' }}
                 >
@@ -107,7 +118,7 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                 <text
                   className="rd3t-label__attributes"
                   x="0"
-                  y="75"
+                  y="85"
                   textAnchor="middle"
                   style={{ fontSize: '10px' }}
                 >
@@ -116,7 +127,7 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                 <text
                   className="rd3t-label__attributes"
                   x="0"
-                  y="90"
+                  y="100"
                   textAnchor="middle"
                   style={{ fontSize: '10px' }}
                 >
