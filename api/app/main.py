@@ -137,4 +137,27 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
         return db_state
     except Exception as e:
         logger.error(f"Error creating state: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.patch("/states/{state_id}", response_model=CellStateRead)
+def update_state(
+    state_id: int,
+    state_update: dict,
+    session: Session = Depends(get_session)
+):
+    try:
+        db_state = session.get(CellState, state_id)
+        if not db_state:
+            raise HTTPException(status_code=404, detail="State not found")
+
+        # Update parameters if provided
+        if "parameters" in state_update:
+            db_state.parameters.update(state_update["parameters"])
+
+        session.add(db_state)
+        session.commit()
+        session.refresh(db_state)
+        return db_state
+    except Exception as e:
+        logger.error(f"Error updating state: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 

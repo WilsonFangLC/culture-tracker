@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStates, useTransitions, useCreateTransition, useUpdateTransition, useDeleteTransition, useCreateState } from '../api'
+import { useStates, useTransitions, useCreateTransition, useUpdateTransition, useDeleteTransition, useCreateState, useUpdateState } from '../api'
 import { CellState, StateTransition, StateTransitionCreate, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
@@ -13,6 +13,7 @@ export default function States() {
   const updateTransition = useUpdateTransition()
   const deleteTransition = useDeleteTransition()
   const createState = useCreateState()
+  const updateState = useUpdateState()
 
   // Ensure states and transitions are always arrays
   const states = Array.isArray(statesData) ? statesData : []
@@ -151,6 +152,20 @@ export default function States() {
     createNextState(0)
   }
 
+  const handleUpdateState = (stateId: number, parameters: any) => {
+    updateState.mutate(
+      {
+        id: stateId,
+        parameters,
+      },
+      {
+        onError: (error) => {
+          console.error('Error updating state:', error)
+        }
+      }
+    )
+  }
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Cell Culture States</h1>
@@ -235,6 +250,9 @@ export default function States() {
                 state={selectedState}
                 states={states}
                 onSelectState={setSelectedState}
+                onUpdateState={handleUpdateState}
+                isUpdating={updateState.isPending}
+                updateError={updateState.error?.message}
               />
               
               <div className="space-y-4">

@@ -165,4 +165,17 @@ export const useCreateState = () => {
       queryClient.invalidateQueries({ queryKey: ['states'] })
     },
   })
+}
+
+export const useUpdateState = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, parameters }: { id: number; parameters: Record<string, any> }) => {
+      const { data } = await api.patch<CellState>(`/states/${id}/`, { parameters })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['states'] })
+    },
+  })
 } 

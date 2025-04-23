@@ -1,15 +1,27 @@
 import { CellState } from '../api'
 import LineageGraph from './LineageGraph'
 import { useState } from 'react'
+import EditStateForm from './EditStateForm'
 
 interface StateLineageProps {
   state: CellState;
   states: CellState[];
   onSelectState: (state: CellState) => void;
+  onUpdateState: (stateId: number, parameters: any) => void;
+  isUpdating?: boolean;
+  updateError?: string;
 }
 
-export default function StateLineage({ state, states, onSelectState }: StateLineageProps) {
+export default function StateLineage({ 
+  state, 
+  states, 
+  onSelectState, 
+  onUpdateState,
+  isUpdating,
+  updateError 
+}: StateLineageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph')
+  const [editingState, setEditingState] = useState<CellState | null>(null)
 
   // Find all ancestors
   const getAncestors = (currentState: CellState): CellState[] => {
@@ -74,7 +86,30 @@ export default function StateLineage({ state, states, onSelectState }: StateLine
         </div>
       </div>
 
-      {viewMode === 'graph' ? (
+      {editingState ? (
+        <div className="space-y-4">
+          {updateError && (
+            <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+              Error updating state: {updateError}
+            </div>
+          )}
+          <EditStateForm
+            state={editingState}
+            onSubmit={(data) => {
+              onUpdateState(editingState.id, data.parameters)
+              if (!isUpdating) {
+                setEditingState(null)
+              }
+            }}
+            onCancel={() => setEditingState(null)}
+          />
+          {isUpdating && (
+            <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
+              Saving changes...
+            </div>
+          )}
+        </div>
+      ) : viewMode === 'graph' ? (
         <LineageGraph
           state={state}
           states={states}
@@ -94,7 +129,6 @@ export default function StateLineage({ state, states, onSelectState }: StateLine
                     className={`flex-1 min-w-[200px] p-3 rounded ${
                       s.id === state.id ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
                     }`}
-                    onClick={() => onSelectState(s)}
                   >
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">State {s.id}</span>
@@ -119,6 +153,20 @@ export default function StateLineage({ state, states, onSelectState }: StateLine
                         ← State {s.parent_id}
                       </div>
                     )}
+                    <div className="mt-2 flex justify-end space-x-2">
+                      <button
+                        className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                        onClick={() => onSelectState(s)}
+                      >
+                        Select
+                      </button>
+                      <button
+                        className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                        onClick={() => setEditingState(s)}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 );
               })}
