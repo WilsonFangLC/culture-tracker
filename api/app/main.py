@@ -9,8 +9,9 @@ from .models import (
     CellState, StateTransition,
     StateTransitionCreate, StateTransitionUpdate, StateTransitionRead
 )
-from .database import engine, create_db
+from .database import engine, create_db, get_session
 from .migrations import migrate_old_to_new
+from .schemas import CellStateCreate, CellStateRead
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,4 +121,20 @@ def delete_transition(transition_id: int, session: Session = Depends(get_session
     
     session.delete(transition)
     session.commit()
-    return {"message": "Transition deleted successfully"} 
+    return {"message": "Transition deleted successfully"}
+
+@app.post("/states/", response_model=CellStateRead)
+def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
+    try:
+        db_state = CellState(
+            timestamp=state.timestamp,
+            parent_id=state.parent_id,
+            parameters=state.parameters
+        )
+        session.add(db_state)
+        session.commit()
+        session.refresh(db_state)
+        return db_state
+    except Exception as e:
+        logger.error(f"Error creating state: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 
