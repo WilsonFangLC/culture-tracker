@@ -40,40 +40,56 @@ export default function StateLineage({ state, states, onSelectState }: StateLine
     return acc;
   }, {} as Record<number, CellState[]>);
 
+  // Find siblings (states with the same parent)
+  const getSiblings = (state: CellState) => {
+    if (!state.parent_id) return [state];
+    return states.filter(s => s.parent_id === state.parent_id);
+  };
+
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <h3 className="text-lg font-semibold mb-4">State Lineage</h3>
       <div className="space-y-4">
         {Object.entries(generations).map(([generation, states]) => (
           <div key={generation} className="flex flex-wrap gap-4">
-            {states.map((s) => (
-              <div
-                key={s.id}
-                className={`flex-1 min-w-[200px] p-3 rounded ${
-                  s.id === state.id ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
-                }`}
-                onClick={() => onSelectState(s)}
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium">State {s.id}</span>
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
-                    Status {s.parameters.status}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {new Date(s.timestamp).toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Temperature: {s.parameters.temperature_c}°C
-                  Volume: {s.parameters.volume_ml}ml
-                </div>
-                {s.parent_id && (
-                  <div className="text-xs text-gray-400">
-                    ← State {s.parent_id}
+            {states.map((s) => {
+              const siblings = getSiblings(s);
+              const isSplitTransition = siblings.length > 1;
+              
+              return (
+                <div
+                  key={s.id}
+                  className={`flex-1 min-w-[200px] p-3 rounded ${
+                    s.id === state.id ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
+                  }`}
+                  onClick={() => onSelectState(s)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium">State {s.id}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
+                      Status {s.parameters.status}
+                    </span>
+                    {isSplitTransition && (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
+                        Split
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="text-sm text-gray-500">
+                    {new Date(s.timestamp).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Temperature: {s.parameters.temperature_c}°C
+                    Volume: {s.parameters.volume_ml}ml
+                  </div>
+                  {s.parent_id && (
+                    <div className="text-xs text-gray-400">
+                      ← State {s.parent_id}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

@@ -122,21 +122,33 @@ export default function States() {
     })
   }
 
-  const handleCreateState = (data: CellStateCreate) => {
-    // First create the state
-    createState.mutate(data, {
-      onSuccess: (newState) => {
-        // Then create the transition if specified
-        if (data.transition_type) {
-          createTransition.mutate({
-            state_id: newState.id,
-            transition_type: data.transition_type,
-            parameters: data.transition_parameters || {},
-          } as StateTransitionCreate)
-        }
+  const handleCreateState = (data: CellStateCreate[]) => {
+    // Create all states in sequence
+    const createNextState = (index: number) => {
+      if (index >= data.length) {
         setShowCreateState(false)
-      },
-    })
+        return
+      }
+
+      const stateData = data[index]
+      createState.mutate(stateData, {
+        onSuccess: (newState) => {
+          // Then create the transition if specified
+          if (stateData.transition_parameters && Object.keys(stateData.transition_parameters).length > 0) {
+            createTransition.mutate({
+              state_id: newState.id,
+              transition_type: 'parameter_change',
+              parameters: stateData.transition_parameters,
+            } as StateTransitionCreate)
+          }
+          // Create next state
+          createNextState(index + 1)
+        },
+      })
+    }
+
+    // Start creating states
+    createNextState(0)
   }
 
   return (

@@ -48,6 +48,7 @@ export interface StateTransition {
 
 export interface StateTransitionCreate {
   state_id: number
+  transition_type: string
   parameters: {
     status?: string;
     temperature_c?: number;
