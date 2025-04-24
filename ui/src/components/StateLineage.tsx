@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import EditStateForm from './EditStateForm'
 
 interface StateLineageProps {
-  state: CellState;
+  state: CellState | null;
   states: CellState[];
   onSelectState: (state: CellState) => void;
   onUpdateState: (stateId: number, parameters: any) => void;
@@ -20,17 +20,19 @@ export default function StateLineage({
   isUpdating,
   updateError 
 }: StateLineageProps) {
-  // Sync editingState if the state prop updates after an update
-  useEffect(() => {
-    if (editingState && editingState.id === state.id) {
-      setEditingState(state)
-    }
-  }, [state])
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph')
   const [editingState, setEditingState] = useState<CellState | null>(null)
 
+  // Sync editingState if the state prop updates after an update
+  useEffect(() => {
+    if (editingState && state && editingState.id === state.id) {
+      setEditingState(state)
+    }
+  }, [state, editingState])
+
   // Find all ancestors
-  const getAncestors = (currentState: CellState): CellState[] => {
+  const getAncestors = (currentState: CellState | null): CellState[] => {
+    if (!currentState) return [];
     if (!currentState.parent_id) return [currentState];
     const parent = states.find(s => s.id === currentState.parent_id);
     if (!parent) return [currentState];
@@ -38,24 +40,28 @@ export default function StateLineage({
   };
 
   // Find all descendants
-  const getDescendants = (currentState: CellState): CellState[] => {
+  const getDescendants = (currentState: CellState | null): CellState[] => {
+    if (!currentState) return [];
     const children = states.filter(s => s.parent_id === currentState.id);
     if (children.length === 0) return [currentState];
-    return [currentState, ...children.flatMap(getDescendants)];
+    return [currentState, ...children.flatMap(child => getDescendants(child))];
   };
 
-  const lineage = [...getAncestors(state), ...getDescendants(state).slice(1)];
+  const lineage = state ? [...getAncestors(state), ...getDescendants(state).slice(1)] : [];
   const uniqueLineage = Array.from(new Set(lineage.map(s => s.id))).map(id => 
     lineage.find(s => s.id === id)
   ).filter((s): s is CellState => s !== undefined);
 
   // Group states by generation (distance from root)
   const generations = uniqueLineage.reduce((acc, state) => {
+    if (!state) return acc;
     let distance = 0;
     let current = state;
     while (current.parent_id) {
       distance++;
-      current = states.find(s => s.id === current.parent_id)!;
+      const parent = states.find(s => s.id === current.parent_id);
+      if (!parent) break;
+      current = parent;
     }
     if (!acc[distance]) acc[distance] = [];
     acc[distance].push(state);
@@ -63,8 +69,8 @@ export default function StateLineage({
   }, {} as Record<number, CellState[]>);
 
   // Find siblings (states with the same parent)
-  const getSiblings = (state: CellState) => {
-    if (!state.parent_id) return [state];
+  const getSiblings = (state: CellState | null) => {
+    if (!state?.parent_id) return state ? [state] : [];
     return states.filter(s => s.parent_id === state.parent_id);
   };
 
@@ -123,61 +129,67 @@ export default function StateLineage({
         />
       ) : (
         <div className="space-y-4">
-          {Object.entries(generations).map(([generation, states]) => (
-            <div key={generation} className="flex flex-wrap gap-4">
-              {states.map((s) => {
-                const siblings = getSiblings(s);
-                const isSplitTransition = siblings.length > 1;
-                
-                return (
-                  <div
-                    key={s.id}
-                    className={`flex-1 min-w-[200px] p-3 rounded ${
-                      s.id === state.id ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">State {s.id}</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
-                        Status {s.parameters.status}
-                      </span>
-                      {isSplitTransition && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
-                          Split
+          {Object.entries(generations).length > 0 ? (
+            Object.entries(generations).map(([generation, states]) => (
+              <div key={generation} className="flex flex-wrap gap-4">
+                {states.map((s) => {
+                  const siblings = getSiblings(s);
+                  const isSplitTransition = siblings.length > 1;
+                  
+                  return (
+                    <div
+                      key={s.id}
+                      className={`flex-1 min-w-[200px] p-3 rounded ${
+                        s.id === state?.id ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">State {s.id}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
+                          Status {s.parameters?.status || 'N/A'}
                         </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(s.timestamp).toLocaleString()}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Temperature: {s.parameters.temperature_c}°C
-                      Volume: {s.parameters.volume_ml}ml
-                    </div>
-                    {s.parent_id && (
-                      <div className="text-xs text-gray-400">
-                        ← State {s.parent_id}
+                        {isSplitTransition && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
+                            Split
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <div className="mt-2 flex justify-end space-x-2">
-                      <button
-                        className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                        onClick={() => onSelectState(s)}
-                      >
-                        Select
-                      </button>
-                      <button
-                        className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                        onClick={() => setEditingState(s)}
-                      >
-                        Edit
-                      </button>
+                      <div className="text-sm text-gray-500">
+                        {new Date(s.timestamp).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Temperature: {s.parameters?.temperature_c || 'N/A'}°C
+                        Volume: {s.parameters?.volume_ml || 'N/A'}ml
+                      </div>
+                      {s.parent_id && (
+                        <div className="text-xs text-gray-400">
+                          ← State {s.parent_id}
+                        </div>
+                      )}
+                      <div className="mt-2 flex justify-end space-x-2">
+                        <button
+                          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                          onClick={() => onSelectState(s)}
+                        >
+                          Select
+                        </button>
+                        <button
+                          className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                          onClick={() => setEditingState(s)}
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500">
+              No lineage data available
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

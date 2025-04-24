@@ -152,7 +152,16 @@ def update_state(
 
         # Update parameters if provided
         if "parameters" in state_update:
-            db_state.parameters.update(state_update["parameters"])
+            # Validate required parameters
+            required_fields = ['status', 'temperature_c', 'volume_ml', 'location']
+            for field in required_fields:
+                if field not in state_update["parameters"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Missing required parameter: {field}"
+                    )
+            # Replace the entire parameters dictionary
+            db_state.parameters = state_update["parameters"]
 
         session.add(db_state)
         session.commit()

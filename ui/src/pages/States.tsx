@@ -9,6 +9,14 @@ export default function States() {
   const [selectedState, setSelectedState] = useState<CellState | null>(null)
   const { data: transitionsData, isLoading: transitionsLoading, error: transitionsError } = useTransitions(selectedState?.id)
   
+  console.log('[States] Initial render:', {
+    statesData,
+    selectedState,
+    transitionsData,
+    isLoading: { states: statesLoading, transitions: transitionsLoading },
+    errors: { states: statesError, transitions: transitionsError }
+  })
+
   const createTransition = useCreateTransition()
   const updateTransition = useUpdateTransition()
   const deleteTransition = useDeleteTransition()
@@ -19,12 +27,34 @@ export default function States() {
   const states = Array.isArray(statesData) ? statesData : []
   const transitions = Array.isArray(transitionsData) ? transitionsData : []
 
+  console.log('[States] After array conversion:', {
+    states: states.length,
+    transitions: transitions.length,
+    statesNull: statesData === null,
+    transitionsNull: transitionsData === null
+  })
+
   const [showCreateState, setShowCreateState] = useState(false)
   const [newTransition, setNewTransition] = useState<Partial<StateTransitionCreate>>({
     state_id: 0,
     transition_type: '',
     parameters: {},
   })
+
+  // Reset selected state when states change
+  useEffect(() => {
+    console.log('[States] useEffect for state reset:', {
+      statesLength: states.length,
+      selectedStateId: selectedState?.id,
+      stateExists: selectedState ? states.find(s => s.id === selectedState.id) !== undefined : 'no selected state'
+    })
+    
+    if (states.length === 0) {
+      setSelectedState(null)
+    } else if (selectedState && !states.find(s => s.id === selectedState.id)) {
+      setSelectedState(null)
+    }
+  }, [states, selectedState])
 
   const validTransitionTypes = ['freeze', 'thaw', 'passage', 'split', 'measurement', 'idle']
 
@@ -243,76 +273,96 @@ export default function States() {
 
         {/* Right Column */}
         <div className="space-y-4">
-          {selectedState ? (
-            <>
-              <StateLineage
-                key={selectedState.id}
-                state={selectedState}
-                states={states}
-                onSelectState={setSelectedState}
-                onUpdateState={handleUpdateState}
-                isUpdating={updateState.isPending}
-                updateError={updateState.error?.message}
-              />
-              
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">
-                  Transitions for State {selectedState.id}
-                </h2>
+          {(() => {
+            const shouldRenderLineage = selectedState && states.length > 0;
+            console.log('[States] Before conditional render:', {
+              selectedState: selectedState?.id,
+              statesLength: states.length,
+              condition: shouldRenderLineage
+            });
+            
+            if (shouldRenderLineage) {
+              console.log('[States] StateLineage props:', {
+                stateId: selectedState.id,
+                statesLength: states.length,
+                state: selectedState,
+              });
+            }
+            
+            return shouldRenderLineage ? (
+              <>
+                <StateLineage
+                  key={selectedState.id}
+                  state={selectedState}
+                  states={states}
+                  onSelectState={(state) => {
+                    console.log('[States] Selecting state:', state?.id)
+                    setSelectedState(state)
+                  }}
+                  onUpdateState={handleUpdateState}
+                  isUpdating={updateState.isPending}
+                  updateError={updateState.error?.message}
+                />
                 
-                {transitionsLoading ? (
-                  <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
-                    Loading transitions...
-                  </div>
-                ) : transitionsError ? (
-                  <div className="p-4 bg-red-100 rounded-lg text-red-500">
-                    Error loading transitions: {transitionsError.message}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {transitions.length === 0 ? (
-                      <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
-                        No transitions found for this state
-                      </div>
-                    ) : (
-                      transitions.map((transition) => {
-                        const transitionType = getTransitionType(transition)
-                        return (
-                          <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                    transitionType === 'measurement' ? 'bg-purple-100 text-purple-800' :
-                                    transitionType === 'passage' ? 'bg-green-100 text-green-800' :
-                                    transitionType === 'freeze' ? 'bg-blue-100 text-blue-800' :
-                                    transitionType === 'thaw' ? 'bg-orange-100 text-orange-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {transitionType}
-                                  </span>
-                                </div>
-                                <div className="text-sm text-gray-500 mt-1">
-                                  {new Date(transition.timestamp).toLocaleString()}
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold">
+                    Transitions for State {selectedState.id}
+                  </h2>
+                  
+                  {transitionsLoading ? (
+                    <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                      Loading transitions...
+                    </div>
+                  ) : transitionsError ? (
+                    <div className="p-4 bg-red-100 rounded-lg text-red-500">
+                      Error loading transitions: {transitionsError.message}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {transitions.length === 0 ? (
+                        <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                          No transitions found for this state
+                        </div>
+                      ) : (
+                        transitions.map((transition) => {
+                          const transitionType = getTransitionType(transition)
+                          return (
+                            <div key={transition.id} className="p-4 bg-white rounded-lg shadow-sm hover:shadow transition-shadow">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                      transitionType === 'measurement' ? 'bg-purple-100 text-purple-800' :
+                                      transitionType === 'passage' ? 'bg-green-100 text-green-800' :
+                                      transitionType === 'freeze' ? 'bg-blue-100 text-blue-800' :
+                                      transitionType === 'thaw' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {transitionType}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    {new Date(transition.timestamp).toLocaleString()}
+                                  </div>
                                 </div>
                               </div>
+                              <div className="mt-2 text-sm text-gray-600">
+                                {getTransitionDetails(transition)}
+                              </div>
                             </div>
-                            <div className="mt-2 text-sm text-gray-600">
-                              {getTransitionDetails(transition)}
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                )}
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
+                {states.length === 0 ? 'Create a state to get started' : 'Select a state to view lineage and transitions'}
               </div>
-            </>
-          ) : (
-            <div className="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
-              Select a state to view lineage and transitions
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </div>
