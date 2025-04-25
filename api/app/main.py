@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
 from datetime import datetime
 import logging
@@ -66,9 +67,9 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
 @app.post("/states/", response_model=CellStateRead)
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
     try:
-        # TEMPORARY: Assuming created_by is passed until creation logic is clarified
-        if not state.created_by:
-             raise HTTPException(status_code=400, detail="'created_by' field is required during state creation.")
+        # TEMPORARY: Remove the check for created_by
+        # if not state.created_by:
+        #      raise HTTPException(status_code=400, detail="'created_by' field is required during state creation.")
 
         db_state = CellState(
             name=state.name,
@@ -77,7 +78,9 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
             parameters=state.parameters,
             transition_type=state.transition_type, # Keep for now
             additional_notes=state.additional_notes, # Add notes
-            created_by=state.created_by # Store created_by
+            # created_by=state.created_by # Remove assignment from state
+            # Set a default or handle created_by differently if needed later
+            created_by="unknown" # Set a temporary default value for now
         )
         session.add(db_state)
         session.commit()
@@ -96,29 +99,34 @@ def update_state(
     session: Session = Depends(get_session)
 ):
     try:
+        # logger.info(f"--- Entering update_state for state_id: {state_id} ---") # Replace logger
+        print(f"--- Entering update_state for state_id: {state_id} ---", flush=True) # Use print with flush
         db_state = session.get(CellState, state_id)
         if not db_state:
             raise HTTPException(status_code=404, detail="State not found")
+        logger.info(f"[1] State fetched (id={db_state.id}), params: {db_state.parameters}") # Log 1
 
         update_data = state_update.model_dump(exclude_unset=True)
 
-        # Update parameters if provided
+        # Update parameters if provided by merging
         if "parameters" in update_data:
-            # Basic validation (ensure it's a dict)
-            if not isinstance(update_data["parameters"], dict):
+            incoming_params = update_data["parameters"]
+            if not isinstance(incoming_params, dict):
                  raise HTTPException(status_code=400, detail="'parameters' must be an object")
-            # You might want more specific validation here depending on requirements
-            # Replace the entire parameters dictionary or merge?
-            # We need to ensure required fields aren't deleted if we merge.
-            # Let's stick to replacing for now, assuming frontend sends complete parameters.
-            required_fields = ['status', 'temperature_c', 'volume_ml', 'location']
-            for field in required_fields:
-                if field not in update_data["parameters"]:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Missing required parameter: {field} in parameters update"
-                    )
-            db_state.parameters = update_data["parameters"]
+
+            current_params = db_state.parameters
+            if current_params is None:
+                current_params = {}
+            elif not isinstance(current_params, dict):
+                logger.warning(f"Existing parameters for state {state_id} is not a dict. Resetting.")
+                current_params = {}
+
+            new_params = current_params.copy()
+            new_params.update(incoming_params)
+            logger.info(f"[2] Updated params generated: {new_params}") # Log 2
+
+            db_state.parameters = new_params # Assign the new dictionary
+            logger.info(f"[3] State after assignment (id={db_state.id}), params: {db_state.parameters}") # Log 3
 
         # Update additional_notes if provided
         if "additional_notes" in update_data:
@@ -134,7 +142,10 @@ def update_state(
 
         session.add(db_state)
         session.commit()
+        logger.info(f"[4] State after commit (id={db_state.id}), params: {db_state.parameters}") # Log 4
+
         session.refresh(db_state)
+        logger.info(f"[5] State after refresh (id={db_state.id}), params: {db_state.parameters}") # Log 5 (Renamed from previous log)
         return db_state
     except HTTPException as http_exc:
         raise http_exc # Re-raise validation errors

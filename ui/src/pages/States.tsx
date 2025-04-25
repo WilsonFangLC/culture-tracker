@@ -8,12 +8,6 @@ export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
   const [selectedState, setSelectedState] = useState<CellState | null>(null)
   
-  console.log('[States] Initial render:', {
-    statesData,
-    selectedState,
-    isLoading: { states: statesLoading },
-    errors: { states: statesError }
-  })
 
   const createState = useCreateState()
   const updateState = useUpdateState()
@@ -21,20 +15,10 @@ export default function States() {
   // Ensure states are always arrays
   const states = Array.isArray(statesData) ? statesData : []
 
-  console.log('[States] After array conversion:', {
-    states: states.length,
-    statesNull: statesData === null,
-  })
-
   const [showCreateState, setShowCreateState] = useState(false)
 
   // Reset selected state when states change
   useEffect(() => {
-    console.log('[States] useEffect for state reset:', {
-      statesLength: states.length,
-      selectedStateId: selectedState?.id,
-      stateExists: selectedState ? states.find(s => s.id === selectedState.id) !== undefined : 'no selected state'
-    })
     
     if (states.length === 0) {
       setSelectedState(null)
@@ -76,14 +60,18 @@ export default function States() {
     createNextState(0)
   }
 
-  const handleUpdateState = async (stateId: number, parameters: any) => {
-    console.log('handleUpdateState called with', stateId, parameters)
+  const handleUpdateState = async (stateId: number, formData: { parameters: Record<string, any>, additional_notes?: string }) => {
     try {
-      const updated = await updateState.mutateAsync({ id: stateId, parameters })
-      console.log('updateState.mutateAsync returned', updated)
-      console.log('updateState.parameters:', updated.parameters, 'stringified:', JSON.stringify(updated.parameters, null, 2))
-      setSelectedState(updated)
-      console.log('setSelectedState to', updated)
+      // Destructure parameters and additional_notes from the incoming form data
+      const { parameters, additional_notes } = formData;
+      
+      // Call the mutation with the correct structure
+      await updateState.mutateAsync({ 
+        id: stateId, 
+        parameters, 
+        additional_notes 
+      });
+
     } catch (error) {
       console.error('handleUpdateState error', error)
     }

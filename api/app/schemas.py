@@ -19,7 +19,6 @@ class CellStateBase(BaseModel):
 class CellStateCreate(CellStateBase):
     transition_type: Optional[str] = None
     additional_notes: Optional[str] = None
-    created_by: str
 
 class CellStateUpdate(BaseModel):
     parameters: Optional[Dict] = None

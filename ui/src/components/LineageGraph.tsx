@@ -136,14 +136,21 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
             const customNode = nodeDatum as CustomNodeDatum
             const attributeLines = Object.values(customNode.attributes).filter(Boolean);
 
-            // Tooltip content
-            const tooltipContent = [
-              `Created By: ${customNode.created_by || 'N/A'}`,
-              customNode.additional_notes ? `Notes: ${customNode.additional_notes}` : null
-            ].filter(Boolean).join('\n'); // Use newline for multi-line tooltip
+            // Tooltip content - Simplified and updated
+            const tooltipParts = [];
+            if (customNode.transitionType) {
+              tooltipParts.push(`Type: ${customNode.transitionType}`);
+            }
+            if (customNode.additional_notes) {
+              tooltipParts.push(`Notes: ${customNode.additional_notes}`);
+            }
+            const tooltipContent = tooltipParts.length > 0 ? tooltipParts.join('\n') : ''; // Only create tooltip if there's content
 
             return (
-              <g className="custom-node-group" data-tooltip={tooltipContent}>
+              <g 
+                className="custom-node-group" 
+                data-tooltip={tooltipContent} // Use updated content
+              >
                 <circle
                   r={20}
                   fill={customNode.stateId === (state?.id ?? 0) ? '#3b82f6' : '#e5e7eb'}

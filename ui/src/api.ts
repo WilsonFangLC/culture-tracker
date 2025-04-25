@@ -56,6 +56,7 @@ export interface CellStateCreate {
   };
   transition_type?: 'single' | 'split' | 'measurement';
   transition_parameters?: Record<string, any>;
+  additional_notes?: string;
 }
 
 export const useStates = () => {
@@ -110,11 +111,8 @@ export const useUpdateState = () => {
       return data
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['state', data.id], data)
-      queryClient.setQueryData(['states'], (oldData?: CellState[]) => {
-        if (!oldData) return [data]
-        return oldData.map(s => s.id === data.id ? data : s)
-      })
+      queryClient.invalidateQueries({ queryKey: ['states'] })
+      queryClient.invalidateQueries({ queryKey: ['state', data.id] })
     },
   })
 } 
