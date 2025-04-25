@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStates } from '../api'
+import { CellState, CellStateCreate } from '../api'
 
 interface CreateStateFormProps {
   onSubmit: (data: {
@@ -28,11 +28,11 @@ interface CreateStateFormProps {
     };
   }[]) => void;
   onCancel: () => void;
+  existingStates: CellState[];
 }
 
-export default function CreateStateForm({ onSubmit, onCancel }: CreateStateFormProps) {
-  const { data: statesData } = useStates()
-  const states = Array.isArray(statesData) ? statesData : []
+export default function CreateStateForm({ onSubmit, onCancel, existingStates }: CreateStateFormProps) {
+  const states = existingStates;
 
   const [formData, setFormData] = useState({
     name: "",

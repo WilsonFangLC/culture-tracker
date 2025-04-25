@@ -6,7 +6,7 @@ import os
 import logging
 
 # Import models to ensure they are registered with SQLModel
-from .models import CellState, StateTransition
+from .models import CellState
 
 logger = logging.getLogger(__name__)
 

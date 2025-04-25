@@ -6,7 +6,7 @@ from datetime import datetime
 import logging
 import os
 
-from .models import CellState, StateTransition
+from .models import CellState
 from .database import engine
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ def mark_migration_complete():
 def migrate_old_to_new():
     """
     Migrate data from the old schema (Passage, GrowthMeasurement) to the new schema
-    (CellState, StateTransition).
+    (CellState).
     """
     if is_migration_complete():
         logger.info("Migration already completed. Skipping.")
@@ -73,24 +73,24 @@ def migrate_old_to_new():
                         session.add(state)
                         session.flush()  # Get the new state's ID
 
-                        # Create harvest transition
-                        harvest_transition = StateTransition(
-                            state_id=state.id,
-                            timestamp=datetime.fromisoformat(passage.harvest_time),
-                            transition_type="harvest",
-                            parameters={
-                                "harvest_count": passage.harvest_count,
-                                "generation": passage.generation,
-                                "doubling_time_hours": passage.doubling_time_hours
-                            }
-                        )
-                        session.add(harvest_transition)
+                        # Create harvest transition - Code removed/commented out
+                        # harvest_transition = StateTransition(
+                        #     state_id=state.id,
+                        #     timestamp=datetime.fromisoformat(passage.harvest_time),
+                        #     transition_type="harvest",
+                        #     parameters={
+                        #         "harvest_count": passage.harvest_count,
+                        #         "generation": passage.generation,
+                        #         "doubling_time_hours": passage.doubling_time_hours
+                        #     }
+                        # )
+                        # session.add(harvest_transition)
                     except Exception as e:
                         logger.error(f"Error migrating passage {passage.id}: {str(e)}")
                         session.rollback()
                         continue
 
-            # Migrate growth measurements to transitions
+            # Migrate growth measurements to transitions - Code removed/commented out
             if 'growthmeasurement' in old_tables:
                 measurements = session.execute(
                     select(text("* FROM growthmeasurement"))
@@ -99,16 +99,18 @@ def migrate_old_to_new():
                 
                 for measurement in measurements:
                     try:
-                        transition = StateTransition(
-                            state_id=measurement.passage_id,
-                            timestamp=datetime.fromisoformat(measurement.timestamp),
-                            transition_type="measurement",
-                            parameters={
-                                "cell_density": measurement.cell_density
-                            },
-                            notes=measurement.notes
-                        )
-                        session.add(transition)
+                        # Create measurement transition - Code removed/commented out
+                        # transition = StateTransition(
+                        #     state_id=measurement.passage_id,
+                        #     timestamp=datetime.fromisoformat(measurement.timestamp),
+                        #     transition_type="measurement",
+                        #     parameters={
+                        #         "cell_density": measurement.cell_density
+                        #     },
+                        #     notes=measurement.notes
+                        # )
+                        # session.add(transition)
+                        pass # Added pass to fix indentation error
                     except Exception as e:
                         logger.error(f"Error migrating measurement {measurement.id}: {str(e)}")
                         session.rollback()

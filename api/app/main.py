@@ -6,8 +6,7 @@ from datetime import datetime
 import logging
 
 from .models import (
-    CellState, StateTransition,
-    StateTransitionCreate, StateTransitionUpdate, StateTransitionRead
+    CellState,
 )
 from .database import engine, create_db, get_session
 from .migrations import migrate_old_to_new
@@ -63,65 +62,6 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
     if not state:
         raise HTTPException(status_code=404, detail="State not found")
     return state
-
-@app.get("/transitions/", response_model=List[StateTransitionRead])
-def get_transitions(
-    state_id: Optional[int] = None,
-    transition_type: Optional[str] = None,
-    session: Session = Depends(get_session)
-):
-    query = select(StateTransition)
-    if state_id:
-        query = query.where(StateTransition.state_id == state_id)
-    if transition_type:
-        query = query.where(StateTransition.transition_type == transition_type)
-    transitions = session.exec(query).all()
-    return transitions
-
-@app.post("/transitions/", response_model=StateTransitionRead)
-def create_transition(
-    transition: StateTransitionCreate,
-    session: Session = Depends(get_session)
-):
-    # Verify parent state exists
-    state = session.get(CellState, transition.state_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Parent state not found")
-
-    db_transition = StateTransition.from_orm(transition)
-    session.add(db_transition)
-    session.commit()
-    session.refresh(db_transition)
-    return db_transition
-
-@app.patch("/transitions/{transition_id}", response_model=StateTransitionRead)
-def update_transition(
-    transition_id: int,
-    transition: StateTransitionUpdate,
-    session: Session = Depends(get_session)
-):
-    db_transition = session.get(StateTransition, transition_id)
-    if not db_transition:
-        raise HTTPException(status_code=404, detail="Transition not found")
-
-    transition_data = transition.dict(exclude_unset=True)
-    for key, value in transition_data.items():
-        setattr(db_transition, key, value)
-
-    session.add(db_transition)
-    session.commit()
-    session.refresh(db_transition)
-    return db_transition
-
-@app.delete("/transitions/{transition_id}")
-def delete_transition(transition_id: int, session: Session = Depends(get_session)):
-    transition = session.get(StateTransition, transition_id)
-    if not transition:
-        raise HTTPException(status_code=404, detail="Transition not found")
-    
-    session.delete(transition)
-    session.commit()
-    return {"message": "Transition deleted successfully"}
 
 @app.post("/states/", response_model=CellStateRead)
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):

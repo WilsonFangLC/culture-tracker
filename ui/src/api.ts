@@ -36,46 +36,6 @@ export interface CellState {
   parameters: Record<string, any>
   notes?: string
   children?: CellState[]
-  transitions?: StateTransition[]
-}
-
-export interface StateTransition {
-  id: number
-  state_id: number
-  timestamp: string
-  parameters: {
-    status?: string;
-    temperature_c?: number;
-    volume_ml?: number;
-    location?: string;
-    split_ratio?: number;
-    cell_density?: number;
-    viability?: number;
-    storage_location?: string;
-  }
-  notes?: string
-}
-
-export interface StateTransitionCreate {
-  state_id: number
-  transition_type: string
-  parameters: {
-    status?: string;
-    temperature_c?: number;
-    volume_ml?: number;
-    location?: string;
-    split_ratio?: number;
-    cell_density?: number;
-    viability?: number;
-    storage_location?: string;
-  }
-  notes?: string
-}
-
-export interface StateTransitionUpdate {
-  transition_type?: string
-  parameters?: Record<string, any>
-  notes?: string
 }
 
 export interface CellStateCreate {
@@ -108,57 +68,6 @@ export const useState = (stateId: number) => {
     queryFn: async () => {
       const { data } = await api.get<CellState>(`/states/${stateId}/`)
       return data
-    },
-  })
-}
-
-export const useTransitions = (stateId?: number) => {
-  return useQuery({
-    queryKey: ['transitions', stateId],
-    queryFn: async () => {
-      const params = new URLSearchParams()
-      if (stateId) params.append('state_id', stateId.toString())
-      const { data } = await api.get<StateTransition[]>(`/transitions/?${params.toString()}`)
-      return data
-    },
-    enabled: stateId !== undefined,
-  })
-}
-
-export const useCreateTransition = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (transition: StateTransitionCreate) => {
-      const { data } = await api.post<StateTransition>('/transitions/', transition)
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transitions'] })
-    },
-  })
-}
-
-export const useUpdateTransition = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ id, ...data }: StateTransitionUpdate & { id: number }) => {
-      const { data: response } = await api.patch<StateTransition>(`/transitions/${id}/`, data)
-      return response
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transitions'] })
-    },
-  })
-}
-
-export const useDeleteTransition = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (transitionId: number) => {
-      await api.delete(`/transitions/${transitionId}/`)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transitions'] })
     },
   })
 }
