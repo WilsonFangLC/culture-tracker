@@ -18,10 +18,18 @@ class CellStateBase(BaseModel):
 
 class CellStateCreate(CellStateBase):
     transition_type: Optional[str] = None
+    additional_notes: Optional[str] = None
+    created_by: str
+
+class CellStateUpdate(BaseModel):
+    parameters: Optional[Dict] = None
+    additional_notes: Optional[str] = None
 
 class CellStateRead(CellStateBase):
     id: int
     transition_type: Optional[str] = None
+    additional_notes: Optional[str] = None
+    created_by: str
     children: List["CellStateRead"] = []
 
     class Config:

@@ -8,7 +8,8 @@ interface CreateStateFormProps {
     parent_id?: number;
     parameters: CellStateCreate['parameters'];
     transition_type?: 'single' | 'split' | 'measurement';
-    transition_parameters?: Record<string, any>; 
+    transition_parameters?: Record<string, any>;
+    additional_notes?: string;
   }>) => void;
   onCancel: () => void;
   existingStates: CellState[];
@@ -49,6 +50,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     cell_density: 0,
     viability: 100,
     storage_location: '',
+    additional_notes: '',
     // transition_parameters: {} as Record<string, any>, // transition_parameters is less needed now
   });
 
@@ -103,6 +105,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       name: formData.name,
       timestamp: newTimestamp.toISOString(), // Use validated manual timestamp
       parent_id: formData.parent_id,
+      additional_notes: formData.additional_notes,
       // transition_parameters: formData.transition_parameters, // Removed for now
     };
 
@@ -132,6 +135,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           storage_location: state.storage_location,
         },
         transition_type: 'split' as 'split', // Explicitly cast transition type
+        additional_notes: formData.additional_notes,
       }));
       onSubmit(statesToSubmit)
 
@@ -170,6 +174,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
         ...basePayload,
         parameters: newParameters as CellStateCreate['parameters'], // Assert type after modification
         transition_type: 'measurement',
+        additional_notes: formData.additional_notes,
       }]);
 
     } else { // Single transition
@@ -185,6 +190,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           storage_location: formData.storage_location,
         },
         transition_type: 'single',
+        additional_notes: formData.additional_notes,
       }]);
     }
   }
@@ -552,6 +558,21 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
 
          </div>
       )}
+
+      {/* Additional Notes Textarea */}
+      <div>
+        <label htmlFor="additional_notes" className="block text-sm font-medium text-gray-700">
+          Additional Notes
+        </label>
+        <textarea
+          id="additional_notes"
+          rows={3}
+          className="mt-1 w-full p-2 border rounded"
+          value={formData.additional_notes}
+          onChange={(e) => setFormData({ ...formData, additional_notes: e.target.value })}
+          placeholder="Enter any additional notes for this state..."
+        />
+      </div>
 
       {/* Submit/Cancel Buttons */}
       <div className="flex justify-end space-x-2 pt-4 border-t">

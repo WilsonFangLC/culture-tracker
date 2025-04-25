@@ -7,7 +7,7 @@ interface StateLineageProps {
   state: CellState | null;
   states: CellState[];
   onSelectState: (state: CellState) => void;
-  onUpdateState: (stateId: number, parameters: any) => void;
+  onUpdateState: (stateId: number, updateData: { parameters: any; additional_notes?: string }) => void;
   isUpdating?: boolean;
   updateError?: string;
 }
@@ -109,7 +109,7 @@ export default function StateLineage({
             state={editingState}
             onSubmit={async (data) => {
               // Perform the update and wait for completion
-              await onUpdateState(editingState.id, data.parameters)
+              await onUpdateState(editingState.id, data)
               // Close the edit form once update succeeds
               setEditingState(null)
             }}
@@ -154,11 +154,19 @@ export default function StateLineage({
                       </div>
                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                         <div>ID: {s.id}</div>
+                        {s.transition_type && (
+                           <div className="capitalize font-medium text-blue-700">Type: {s.transition_type}</div>
+                        )}
                         <div>Temp: {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
                         <div>Location: {s.parameters?.location ?? 'N/A'}</div>
                         <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
                         {s.parameters?.storage_location && (
                            <div>Storage: {s.parameters.storage_location}</div>
+                        )}
+                        {s.additional_notes && (
+                          <div className="mt-1 pt-1 border-t border-gray-200">
+                            <span className="font-semibold">Notes:</span> {s.additional_notes}
+                          </div>
                         )}
                       </div>
                       {s.parent_id && (

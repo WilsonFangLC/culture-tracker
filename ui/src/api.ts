@@ -32,11 +32,13 @@ export interface CellState {
   id: number
   name: string
   timestamp: string
-  parent_id?: number
+  parent_id: number | null
   parameters: Record<string, any>
   notes?: string
   children?: CellState[]
-  transition_type?: string
+  transition_type?: string | null
+  additional_notes?: string
+  created_by: string
 }
 
 export interface CellStateCreate {
@@ -80,7 +82,8 @@ export const useCreateState = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (state: CellStateCreate) => {
-      const { data } = await api.post<CellState>('/states/', state)
+      console.log("[useCreateState] Sending payload:", state);
+      const { data } = await api.post<CellState>('/states/', state);
       return data
     },
     onSuccess: () => {
@@ -92,9 +95,17 @@ export const useCreateState = () => {
 export const useUpdateState = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, parameters }: { id: number; parameters: Record<string, any> }) => {
-      console.log(`[useUpdateState] mutationFn called for state ${id} with parameters:`, parameters)
-      const { data } = await api.patch<CellState>(`/states/${id}/`, { parameters })
+    mutationFn: async ({ id, parameters, additional_notes }: { 
+      id: number; 
+      parameters: Record<string, any>;
+      additional_notes?: string;
+    }) => {
+      const payload: { parameters?: Record<string, any>, additional_notes?: string } = {};
+      if (parameters) payload.parameters = parameters;
+      if (additional_notes !== undefined) payload.additional_notes = additional_notes;
+
+      console.log(`[useUpdateState] mutationFn called for state ${id} with payload:`, payload)
+      const { data } = await api.patch<CellState>(`/states/${id}/`, payload);
       console.log(`[useUpdateState] api.patch response for state ${id}:`, data)
       return data
     },

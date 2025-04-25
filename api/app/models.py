@@ -12,6 +12,8 @@ class CellState(SQLModel, table=True):
     parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     notes: Optional[str] = Field(default=None)
     transition_type: Optional[str] = Field(default=None)
+    additional_notes: Optional[str] = Field(default=None)
+    created_by: str = Field(index=True)
     
     # Relationships
     parent: Optional["CellState"] = Relationship(

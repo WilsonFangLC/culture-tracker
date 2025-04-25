@@ -1,6 +1,7 @@
 import { Tree, TreeNodeDatum } from 'react-d3-tree'
 import { CellState } from '../api'
 import { useCallback, useMemo } from 'react'
+import './LineageGraph.css'
 
 interface LineageGraphProps {
   state: CellState | null
@@ -13,6 +14,8 @@ interface CustomNodeDatum extends TreeNodeDatum {
   stateName: string
   timestamp: string
   transitionType?: string
+  created_by: string
+  additional_notes?: string
   attributes: {
     status: string
     temperature: string
@@ -30,6 +33,8 @@ const defaultNodeDatum: CustomNodeDatum = {
   stateName: 'No State',
   timestamp: 'N/A',
   transitionType: undefined,
+  created_by: 'N/A',
+  additional_notes: undefined,
   attributes: {
     status: 'N/A',
     temperature: 'N/A',
@@ -62,6 +67,8 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
       stateName: currentState.name || `State ${currentState.id}`,
       timestamp: new Date(currentState.timestamp).toLocaleString(),
       transitionType: currentState.transition_type,
+      created_by: currentState.created_by,
+      additional_notes: currentState.additional_notes,
       attributes: {
         status: `Status: ${parameters?.status || 'N/A'}`,
         temperature: `Temp: ${parameters?.temperature_c ?? 'N/A'}°C`,
@@ -129,8 +136,14 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
             const customNode = nodeDatum as CustomNodeDatum
             const attributeLines = Object.values(customNode.attributes).filter(Boolean);
 
+            // Tooltip content
+            const tooltipContent = [
+              `Created By: ${customNode.created_by || 'N/A'}`,
+              customNode.additional_notes ? `Notes: ${customNode.additional_notes}` : null
+            ].filter(Boolean).join('\n'); // Use newline for multi-line tooltip
+
             return (
-              <g>
+              <g className="custom-node-group" data-tooltip={tooltipContent}>
                 <circle
                   r={20}
                   fill={customNode.stateId === (state?.id ?? 0) ? '#3b82f6' : '#e5e7eb'}

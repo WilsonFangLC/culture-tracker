@@ -13,6 +13,7 @@ interface EditStateFormProps {
       viability: number;
       storage_location: string;
     };
+    additional_notes?: string;
   }) => void;
   onCancel: () => void;
 }
@@ -26,17 +27,20 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
     cell_density: state.parameters.cell_density || 0,
     viability: state.parameters.viability || 0,
     storage_location: state.parameters.storage_location || '',
+    additional_notes: state.additional_notes || '',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     console.log('Submitting form with data:', formData)
+    const { additional_notes, ...parameters } = formData;
     onSubmit({
-      parameters: formData
+      parameters,
+      additional_notes,
     })
   }
 
-  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof typeof formData) => {
+  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Omit<typeof formData, 'additional_notes'>) => {
     const value = e.target.value === '' ? 0 : parseFloat(e.target.value)
     setFormData(prev => ({ ...prev, [field]: value }))
   }
@@ -44,6 +48,11 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg">
       <h3 className="text-lg font-semibold">Edit State {state.id}</h3>
+      
+      {/* Display created_by (read-only) */}
+      <div className="text-sm text-gray-500">
+        Created By: <span className="font-medium capitalize">{state.created_by}</span>
+      </div>
       
       {/* Status Selection */}
       <div>
@@ -139,6 +148,20 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
           />
         </div>
+      </div>
+
+      {/* Additional Notes */}
+      <div>
+        <label htmlFor="additional_notes" className="block text-sm font-medium text-gray-700">
+          Additional Notes
+        </label>
+        <textarea
+          id="additional_notes"
+          rows={3}
+          className="mt-1 w-full p-2 border rounded"
+          value={formData.additional_notes}
+          onChange={(e) => setFormData({ ...formData, additional_notes: e.target.value })}
+        />
       </div>
 
       <div className="flex justify-end space-x-2">
