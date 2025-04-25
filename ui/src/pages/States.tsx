@@ -23,9 +23,24 @@ export default function States() {
     if (states.length === 0) {
       setSelectedState(null)
     } else if (selectedState && !states.find(s => s.id === selectedState.id)) {
+      // If the selected state ID is no longer in the list, deselect it
       setSelectedState(null)
     }
   }, [states, selectedState])
+
+  // Add this useEffect to keep selectedState synced with the latest data from the states list
+  useEffect(() => {
+    if (selectedState && states.length > 0) {
+      const updatedVersion = states.find(s => s.id === selectedState.id);
+      // Only update if the updated version is actually different (shallow compare)
+      // to avoid potential infinite loops if object references change but data doesn't.
+      // A more robust solution might involve deep comparison or checking a version/timestamp.
+      if (updatedVersion && updatedVersion !== selectedState) {
+        setSelectedState(updatedVersion);
+      }
+    }
+    // Depend on the 'states' array reference and the selected ID
+  }, [states, selectedState?.id])
 
   if (statesLoading) {
     return <div>Loading states...</div>
