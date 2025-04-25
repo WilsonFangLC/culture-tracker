@@ -17,10 +17,11 @@ class CellStateBase(BaseModel):
         return v
 
 class CellStateCreate(CellStateBase):
-    pass
+    transition_type: Optional[str] = None
 
 class CellStateRead(CellStateBase):
     id: int
+    transition_type: Optional[str] = None
     children: List["CellStateRead"] = []
 
     class Config:

@@ -47,7 +47,7 @@ def get_session():
 async def root():
     return {"message": "Cell Culture Tracker API"}
 
-@app.get("/states/", response_model=List[CellState])
+@app.get("/states/", response_model=List[CellStateRead])
 def get_states(session: Session = Depends(get_session)):
     try:
         states = session.exec(select(CellState)).all()
@@ -70,7 +70,8 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
             name=state.name,
             timestamp=state.timestamp,
             parent_id=state.parent_id,
-            parameters=state.parameters
+            parameters=state.parameters,
+            transition_type=state.transition_type
         )
         session.add(db_state)
         session.commit()

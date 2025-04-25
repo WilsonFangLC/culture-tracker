@@ -11,6 +11,7 @@ class CellState(SQLModel, table=True):
     parent_id: Optional[int] = Field(default=None, foreign_key="cellstate.id")
     parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     notes: Optional[str] = Field(default=None)
+    transition_type: Optional[str] = Field(default=None)
     
     # Relationships
     parent: Optional["CellState"] = Relationship(

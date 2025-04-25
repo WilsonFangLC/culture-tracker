@@ -12,6 +12,7 @@ interface CustomNodeDatum extends TreeNodeDatum {
   stateId: number
   stateName: string
   timestamp: string
+  transitionType?: string
   attributes: {
     status: string
     temperature: string
@@ -28,6 +29,7 @@ const defaultNodeDatum: CustomNodeDatum = {
   stateId: 0,
   stateName: 'No State',
   timestamp: 'N/A',
+  transitionType: undefined,
   attributes: {
     status: 'N/A',
     temperature: 'N/A',
@@ -59,6 +61,7 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
       stateId: currentState.id,
       stateName: currentState.name || `State ${currentState.id}`,
       timestamp: new Date(currentState.timestamp).toLocaleString(),
+      transitionType: currentState.transition_type,
       attributes: {
         status: `Status: ${parameters?.status || 'N/A'}`,
         temperature: `Temp: ${parameters?.temperature_c ?? 'N/A'}°C`,
@@ -135,6 +138,15 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                   strokeWidth="2"
                   onClick={toggleNode}
                 />
+                {customNode.transitionType && (
+                  <text
+                    textAnchor="middle"
+                    y={-25}
+                    style={{ fontSize: '10px', fill: '#888', fontStyle: 'italic', pointerEvents: 'none' }}
+                  >
+                    ({customNode.transitionType})
+                  </text>
+                )}
                 <g className="rd3t-label" transform="translate(0, 30)">
                   <text
                     className="rd3t-label__title"

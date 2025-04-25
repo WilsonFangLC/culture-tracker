@@ -36,6 +36,7 @@ export interface CellState {
   parameters: Record<string, any>
   notes?: string
   children?: CellState[]
+  transition_type?: string
 }
 
 export interface CellStateCreate {

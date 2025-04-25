@@ -153,6 +153,9 @@ export default function States() {
                       <div><span className="font-medium">Temp:</span> {state.parameters.temperature_c ?? 'N/A'}°C</div>
                       <div><span className="font-medium">Volume:</span> {state.parameters.volume_ml ?? 'N/A'}ml</div>
                       <div><span className="font-medium">Location:</span> {state.parameters.location || 'N/A'}</div>
+                      {state.transition_type && (
+                        <div><span className="font-medium">Transition:</span> {state.transition_type}</div>
+                      )}
                     </div>
                   </div>
                 ))
