@@ -119,8 +119,9 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
           pathFunc="step"
           translate={{ x: 400, y: 50 }}
           separation={{ siblings: 2, nonSiblings: 2 }}
-          nodeSize={{ x: 200, y: 200 }}
+          nodeSize={{ x: 200, y: 300 }}
           onNodeClick={handleNodeClick}
+          transitionDuration={0}
           renderCustomNodeElement={({ nodeDatum, toggleNode }) => {
             const customNode = nodeDatum as CustomNodeDatum
             const attributeLines = Object.values(customNode.attributes).filter(Boolean);
@@ -147,13 +148,13 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                     className="rd3t-label__timestamp"
                     textAnchor="middle"
                     y={20}
-                    style={{ fontSize: '10px', fill: '#6b7280', pointerEvents: 'none' }}
+                    style={{ fontSize: '10px', fill: '#6b7280', pointerEvents: 'none', fontWeight: 'normal' }}
                   >
                     {customNode.timestamp}
                   </text>
                   {attributeLines.map((attr, index) => (
                     <text
-                      key={index}
+                      key={attr}
                       className="rd3t-label__attributes"
                       textAnchor="middle"
                       y={35 + index * 12}
