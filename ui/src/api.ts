@@ -49,7 +49,6 @@ export interface CellStateCreate {
     location: string;
     cell_density: number;
     viability: number;
-    split_ratio: number;
     storage_location: string;
   };
   transition_type?: 'single' | 'split' | 'measurement';

@@ -32,6 +32,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   // Add state for the selected transition type
   const [transitionType, setTransitionType] = useState<'single' | 'split' | 'measurement'>('single');
 
+  // Get current datetime in local timezone for default input value
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Adjust for local timezone
+  const defaultDateTimeLocal = now.toISOString().slice(0, 16); // Format YYYY-MM-DDTHH:mm
+
+  const [manualTimestamp, setManualTimestamp] = useState<string>(defaultDateTimeLocal);
+
   const [formData, setFormData] = useState({
     name: "",
     parent_id: undefined as number | undefined,
@@ -41,7 +48,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     status: '1',
     cell_density: 0,
     viability: 100,
-    split_ratio: 1, // Keep split_ratio for single/measurement defaults?
     storage_location: '',
     // transition_parameters: {} as Record<string, any>, // transition_parameters is less needed now
   });
@@ -59,7 +65,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     location: string;
     cell_density: number;
     viability: number;
-    split_ratio: number;
     storage_location: string;
     distribution: number;
   }>>([])
@@ -73,9 +78,30 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
+    // --- Time Validation ---
+    if (!manualTimestamp) {
+      alert('Please enter the state time.');
+      return;
+    }
+    const newTimestamp = new Date(manualTimestamp);
+    if (isNaN(newTimestamp.getTime())) {
+        alert('Invalid date/time format.');
+        return;
+    }
+
+    if (parentState) {
+        const parentTimestamp = new Date(parentState.timestamp);
+        if (newTimestamp <= parentTimestamp) {
+            alert(`The new state's time (${newTimestamp.toLocaleString()}) must be later than the parent state's time (${parentTimestamp.toLocaleString()}).`);
+            return;
+        }
+    }
+    // --- End Time Validation ---
+
+
     const basePayload = {
       name: formData.name,
-      timestamp: new Date().toISOString(),
+      timestamp: newTimestamp.toISOString(), // Use validated manual timestamp
       parent_id: formData.parent_id,
       // transition_parameters: formData.transition_parameters, // Removed for now
     };
@@ -103,10 +129,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           location: state.location,
           cell_density: state.cell_density,
           viability: state.viability,
-          split_ratio: state.split_ratio, // Keep split ratio per split?
           storage_location: state.storage_location,
         },
-        transition_type: 'split', // Set transition type
+        transition_type: 'split' as 'split', // Explicitly cast transition type
       }));
       onSubmit(statesToSubmit)
 
@@ -157,7 +182,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           location: formData.location,
           cell_density: formData.cell_density,
           viability: formData.viability,
-          split_ratio: formData.split_ratio,
           storage_location: formData.storage_location,
         },
         transition_type: 'single',
@@ -174,7 +198,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       location: 'incubator',
       cell_density: 0,
       viability: 100,
-      split_ratio: 1,
       storage_location: '',
       distribution: 0,
     }])
@@ -226,6 +249,20 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Manual Timestamp Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          State Time (Experimental Time)
+        </label>
+        <input
+          type="datetime-local"
+          className="mt-1 w-full p-2 border rounded"
+          value={manualTimestamp}
+          onChange={(e) => setManualTimestamp(e.target.value)}
+          required
+        />
       </div>
 
       {/* Transition Type Selection */}
@@ -396,30 +433,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                       onChange={(e) => updateSplitState(index, 'viability', parseFloat(e.target.value))}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Split Ratio
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.split_ratio}
-                      onChange={(e) => updateSplitState(index, 'split_ratio', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Storage Location
-                    </label>
-                    <input
-                      type="text"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.storage_location}
-                      onChange={(e) => updateSplitState(index, 'storage_location', e.target.value)}
-                    />
-                  </div>
                 </div>
 
                 {/* State Parameters */}
@@ -534,13 +547,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                  <label className="block text-sm font-medium text-gray-700">Storage Location (Optional)</label>
                  <input type="text" className="mt-1 w-full p-2 border rounded" value={formData.storage_location} onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} placeholder="e.g., Freezer A, Shelf 3" />
                </div>
-               {/* Split Ratio (Relevant for single transition?) */}
-               {/*
-               <div>
-                 <label className="block text-sm font-medium text-gray-700">Split Ratio</label>
-                 <input type="number" step="0.1" className="mt-1 w-full p-2 border rounded" value={formData.split_ratio} onChange={(e) => setFormData({ ...formData, split_ratio: parseFloat(e.target.value) })} />
-               </div>
-               */}
              </>
            )}
 

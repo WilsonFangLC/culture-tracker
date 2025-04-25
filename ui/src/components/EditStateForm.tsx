@@ -11,7 +11,6 @@ interface EditStateFormProps {
       location: string;
       cell_density: number;
       viability: number;
-      split_ratio: number;
       storage_location: string;
     };
   }) => void;
@@ -26,7 +25,6 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
     location: state.parameters.location || '',
     cell_density: state.parameters.cell_density || 0,
     viability: state.parameters.viability || 0,
-    split_ratio: state.parameters.split_ratio || 1,
     storage_location: state.parameters.storage_location || '',
   })
 
@@ -89,19 +87,6 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             className="mt-1 w-full p-2 border rounded"
             value={formData.viability}
             onChange={(e) => handleNumericChange(e, 'viability')}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Split Ratio
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            min="0.1"
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.split_ratio}
-            onChange={(e) => handleNumericChange(e, 'split_ratio')}
           />
         </div>
         <div>
