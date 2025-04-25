@@ -11,12 +11,15 @@ interface LineageGraphProps {
 interface CustomNodeDatum extends TreeNodeDatum {
   stateId: number
   stateName: string
+  timestamp: string
   attributes: {
     status: string
     temperature: string
     volume: string
+    location: string
     cellDensity: string
     viability: string
+    storageLocation?: string
   }
 }
 
@@ -24,10 +27,12 @@ const defaultNodeDatum: CustomNodeDatum = {
   name: 'No State',
   stateId: 0,
   stateName: 'No State',
+  timestamp: 'N/A',
   attributes: {
     status: 'N/A',
     temperature: 'N/A',
     volume: 'N/A',
+    location: 'N/A',
     cellDensity: 'N/A',
     viability: 'N/A',
   },
@@ -47,17 +52,21 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
     }
 
     const children = states.filter(s => s.parent_id === currentState.id)
-    
+    const parameters = currentState.parameters || {};
+
     return {
       name: currentState.name || `State ${currentState.id}`,
       stateId: currentState.id,
       stateName: currentState.name || `State ${currentState.id}`,
+      timestamp: new Date(currentState.timestamp).toLocaleString(),
       attributes: {
-        status: `Status ${currentState.parameters?.status || 'N/A'}`,
-        temperature: `${currentState.parameters?.temperature_c || 'N/A'}°C`,
-        volume: `${currentState.parameters?.volume_ml || 'N/A'}ml`,
-        cellDensity: `${(currentState.parameters?.cell_density || 0).toLocaleString()} cells/ml`,
-        viability: `${currentState.parameters?.viability || 'N/A'}%`,
+        status: `Status: ${parameters?.status || 'N/A'}`,
+        temperature: `Temp: ${parameters?.temperature_c ?? 'N/A'}°C`,
+        volume: `Vol: ${parameters?.volume_ml ?? 'N/A'}ml`,
+        location: `Loc: ${parameters?.location || 'N/A'}`,
+        cellDensity: `Density: ${(parameters?.cell_density ?? 0).toLocaleString()} c/ml`,
+        viability: `Viability: ${parameters?.viability ?? 'N/A'}%`,
+        storageLocation: parameters?.storage_location ? `Storage: ${parameters.storage_location}` : undefined,
       },
       children: children.length > 0 ? children.map(child => convertToTree(child)) : [],
       __rd3t: {
@@ -66,7 +75,7 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
         collapsed: false,
       },
     } as CustomNodeDatum
-  }, [states])
+  }, [])
 
   // Find the root state (state with no parent)
   const rootState = useMemo(() => {
@@ -114,6 +123,8 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
           onNodeClick={handleNodeClick}
           renderCustomNodeElement={({ nodeDatum, toggleNode }) => {
             const customNode = nodeDatum as CustomNodeDatum
+            const attributeLines = Object.values(customNode.attributes).filter(Boolean);
+
             return (
               <g>
                 <circle
@@ -123,25 +134,34 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                   strokeWidth="2"
                   onClick={toggleNode}
                 />
-                <g className="rd3t-label">
+                <g className="rd3t-label" transform="translate(0, 30)">
                   <text
                     className="rd3t-label__title"
                     textAnchor="middle"
-                    x="0"
-                    y="40"
-                    style={{ fontSize: '12px', fontWeight: 'bold' }}
+                    y={5}
+                    style={{ fontSize: '12px', fontWeight: 'bold', pointerEvents: 'none' }}
                   >
                     {customNode.stateName}
                   </text>
                   <text
-                    className="rd3t-label__attributes"
+                    className="rd3t-label__timestamp"
                     textAnchor="middle"
-                    x="0"
-                    y="60"
-                    style={{ fontSize: '10px' }}
+                    y={20}
+                    style={{ fontSize: '10px', fill: '#6b7280', pointerEvents: 'none' }}
                   >
-                    {customNode.attributes.status}
+                    {customNode.timestamp}
                   </text>
+                  {attributeLines.map((attr, index) => (
+                    <text
+                      key={index}
+                      className="rd3t-label__attributes"
+                      textAnchor="middle"
+                      y={35 + index * 12}
+                      style={{ fontSize: '10px', pointerEvents: 'none' }}
+                    >
+                      {attr}
+                    </text>
+                  ))}
                 </g>
               </g>
             )
