@@ -67,6 +67,7 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
     try:
         db_state = CellState(
+            name=state.name,
             timestamp=state.timestamp,
             parent_id=state.parent_id,
             parameters=state.parameters

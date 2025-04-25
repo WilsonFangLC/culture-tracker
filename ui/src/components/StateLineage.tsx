@@ -144,7 +144,7 @@ export default function StateLineage({
                       }`}
                     >
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium">State {s.id}</span>
+                        <span className="font-medium">{s.name || `State ${s.id}`}</span>
                         <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
                           Status {s.parameters?.status || 'N/A'}
                         </span>
@@ -158,6 +158,7 @@ export default function StateLineage({
                         {new Date(s.timestamp).toLocaleString()}
                       </div>
                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                        <div>ID: {s.id}</div>
                         <div>Temp: {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
                         <div>Location: {s.parameters?.location ?? 'N/A'}</div>
                         <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
@@ -167,7 +168,11 @@ export default function StateLineage({
                       </div>
                       {s.parent_id && (
                         <div className="text-xs text-gray-400 mt-1">
-                          ← Parent: State {s.parent_id}
+                          {(() => {
+                            const parent = states.find(p => p.id === s.parent_id);
+                            const parentName = parent?.name || `State ${s.parent_id}`;
+                            return `← Parent: ${parentName}`;
+                          })()}
                         </div>
                       )}
                       <div className="mt-2 flex justify-end space-x-2">
