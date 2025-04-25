@@ -157,13 +157,17 @@ export default function StateLineage({
                       <div className="text-sm text-gray-500">
                         {new Date(s.timestamp).toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        Temperature: {s.parameters?.temperature_c || 'N/A'}°C
-                        Volume: {s.parameters?.volume_ml || 'N/A'}ml
+                      <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                        <div>Temp: {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
+                        <div>Location: {s.parameters?.location ?? 'N/A'}</div>
+                        <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
+                        {s.parameters?.storage_location && (
+                           <div>Storage: {s.parameters.storage_location}</div>
+                        )}
                       </div>
                       {s.parent_id && (
-                        <div className="text-xs text-gray-400">
-                          ← State {s.parent_id}
+                        <div className="text-xs text-gray-400 mt-1">
+                          ← Parent: State {s.parent_id}
                         </div>
                       )}
                       <div className="mt-2 flex justify-end space-x-2">
