@@ -148,11 +148,6 @@ export default function StateLineage({
                         <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
                           Status {s.parameters?.status || 'N/A'}
                         </span>
-                        {isSplitTransition && (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-800">
-                            Split
-                          </span>
-                        )}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(s.timestamp).toLocaleString()}
