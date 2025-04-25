@@ -47,8 +47,12 @@ export interface CellStateCreate {
     temperature_c: number;
     volume_ml: number;
     location: string;
+    cell_density: number;
+    viability: number;
+    split_ratio: number;
+    storage_location: string;
   };
-  transition_type?: string;
+  transition_type?: 'single' | 'split' | 'measurement';
   transition_parameters?: Record<string, any>;
 }
 
