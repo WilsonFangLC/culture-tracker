@@ -12,6 +12,8 @@ interface EditStateFormProps {
       cell_density: number;
       viability: number;
       storage_location: string;
+      growth_rate: number;
+      density_limit: number;
     };
     additional_notes?: string;
   }) => void;
@@ -21,12 +23,14 @@ interface EditStateFormProps {
 export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFormProps) {
   const [formData, setFormData] = useState({
     status: state.parameters.status || '1',
-    temperature_c: state.parameters.temperature_c || 0,
-    volume_ml: state.parameters.volume_ml || 0,
+    temperature_c: state.parameters.temperature_c ?? 0,
+    volume_ml: state.parameters.volume_ml ?? 0,
     location: state.parameters.location || '',
-    cell_density: state.parameters.cell_density || 0,
-    viability: state.parameters.viability || 0,
+    cell_density: state.parameters.cell_density ?? 0,
+    viability: state.parameters.viability ?? 0,
     storage_location: state.parameters.storage_location || '',
+    growth_rate: state.parameters.growth_rate ?? 0,
+    density_limit: state.parameters.density_limit ?? 0,
     additional_notes: state.additional_notes || '',
   })
 
@@ -146,6 +150,32 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             className="mt-1 w-full p-2 border rounded"
             value={formData.location}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Growth Rate
+          </label>
+          <input
+            type="number"
+            step="any"
+            className="mt-1 w-full p-2 border rounded"
+            value={formData.growth_rate}
+            onChange={(e) => handleNumericChange(e, 'growth_rate')}
+            placeholder="e.g., 0.03 (per hour)"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Density Limit
+          </label>
+          <input
+            type="number"
+            step="any"
+            className="mt-1 w-full p-2 border rounded"
+            value={formData.density_limit}
+            onChange={(e) => handleNumericChange(e, 'density_limit')}
+            placeholder="e.g., 1.5e6 (cells/ml)"
           />
         </div>
       </div>

@@ -23,6 +23,8 @@ const measurableParameters: Array<keyof CellStateCreate['parameters']> = [
   'location',
   'cell_density',
   'viability',
+  'growth_rate',
+  'density_limit',
   // 'split_ratio' and 'storage_location' might not make sense to "measure"
   // but can be included if needed.
 ];
@@ -50,6 +52,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     cell_density: 0,
     viability: 100,
     storage_location: '',
+    growth_rate: 0,
+    density_limit: 0,
     additional_notes: '',
     // transition_parameters: {} as Record<string, any>, // transition_parameters is less needed now
   });
@@ -68,6 +72,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     cell_density: number;
     viability: number;
     storage_location: string;
+    growth_rate: number;
+    density_limit: number;
     distribution: number;
   }>>([])
 
@@ -133,6 +139,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           cell_density: state.cell_density,
           viability: state.viability,
           storage_location: state.storage_location,
+          growth_rate: state.growth_rate,
+          density_limit: state.density_limit,
         },
         transition_type: 'split' as 'split', // Explicitly cast transition type
         additional_notes: formData.additional_notes,
@@ -188,6 +196,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           cell_density: formData.cell_density,
           viability: formData.viability,
           storage_location: formData.storage_location,
+          growth_rate: formData.growth_rate,
+          density_limit: formData.density_limit,
         },
         transition_type: 'single',
         additional_notes: formData.additional_notes,
@@ -205,6 +215,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       cell_density: 0,
       viability: 100,
       storage_location: '',
+      growth_rate: 0,
+      density_limit: 0,
       distribution: 0,
     }])
   }
@@ -521,37 +533,61 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
-                <input type="text" className="mt-1 w-full p-2 border rounded" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} />
+                <input type="text" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="mt-1 w-full p-2 border rounded" />
               </div>
               {/* Temperature */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
-                <input type="number" step="0.1" className="mt-1 w-full p-2 border rounded" value={formData.temperature_c} onChange={(e) => setFormData({ ...formData, temperature_c: parseFloat(e.target.value) })} />
+                <input type="number" value={formData.temperature_c} onChange={(e) => setFormData({ ...formData, temperature_c: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
               </div>
               {/* Volume */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Volume (ml)</label>
-                <input type="number" step="0.1" className="mt-1 w-full p-2 border rounded" value={formData.volume_ml} onChange={(e) => setFormData({ ...formData, volume_ml: parseFloat(e.target.value) })} />
+                <input type="number" value={formData.volume_ml} onChange={(e) => setFormData({ ...formData, volume_ml: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
               </div>
               {/* Location */}
                <div>
                 <label className="block text-sm font-medium text-gray-700">Location</label>
-                 <input type="text" className="mt-1 w-full p-2 border rounded" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} />
+                 <input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="mt-1 w-full p-2 border rounded" />
+               </div>
+               {/* Growth Rate */}
+               <div>
+                 <label className="block text-sm font-medium text-gray-700">Growth Rate</label>
+                 <input
+                   type="number"
+                   step="any" // Allow decimals
+                   value={formData.growth_rate}
+                   onChange={(e) => setFormData({ ...formData, growth_rate: Number(e.target.value) })}
+                   className="mt-1 w-full p-2 border rounded"
+                   placeholder="e.g., 0.03 (per hour)"
+                 />
+               </div>
+               {/* Density Limit */}
+               <div>
+                 <label className="block text-sm font-medium text-gray-700">Density Limit</label>
+                 <input
+                   type="number"
+                   step="any" // Allow decimals
+                   value={formData.density_limit}
+                   onChange={(e) => setFormData({ ...formData, density_limit: Number(e.target.value) })}
+                   className="mt-1 w-full p-2 border rounded"
+                   placeholder="e.g., 1.5e6 (cells/ml)"
+                 />
                </div>
                {/* Cell Density */}
                <div>
-                 <label className="block text-sm font-medium text-gray-700">Cell Density (cells/ml)</label>
-                 <input type="number" className="mt-1 w-full p-2 border rounded" value={formData.cell_density} onChange={(e) => setFormData({ ...formData, cell_density: parseFloat(e.target.value) })} />
+                 <label className="block text-sm font-medium text-gray-700">Cell Density</label>
+                 <input type="number" value={formData.cell_density} onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
                </div>
                {/* Viability */}
                <div>
                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
-                 <input type="number" min="0" max="100" className="mt-1 w-full p-2 border rounded" value={formData.viability} onChange={(e) => setFormData({ ...formData, viability: parseFloat(e.target.value) })} />
+                 <input type="number" min="0" max="100" value={formData.viability} onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
                </div>
                {/* Storage Location (Optional) */}
                <div>
                  <label className="block text-sm font-medium text-gray-700">Storage Location (Optional)</label>
-                 <input type="text" className="mt-1 w-full p-2 border rounded" value={formData.storage_location} onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} placeholder="e.g., Freezer A, Shelf 3" />
+                 <input type="text" value={formData.storage_location} onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} className="mt-1 w-full p-2 border rounded" />
                </div>
              </>
            )}

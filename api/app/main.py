@@ -13,6 +13,9 @@ from .database import engine, create_db, get_session
 from .migrations import migrate_old_to_new
 from .schemas import CellStateCreate, CellStateRead, CellStateUpdate
 
+# Import the new export router
+from .routers import export as export_router
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include the export router
+app.include_router(export_router.router, prefix="/api")
 
 # Initialize database and run migrations
 @app.on_event("startup")
@@ -78,9 +84,10 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
             parameters=state.parameters,
             transition_type=state.transition_type, # Keep for now
             additional_notes=state.additional_notes, # Add notes
+            # Remove created_by handling
             # created_by=state.created_by # Remove assignment from state
             # Set a default or handle created_by differently if needed later
-            created_by="unknown" # Set a temporary default value for now
+            # created_by="unknown" # Set a temporary default value for now
         )
         session.add(db_state)
         session.commit()

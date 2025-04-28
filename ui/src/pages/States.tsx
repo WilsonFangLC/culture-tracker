@@ -17,6 +17,37 @@ export default function States() {
 
   const [showCreateState, setShowCreateState] = useState(false)
 
+  // Function to handle CSV export
+  const handleExportCSV = async () => {
+    try {
+      // Fetch the CSV data from the backend
+      const response = await fetch('/api/export/csv');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const blob = await response.blob();
+
+      // Create a link to download the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Suggest a filename for the download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.setAttribute('download', `cell_states_export_${timestamp}.csv`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up by removing the link and revoking the URL
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      // TODO: Show error message to the user
+      alert("Failed to export CSV. Check the console for details.");
+    }
+  };
+
   // Reset selected state when states change
   useEffect(() => {
     
@@ -101,12 +132,20 @@ export default function States() {
         <div className="lg:col-span-1 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">States</h2>
-            <button
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              onClick={() => setShowCreateState(true)}
-            >
-              New State
-            </button>
+            <div className="flex space-x-2">
+              <button
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                onClick={handleExportCSV}
+              >
+                Export CSV
+              </button>
+              <button
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                onClick={() => setShowCreateState(true)}
+              >
+                New State
+              </button>
+            </div>
           </div>
           
           {showCreateState ? (

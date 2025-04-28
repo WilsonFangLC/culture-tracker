@@ -13,7 +13,8 @@ class CellState(SQLModel, table=True):
     notes: Optional[str] = Field(default=None)
     transition_type: Optional[str] = Field(default=None)
     additional_notes: Optional[str] = Field(default=None)
-    created_by: str = Field(index=True)
+    # Remove created_by field
+    # created_by: str = Field(index=True)
     
     # Relationships
     parent: Optional["CellState"] = Relationship(
