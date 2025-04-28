@@ -3,23 +3,31 @@ import { useStates, useCreateState, useUpdateState } from '../api'
 import { CellState, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
-import { calculatePredictedDensity } from '../utils/calculations'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 dayjs.extend(utc)
 
+// Helper function to format prediction results
+function formatPrediction(value: number | null): string {
+  if (value === null || !isFinite(value)) return 'N/A';
+  return value.toExponential(2);
+}
+
 export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
   const [selectedState, setSelectedState] = useState<CellState | null>(null)
-  
+  const [showCreateState, setShowCreateState] = useState(false)
+
+  // State for prediction modal
+  const [predictingStateId, setPredictingStateId] = useState<number | null>(null);
+  const [predictionTimeInput, setPredictionTimeInput] = useState<string>('');
+  const [predictionResult, setPredictionResult] = useState<string | null>(null);
 
   const createState = useCreateState()
   const updateState = useUpdateState()
 
   // Ensure states are always arrays
   const states = Array.isArray(statesData) ? statesData : []
-
-  const [showCreateState, setShowCreateState] = useState(false)
 
   // Function to handle CSV export
   const handleExportCSV = async () => {
@@ -77,6 +85,88 @@ export default function States() {
     // Depend on the 'states' array reference and the selected ID
   }, [states, selectedState?.id])
 
+  // --- Prediction Handlers ---
+  const handleOpenPredictModal = (stateId: number) => {
+    // Set default prediction time to 1 day after the state's timestamp
+    const state = states.find(s => s.id === stateId);
+    if (state) {
+      const defaultPredTime = dayjs.utc(state.timestamp).add(1, 'day').local().format('YYYY-MM-DDTHH:mm');
+      setPredictionTimeInput(defaultPredTime);
+    }
+    setPredictingStateId(stateId);
+    setPredictionResult(null); // Reset result when opening
+  };
+
+  const handleClosePredictModal = () => {
+    setPredictingStateId(null);
+    setPredictionTimeInput('');
+    setPredictionResult(null);
+  };
+
+  const handlePredictionTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPredictionTimeInput(event.target.value);
+  };
+
+  const handleCalculatePrediction = () => {
+    const state = states.find(s => s.id === predictingStateId);
+    if (!state) {
+      setPredictionResult('Error: State not found');
+      return;
+    }
+
+    const { parameters, timestamp } = state;
+    const n0 = parameters?.cell_density;
+    let growthRate = parameters?.growth_rate;
+    const doublingTime = parameters?.doubling_time;
+    const stateTime = dayjs.utc(timestamp); // State time in UTC
+    const predictionTimeLocal = dayjs(predictionTimeInput); // Input time is local
+
+    if (!predictionTimeLocal.isValid()) {
+      setPredictionResult('Error: Invalid prediction date/time format.');
+      return;
+    }
+    
+    const predictionTimeUtc = predictionTimeLocal.utc(); // Convert prediction time to UTC for comparison
+
+    if (predictionTimeUtc.isBefore(stateTime) || predictionTimeUtc.isSame(stateTime)) {
+       setPredictionResult("Error: Prediction time must be after the state's time.");
+       return;
+    }
+
+    if (typeof n0 !== 'number') {
+      setPredictionResult('Error: Missing initial cell density.');
+      return;
+    }
+
+    // Calculate growth rate if not available but doubling time is
+    if (typeof growthRate !== 'number' || growthRate === null) {
+       if (typeof doublingTime === 'number' && doublingTime > 0) {
+           growthRate = Math.log(2) / doublingTime;
+       } else {
+           setPredictionResult('Error: Missing Growth Rate or valid Doubling Time.');
+           return;
+       }
+    } else if (growthRate < 0) {
+        // Negative growth rate implies decay, which is fine
+        // If 0, density remains n0
+    }
+
+    // Calculate time difference in hours (assuming growth rate is per hour)
+    const deltaTimeMs = predictionTimeUtc.diff(stateTime); // Difference in milliseconds
+    const deltaTimeHours = deltaTimeMs / (1000 * 60 * 60); 
+
+    if (growthRate === 0) {
+       setPredictionResult(formatPrediction(n0)); // Density doesn't change
+       return;
+    }
+
+    // Calculate predicted density: N(t) = N0 * exp(r * dt)
+    const predictedDensity = n0 * Math.exp(growthRate * deltaTimeHours);
+
+    setPredictionResult(formatPrediction(predictedDensity));
+  };
+  // --- End Prediction Handlers ---
+
   if (statesLoading) {
     return <div>Loading states...</div>
   }
@@ -126,6 +216,9 @@ export default function States() {
       console.error('handleUpdateState error', error)
     }
   }
+
+  // Find the state object for the modal
+  const stateForModal = states.find(s => s.id === predictingStateId);
 
   return (
     <div className="space-y-8">
@@ -199,30 +292,31 @@ export default function States() {
                       <div><span className="font-medium">Temp:</span> {state.parameters.temperature_c ?? 'N/A'}°C</div>
                       <div><span className="font-medium">Volume:</span> {state.parameters.volume_ml ?? 'N/A'}ml</div>
                       <div><span className="font-medium">Location:</span> {state.parameters.location || 'N/A'}</div>
-                      {/* Add units to Growth Rate and Density Limit */}                      
-                      {state.parameters.growth_rate !== undefined && state.parameters.growth_rate !== null && (
-                        <div><span className="font-medium">Growth Rate:</span> {state.parameters.growth_rate} (per hour)</div>
+                      {/* Growth Rate / Doubling Time Display */}
+                      {state.parameters.growth_rate !== undefined && (
+                        <div><span className="font-medium">Growth Rate:</span> {state.parameters.growth_rate?.toFixed(4) ?? 'N/A'} (per hour)</div>
+                      )}
+                      {state.parameters.doubling_time !== undefined && (
+                        <div><span className="font-medium">Doubling Time:</span> {state.parameters.doubling_time?.toFixed(2) ?? 'N/A'} (hours)</div>
                       )}
                       {state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
-                        <div><span className="font-medium">Density Limit:</span> {state.parameters.density_limit} (cells/mL)</div>
+                         <div><span className="font-medium">Density Limit:</span> {formatPrediction(state.parameters.density_limit)} (cells/mL)</div>
                       )}
-                      {/* Display Predicted Density */}
-                      {(() => {
-                        const predicted = calculatePredictedDensity(
-                          state.parameters.cell_density,
-                          state.parameters.growth_rate,
-                          state.parameters.density_limit,
-                          state.timestamp
-                        );
-                        return (
-                          <div className="text-green-700">
-                            <span className="font-medium">Predicted Density (now):</span> {predicted !== null ? predicted.toExponential(2) : 'N/A'}
-                          </div>
-                        );
-                      })()}
                       {state.transition_type && (
                         <div><span className="font-medium">Transition:</span> {state.transition_type}</div>
                       )}
+                    </div>
+                    {/* Prediction Button */} 
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); // Prevent state selection when clicking button
+                            handleOpenPredictModal(state.id); 
+                          }}
+                          className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                        >
+                            Predict Density...
+                        </button>
                     </div>
                   </div>
                 ))
@@ -248,6 +342,59 @@ export default function States() {
           )}
         </div>
       </div>
+
+      {/* Prediction Modal */} 
+      {predictingStateId !== null && stateForModal && (
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center"
+          onClick={handleClosePredictModal} // Close on overlay click
+        >
+          <div 
+            className="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+          >
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Predict Cell Density</h3>
+            <div className="mt-2 text-sm text-gray-600">
+              Predicting from State {stateForModal.id} ({stateForModal.name || 'Unnamed'}) <br/>
+              Initial Time: {dayjs.utc(stateForModal.timestamp).local().format('DD/MM/YYYY, HH:mm')} <br/>
+              Initial Density: {formatPrediction(stateForModal.parameters?.cell_density)} cells/mL <br/>
+              Growth Rate: {stateForModal.parameters?.growth_rate?.toFixed(4) ?? 'N/A'} /hr (or Doubling Time: {stateForModal.parameters?.doubling_time?.toFixed(2) ?? 'N/A'} hr)
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Predict density at time:
+              </label>
+              <input
+                type="datetime-local"
+                className="mt-1 w-full p-2 border rounded"
+                value={predictionTimeInput}
+                onChange={handlePredictionTimeChange}
+              />
+            </div>
+            <div className="mt-4">
+              <button 
+                onClick={handleCalculatePrediction}
+                className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+              >
+                Calculate
+              </button>
+            </div>
+            {predictionResult !== null && (
+              <div className={`mt-4 p-3 rounded ${predictionResult.startsWith('Error:') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                {predictionResult.startsWith('Error:') ? predictionResult : `Predicted Density: ${predictionResult} cells/mL`}
+              </div>
+            )}
+             <div className="mt-4 text-right">
+               <button 
+                 onClick={handleClosePredictModal}
+                 className="text-sm text-gray-500 hover:text-gray-700"
+               >
+                 Close
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
