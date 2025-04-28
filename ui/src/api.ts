@@ -53,6 +53,8 @@ export interface CellStateCreate {
     cell_density: number;
     viability: number;
     storage_location: string;
+    growth_rate?: number;
+    density_limit?: number;
   };
   transition_type?: 'single' | 'split' | 'measurement';
   transition_parameters?: Record<string, any>;

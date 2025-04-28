@@ -2,6 +2,7 @@ import { CellState } from '../api'
 import LineageGraph from './LineageGraph'
 import { useState, useEffect } from 'react'
 import EditStateForm from './EditStateForm'
+import { calculatePredictedDensity } from '../utils/calculations'
 
 interface StateLineageProps {
   state: CellState | null;
@@ -157,9 +158,23 @@ export default function StateLineage({
                         {s.transition_type && (
                            <div className="capitalize font-medium text-blue-700">Type: {s.transition_type}</div>
                         )}
-                        <div>Temp: {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
+                        <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
                         <div>Location: {s.parameters?.location ?? 'N/A'}</div>
                         <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
+                        <div>Growth Rate: {s.parameters?.growth_rate ?? 'N/A'} | Density Limit: {s.parameters?.density_limit ?? 'N/A'}</div>
+                        {(() => {
+                          const predicted = calculatePredictedDensity(
+                            s.parameters?.cell_density,
+                            s.parameters?.growth_rate,
+                            s.parameters?.density_limit,
+                            s.timestamp
+                          );
+                          return (
+                            <div className="text-green-700">
+                              Predicted Density (now): {predicted !== null ? predicted.toExponential(2) : 'N/A'}
+                            </div>
+                          );
+                        })()}
                         {s.parameters?.storage_location && (
                            <div>Storage: {s.parameters.storage_location}</div>
                         )}

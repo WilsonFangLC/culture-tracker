@@ -3,6 +3,7 @@ import { useStates, useCreateState, useUpdateState } from '../api'
 import { CellState, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
+import { calculatePredictedDensity } from '../utils/calculations'
 
 export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
@@ -195,6 +196,21 @@ export default function States() {
                       <div><span className="font-medium">Temp:</span> {state.parameters.temperature_c ?? 'N/A'}°C</div>
                       <div><span className="font-medium">Volume:</span> {state.parameters.volume_ml ?? 'N/A'}ml</div>
                       <div><span className="font-medium">Location:</span> {state.parameters.location || 'N/A'}</div>
+                      <div><span className="font-medium">Density Limit:</span> {state.parameters.density_limit ?? 'N/A'}</div>
+                      {/* Display Predicted Density */}
+                      {(() => {
+                        const predicted = calculatePredictedDensity(
+                          state.parameters.cell_density,
+                          state.parameters.growth_rate,
+                          state.parameters.density_limit,
+                          state.timestamp
+                        );
+                        return (
+                          <div className="text-green-700">
+                            <span className="font-medium">Predicted Density (now):</span> {predicted !== null ? predicted.toExponential(2) : 'N/A'}
+                          </div>
+                        );
+                      })()}
                       {state.transition_type && (
                         <div><span className="font-medium">Transition:</span> {state.transition_type}</div>
                       )}
