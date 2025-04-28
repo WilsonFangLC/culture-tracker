@@ -551,11 +551,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                  <input type="text" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} className="mt-1 w-full p-2 border rounded" />
                </div>
                {/* Growth Rate */}
-               <div>
-                 <label className="block text-sm font-medium text-gray-700">Growth Rate</label>
+               <div className="col-span-1">
+                 <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
                  <input
                    type="number"
-                   step="any" // Allow decimals
+                   step="any"
                    value={formData.growth_rate}
                    onChange={(e) => setFormData({ ...formData, growth_rate: Number(e.target.value) })}
                    className="mt-1 w-full p-2 border rounded"
@@ -563,11 +563,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                  />
                </div>
                {/* Density Limit */}
-               <div>
-                 <label className="block text-sm font-medium text-gray-700">Density Limit</label>
+               <div className="col-span-1">
+                 <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
                  <input
                    type="number"
-                   step="any" // Allow decimals
+                   step="any"
                    value={formData.density_limit}
                    onChange={(e) => setFormData({ ...formData, density_limit: Number(e.target.value) })}
                    className="mt-1 w-full p-2 border rounded"

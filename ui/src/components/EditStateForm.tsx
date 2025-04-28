@@ -152,10 +152,8 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Growth Rate
-          </label>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
           <input
             type="number"
             step="any"
@@ -165,10 +163,8 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             placeholder="e.g., 0.03 (per hour)"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Density Limit
-          </label>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
           <input
             type="number"
             step="any"

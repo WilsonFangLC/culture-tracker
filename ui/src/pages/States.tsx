@@ -196,7 +196,13 @@ export default function States() {
                       <div><span className="font-medium">Temp:</span> {state.parameters.temperature_c ?? 'N/A'}°C</div>
                       <div><span className="font-medium">Volume:</span> {state.parameters.volume_ml ?? 'N/A'}ml</div>
                       <div><span className="font-medium">Location:</span> {state.parameters.location || 'N/A'}</div>
-                      <div><span className="font-medium">Density Limit:</span> {state.parameters.density_limit ?? 'N/A'}</div>
+                      {/* Add units to Growth Rate and Density Limit */}                      
+                      {state.parameters.growth_rate !== undefined && state.parameters.growth_rate !== null && (
+                        <div><span className="font-medium">Growth Rate:</span> {state.parameters.growth_rate} (per hour)</div>
+                      )}
+                      {state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
+                        <div><span className="font-medium">Density Limit:</span> {state.parameters.density_limit} (cells/mL)</div>
+                      )}
                       {/* Display Predicted Density */}
                       {(() => {
                         const predicted = calculatePredictedDensity(

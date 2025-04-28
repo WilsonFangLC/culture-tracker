@@ -147,7 +147,7 @@ export default function StateLineage({
                       <div className="flex items-center space-x-2">
                         <span className="font-medium">{s.name || `State ${s.id}`}</span>
                         <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
-                          Status {s.parameters?.status || 'N/A'}
+                          Status {s.parameters?.status ?? 'N/A'}
                         </span>
                       </div>
                       <div className="text-sm text-gray-500">
@@ -158,10 +158,16 @@ export default function StateLineage({
                         {s.transition_type && (
                            <div className="capitalize font-medium text-blue-700">Type: {s.transition_type}</div>
                         )}
-                        <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C | Vol: {s.parameters?.volume_ml ?? 'N/A'}ml</div>
-                        <div>Location: {s.parameters?.location ?? 'N/A'}</div>
+                        <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C</div>
+                        <div><span className="font-medium">Volume:</span> {s.parameters?.volume_ml ?? 'N/A'}ml</div>
+                        <div><span className="font-medium">Location:</span> {s.parameters?.location ?? 'N/A'}</div>
                         <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
-                        <div>Growth Rate: {s.parameters?.growth_rate ?? 'N/A'} | Density Limit: {s.parameters?.density_limit ?? 'N/A'}</div>
+                        {s.parameters?.growth_rate !== undefined && s.parameters?.growth_rate !== null && (
+                          <div><span className="font-medium">Growth Rate:</span> {s.parameters.growth_rate} (per hour)</div>
+                        )}
+                        {s.parameters?.density_limit !== undefined && s.parameters?.density_limit !== null && (
+                          <div><span className="font-medium">Density Limit:</span> {s.parameters.density_limit} (cells/mL)</div>
+                        )}
                         {(() => {
                           const predicted = calculatePredictedDensity(
                             s.parameters?.cell_density,
