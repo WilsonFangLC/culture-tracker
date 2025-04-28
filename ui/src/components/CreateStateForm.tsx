@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { CellState, CellStateCreate } from '../api'
 
 interface CreateStateFormProps {
@@ -53,9 +53,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     viability: 100,
     storage_location: '',
     growth_rate: 0,
+    doubling_time: 0,
     density_limit: 0,
     additional_notes: '',
-    // transition_parameters: {} as Record<string, any>, // transition_parameters is less needed now
   });
 
   // State for measurement transition
@@ -82,6 +82,46 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   // Provide default empty object if no parent or parent has no parameters
   const parentParameters = parentState?.parameters || {}; 
 
+
+  // --- Calculation Logic --- 
+  const calculateLinkedParameter = useCallback((changedParam: 'growth_rate' | 'doubling_time', value: number) => {
+    if (changedParam === 'growth_rate') {
+      if (value > 0) {
+        return Math.log(2) / value;
+      } else {
+        return 0; // Or handle as infinity/undefined if preferred
+      }
+    } else { // changedParam === 'doubling_time'
+      if (value > 0) {
+        return Math.log(2) / value;
+      } else {
+        return 0; // Or handle differently
+      }
+    }
+  }, []);
+
+  const handleParameterChange = (param: keyof typeof formData, value: string | number) => {
+    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(numericValue)) {
+      // Handle non-numeric input gracefully (e.g., keep the state as is, or set to 0/empty string)
+      // For simplicity, let's just update with the raw value for now, validation can handle it
+      setFormData(prev => ({ ...prev, [param]: value })); 
+      return; 
+    }
+
+    let updates: Partial<typeof formData> = { [param]: numericValue };
+
+    if (param === 'growth_rate') {
+      const linkedDoublingTime = calculateLinkedParameter('growth_rate', numericValue);
+      updates['doubling_time'] = linkedDoublingTime;
+    } else if (param === 'doubling_time') {
+      const linkedGrowthRate = calculateLinkedParameter('doubling_time', numericValue);
+      updates['growth_rate'] = linkedGrowthRate;
+    }
+
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+  // --- End Calculation Logic ---
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,7 +152,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       timestamp: newTimestamp.toISOString(), // Use validated manual timestamp
       parent_id: formData.parent_id,
       additional_notes: formData.additional_notes,
-      // transition_parameters: formData.transition_parameters, // Removed for now
     };
 
     if (transitionType === 'split') {
@@ -197,8 +236,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           viability: formData.viability,
           storage_location: formData.storage_location,
           growth_rate: formData.growth_rate,
+          doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
-        },
+        } as CellStateCreate['parameters'], // Explicitly type the parameters object
         transition_type: 'single',
         additional_notes: formData.additional_notes,
       }]);
@@ -557,19 +597,32 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                    type="number"
                    step="any"
                    value={formData.growth_rate}
-                   onChange={(e) => setFormData({ ...formData, growth_rate: Number(e.target.value) })}
+                   onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                    className="mt-1 w-full p-2 border rounded"
                    placeholder="e.g., 0.03 (per hour)"
                  />
                </div>
+               {/* Doubling Time */}
+               <div>
+                 <label className="block text-sm font-medium text-gray-700">Doubling Time (optional)</label>
+                 <input
+                   type="number"
+                   step="any"
+                   value={formData.doubling_time}
+                   onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
+                   className="mt-1 w-full p-2 border rounded"
+                   placeholder="e.g., 23.1 (hours)"
+                 />
+                 <p className="mt-1 text-xs text-gray-500">Calculated automatically if Growth Rate is entered, and vice-versa.</p>
+               </div>
                {/* Density Limit */}
-               <div className="col-span-1">
+               <div>
                  <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
                  <input
                    type="number"
                    step="any"
                    value={formData.density_limit}
-                   onChange={(e) => setFormData({ ...formData, density_limit: Number(e.target.value) })}
+                   onChange={(e) => handleParameterChange('density_limit', e.target.value)}
                    className="mt-1 w-full p-2 border rounded"
                    placeholder="e.g., 1.5e6 (cells/ml)"
                  />
