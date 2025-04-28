@@ -4,6 +4,9 @@ import { CellState, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
 import { calculatePredictedDensity } from '../utils/calculations'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+dayjs.extend(utc)
 
 export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
@@ -174,7 +177,7 @@ export default function States() {
                       <div>
                         <div className="font-medium">{state.name || `State ${state.id}`}</div>
                         <div className="text-sm text-gray-500">
-                          {new Date(state.timestamp).toLocaleString()}
+                          {dayjs.utc(state.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
                         </div>
                       </div>
                       {selectedState?.id === state.id && (

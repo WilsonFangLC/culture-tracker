@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from .models import (
@@ -57,8 +57,14 @@ async def root():
 @app.get("/states/", response_model=List[CellStateRead])
 def get_states(session: Session = Depends(get_session)):
     try:
-        states = session.exec(select(CellState)).all()
-        return states
+        db_states = session.exec(select(CellState)).all()
+        processed_states = []
+        for state in db_states:
+            # Ensure timestamp is UTC-aware after loading
+            if state.timestamp and state.timestamp.tzinfo is None:
+                state.timestamp = state.timestamp.replace(tzinfo=timezone.utc)
+            processed_states.append(state)
+        return processed_states
     except Exception as e:
         logger.error(f"Error fetching states: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -68,30 +74,48 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
     state = session.get(CellState, state_id)
     if not state:
         raise HTTPException(status_code=404, detail="State not found")
+    # Ensure timestamp is UTC-aware after loading
+    if state.timestamp and state.timestamp.tzinfo is None:
+        state.timestamp = state.timestamp.replace(tzinfo=timezone.utc)
     return state
 
 @app.post("/states/", response_model=CellStateRead)
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
     try:
-        # TEMPORARY: Remove the check for created_by
-        # if not state.created_by:
-        #      raise HTTPException(status_code=400, detail="'created_by' field is required during state creation.")
+        logger.info(f"[create_state] Received state data. Timestamp from schema: {repr(state.timestamp)}")
 
         db_state = CellState(
             name=state.name,
-            timestamp=state.timestamp,
+            timestamp=state.timestamp, # Assign timestamp from input
             parent_id=state.parent_id,
             parameters=state.parameters,
-            transition_type=state.transition_type, # Keep for now
-            additional_notes=state.additional_notes, # Add notes
-            # Remove created_by handling
-            # created_by=state.created_by # Remove assignment from state
-            # Set a default or handle created_by differently if needed later
-            # created_by="unknown" # Set a temporary default value for now
+            transition_type=state.transition_type,
+            additional_notes=state.additional_notes,
         )
+        
+        logger.info(f"[create_state] db_state object before add. Timestamp: {repr(db_state.timestamp)}")
+
         session.add(db_state)
         session.commit()
+        
+        logger.info(f"[create_state] State committed. ID: {db_state.id}")
+        
+        committed_state = session.get(CellState, db_state.id) 
+        if committed_state:
+             # Ensure timestamp is UTC-aware after loading
+             if committed_state.timestamp and committed_state.timestamp.tzinfo is None:
+                 committed_state.timestamp = committed_state.timestamp.replace(tzinfo=timezone.utc)
+             logger.info(f"[create_state] State read back after commit (before refresh). Timestamp: {repr(committed_state.timestamp)}")
+        else:
+             logger.warning("[create_state] Failed to read back state immediately after commit.")
+
+
         session.refresh(db_state)
+        # Ensure timestamp is UTC-aware after refresh
+        if db_state.timestamp and db_state.timestamp.tzinfo is None:
+            db_state.timestamp = db_state.timestamp.replace(tzinfo=timezone.utc)
+        logger.info(f"[create_state] State refreshed. Timestamp: {repr(db_state.timestamp)}")
+        
         return db_state
     except HTTPException as http_exc:
         raise http_exc # Re-raise validation errors
@@ -152,6 +176,9 @@ def update_state(
         logger.info(f"[4] State after commit (id={db_state.id}), params: {db_state.parameters}") # Log 4
 
         session.refresh(db_state)
+        # Ensure timestamp is UTC-aware after refresh
+        if db_state.timestamp and db_state.timestamp.tzinfo is None:
+            db_state.timestamp = db_state.timestamp.replace(tzinfo=timezone.utc)
         logger.info(f"[5] State after refresh (id={db_state.id}), params: {db_state.parameters}") # Log 5 (Renamed from previous log)
         return db_state
     except HTTPException as http_exc:

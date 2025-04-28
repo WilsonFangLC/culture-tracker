@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, List
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Column, JSON
@@ -7,7 +7,8 @@ from sqlalchemy import Column, JSON
 class CellState(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(default="")
-    timestamp: datetime = Field(default_factory=datetime.now)
+    # Use default DateTime column type for SQLite, keep Python type hint
+    timestamp: datetime = Field()
     parent_id: Optional[int] = Field(default=None, foreign_key="cellstate.id")
     parameters: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     notes: Optional[str] = Field(default=None)

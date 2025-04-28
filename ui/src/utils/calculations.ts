@@ -38,8 +38,12 @@ export const calculatePredictedDensity = (
     const timeElapsedHours = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
     if (timeElapsedHours < 0) {
+      console.log('Predicted Density Calc: Start time is in the future. Returning initial density.');
       return initialDensity; // If current time is before start time, return initial density
     }
+
+    // Log the calculated time elapsed
+    console.log(`Predicted Density Calc: startTime=${startDate.toISOString()}, currentTime=${now.toISOString()}, timeElapsedHours=${timeElapsedHours.toFixed(2)}`);
 
     // Logistic growth formula parts
     const K = densityLimit;

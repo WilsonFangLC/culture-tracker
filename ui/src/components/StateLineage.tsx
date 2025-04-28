@@ -3,6 +3,9 @@ import LineageGraph from './LineageGraph'
 import { useState, useEffect } from 'react'
 import EditStateForm from './EditStateForm'
 import { calculatePredictedDensity } from '../utils/calculations'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+dayjs.extend(utc)
 
 interface StateLineageProps {
   state: CellState | null;
@@ -151,7 +154,7 @@ export default function StateLineage({
                         </span>
                       </div>
                       <div className="text-sm text-gray-500">
-                        {new Date(s.timestamp).toLocaleString()}
+                        {dayjs.utc(s.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
                       </div>
                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                         <div>ID: {s.id}</div>
