@@ -5,6 +5,8 @@ from sqlalchemy.orm.attributes import flag_modified
 from typing import List, Optional
 from datetime import datetime, timezone
 import logging
+from dotenv import load_dotenv
+import os
 
 from .models import (
     CellState,
@@ -15,6 +17,11 @@ from .schemas import CellStateCreate, CellStateRead, CellStateUpdate
 
 # Import the new export router
 from .routers import export as export_router
+
+loaded_dotenv = load_dotenv() # Load environment variables from .env file
+print(f"---DEBUG: load_dotenv() found file: {loaded_dotenv} ---")
+database_url_value = os.getenv("DATABASE_URL")
+print(f"---DEBUG: DATABASE_URL after load_dotenv: {database_url_value} ---")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

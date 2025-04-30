@@ -3,6 +3,7 @@ pydantic==2.6.1
 sqlmodel==0.0.14
 uvicorn==0.27.1
 python-multipart==0.0.20
+psycopg2-binary
 pytest==8.0.0
 ruff==0.2.1
 black==24.1.1
