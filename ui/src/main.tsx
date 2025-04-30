@@ -9,7 +9,7 @@ import './index.css'
 const queryClient = new QueryClient()
 
 // Configure React Router
-const router = BrowserRouter
+// const router = BrowserRouter // Commented out: Unused variable
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

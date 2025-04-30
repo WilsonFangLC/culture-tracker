@@ -78,6 +78,26 @@ export default function StateLineage({
     return states.filter(s => s.parent_id === state.parent_id);
   };
 
+  const handleAddNote = (stateId: number, notes: string) => {
+    console.log(`Adding note to state ${stateId}:`, notes);
+    const stateToUpdate = states.find(s => s.id === stateId);
+    if (stateToUpdate) {
+       // Call the prop function passed down, ensuring parameters are included
+      onUpdateState(stateId, { parameters: stateToUpdate.parameters, additional_notes: notes });
+      // Or if using the mutation hook directly:
+      // updateState.mutate({ id: stateId, parameters: stateToUpdate.parameters, additional_notes: notes });
+    } else {
+      console.error("State not found for adding note:", stateId);
+    }
+  };
+
+  // const isSplitTransition = selectedState?.transition_type === 'split'; // Commented out: Unused variable
+
+  // Function to initiate prediction
+  const handlePredictClick = (stateId: number) => {
+    // ... existing code ...
+  };
+
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
@@ -138,7 +158,7 @@ export default function StateLineage({
               <div key={generation} className="flex flex-wrap gap-4">
                 {states.map((s) => {
                   const siblings = getSiblings(s);
-                  const isSplitTransition = siblings.length > 1;
+                  // const isSplitTransition = siblings.length > 1; // Commented out: Unused variable
                   
                   return (
                     <div

@@ -189,10 +189,13 @@ export default function States() {
 
       const stateData = data[index]
       createState.mutate(stateData, {
-        onSuccess: (newState) => {
+        onSuccess: (/* newState */) => { // Commented out unused variable
           // Create next state
           createNextState(index + 1)
         },
+        onError: (error) => {
+          console.error('handleCreateState error', error)
+        }
       })
     }
 

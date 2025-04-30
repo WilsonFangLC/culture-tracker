@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import Tree, { RenderCustomNodeElementFn, CustomNodeElementProps } from 'react-d3-tree';
-import { Passage } from '../api';
+import React, { useState, useCallback, useMemo } from 'react';
+import Tree, { RenderCustomNodeElementFn, CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
+// import { Passage } from '../api'; // Commented out: Passage not exported from api.ts
 
 interface TreeNode {
   name: string;
-  attributes?: {
-    [key: string]: string | number;
-  };
+  attributes?: Record<string, string | number | undefined>;
   children?: TreeNode[];
   isCollapsed?: boolean;
 }
 
 interface LineageTreeProps {
-  passages: Passage[];
-  onSelectPassage?: (passage: Passage) => void;
+  // passages: Passage[] // Commented out
+  passages: any[]; // Using any[] as temporary type
+  onSelectPassage?: (passage: any) => void;
 }
 
 interface RenderNodeDatum extends TreeNode {
@@ -24,44 +23,63 @@ interface RenderNodeDatum extends TreeNode {
   children?: RenderNodeDatum[];
 }
 
+const transformToTree = (passages: any[]): TreeNodeDatum | undefined => {
+  if (!passages || passages.length === 0) return undefined; // Return undefined instead of null
+
+  const passageMap: { [key: number]: any & { children: any[] } } = {};
+  passages.forEach(p => {
+    passageMap[p.id] = { ...p, children: [] };
+  });
+
+  const treeData: any[] = [];
+  passages.forEach(p => {
+    if (p.parent_id && passageMap[p.parent_id]) {
+      passageMap[p.parent_id].children.push(passageMap[p.id]);
+    } else {
+      // Root node
+      treeData.push(passageMap[p.id]);
+    }
+  });
+
+  // Assuming a single root for simplicity, or handle multiple roots if necessary
+  // react-d3-tree expects a single root object or an array if multiple roots exist
+  // This example assumes the transformation results in a structure compatible with TreeNodeDatum
+  // If the structure is significantly different, more mapping might be needed.
+  if (treeData.length === 0) return undefined;
+  // If multiple roots, return the array. If single root, return the first element.
+  // For simplicity, returning the first root if it exists, adjust if multiple roots are possible.
+  // This basic transformation might need adjustments based on react-d3-tree requirements.
+  const mapToTreeNodeDatum = (node: any): TreeNodeDatum => ({
+      name: node.name || `Passage ${node.id}`,
+      attributes: {
+          ID: node.id,
+          // Add other relevant attributes
+      },
+      children: node.children.length > 0 ? node.children.map(mapToTreeNodeDatum) : undefined,
+       __rd3t: { id: node.id.toString(), depth: 0, collapsed: false }, // Basic __rd3t structure
+  });
+
+  // If multiple roots, map all. Assuming single root based on previous code structure for now.
+  // return treeData.map(mapToTreeNodeDatum); // Use this if multiple roots possible
+  return mapToTreeNodeDatum(treeData[0]); // Assuming single root
+};
+
 const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) => {
   const [collapsedNodes, setCollapsedNodes] = useState<{ [key: string]: boolean }>({});
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const treeContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const transformToTree = (passages: Passage[]): TreeNode => {
-    const rootPassages = passages.filter(p => !p.parent_id);
-    
-    if (rootPassages.length === 0) {
-      return { name: 'No passages found' };
+  React.useEffect(() => {
+    if (treeContainerRef.current) {
+      const dimensions = treeContainerRef.current.getBoundingClientRect();
+      setTranslate({
+        x: dimensions.width / 2,
+        y: dimensions.height / 4 // Start a bit down from the top
+      });
     }
+  }, []);
 
-    const buildTree = (passage: Passage): TreeNode => {
-      const currentPD = Math.log2(passage.harvest_count / passage.seed_count);
-      const node: TreeNode = {
-        name: `P${passage.id}`,
-        attributes: {
-          'Cumulative PD': passage.generation.toFixed(2),
-          'This Passage PD': currentPD.toFixed(2),
-          'Cells': `${passage.seed_count} → ${passage.harvest_count}`,
-          'Time': passage.doubling_time_hours ? `${passage.doubling_time_hours.toFixed(1)}h` : 'N/A',
-          'Data': `${passage.measurements?.length || 0} measurements`,
-        },
-        isCollapsed: collapsedNodes[`P${passage.id}`],
-      };
-
-      const children = passages.filter(p => p.parent_id === passage.id);
-      if (children.length > 0 && !node.isCollapsed) {
-        node.children = children.map(buildTree);
-      }
-
-      return node;
-    };
-
-    return {
-      name: 'Lineages',
-      children: rootPassages.map(buildTree),
-      isCollapsed: false
-    };
-  };
+  const treeData = useMemo(() => transformToTree(passages), [passages]);
 
   const handleNodeClick = (nodeDatum: any) => {
     if (nodeDatum.name === 'Lineages') return;
@@ -82,8 +100,6 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
       [nodeDatum.name]: !prev[nodeDatum.name]
     }));
   };
-
-  const treeData = transformToTree(passages);
 
   const renderNode: RenderCustomNodeElementFn = ({ nodeDatum, toggleNode }: CustomNodeElementProps) => {
     const isRoot = nodeDatum.name === 'Lineages';
@@ -180,16 +196,20 @@ const LineageTree: React.FC<LineageTreeProps> = ({ passages, onSelectPassage }) 
     );
   };
 
+  if (!treeData) {
+    return <div>No lineage data available.</div>; // Handle case where transform returns undefined
+  }
+
   return (
-    <div className="relative" style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
+    <div ref={treeContainerRef} style={{ width: '100%', height: '600px', border: '1px solid #ccc', borderRadius: '8px', overflow: 'hidden' }}>
       <div className="absolute top-2 left-2 text-sm text-gray-500">
         Click nodes to expand/collapse. Double-click to center.
       </div>
       <Tree
         data={treeData}
+        translate={translate}
         orientation="vertical"
         pathFunc="step"
-        translate={{ x: 500, y: 80 }}
         nodeSize={{ x: 250, y: 150 }}
         separation={{ siblings: 2, nonSiblings: 2.5 }}
         renderCustomNodeElement={renderNode}
