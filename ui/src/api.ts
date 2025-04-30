@@ -2,7 +2,8 @@ import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  // Use environment variable for base URL, fallback to localhost for development
+  baseURL: import.meta.env.VITE_API_BASE || 'http://localhost:8000',
   withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
