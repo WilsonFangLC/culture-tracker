@@ -5,6 +5,11 @@ import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import { useQuery } from 'react-query'
+import { fetchStates } from '../api'
+import AddStateForm from '../components/AddStateForm'
+import StateTree from '../components/StateTree'
+import { StateNode } from '../types'
 dayjs.extend(utc)
 
 // Helper function to format prediction results
@@ -27,7 +32,21 @@ export default function States() {
   const updateState = useUpdateState()
 
   // Ensure states are always arrays
-  const states = Array.isArray(statesData) ? statesData : []
+  const [states, setStates] = useState<CellState[]>([]); // Manage states locally
+
+  // --- Update local states when API data changes ---
+  useEffect(() => {
+    if (statesData && Array.isArray(statesData)) {
+      setStates(statesData);
+    }
+  }, [statesData]);
+  // --- End update effect ---
+
+  // --- Define handleSelectState --- 
+  const handleSelectState = (state: CellState | null) => {
+    setSelectedState(state);
+  };
+  // --- End handleSelectState --- 
 
   // Function to handle CSV export
   const handleExportCSV = async () => {
@@ -226,7 +245,31 @@ export default function States() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Cell Culture States</h1>
-      
+
+      {/* Instructions Section Start */}
+      <details className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6 shadow-sm">
+        <summary className="font-semibold text-lg cursor-pointer text-blue-700 hover:text-blue-900">How to Use This Tool</summary>
+        <div className="mt-3 text-sm text-gray-700 space-y-2">
+          <p><strong>Purpose:</strong> This tool helps you track the lineage and passage number of your cell cultures.</p>
+          <p><strong>Viewing Cells:</strong> The lineage graph below shows your cell states. Each box represents a specific culture or passage. Click on a box to see its details on the right.</p>
+          <p><strong>Adding a New Culture:</strong> To add a brand new cell line (with no parent), use the 'Create New State' button or form, leave the 'Parent State' selection empty, and fill in the other details.</p>
+          <p><strong>Passaging Cells (Adding a Child):</strong> To record a new passage derived from an existing one:
+            <ol className="list-decimal list-inside ml-4">
+              <li>Use the 'Create New State' button or form.</li>
+              <li>Select the ID of the parent cell state (the one you passaged *from*) in the 'Parent State' selection.</li>
+              <li>Fill in the details for the *new* passage (name, passage number, date, etc.).</li>
+              <li>Submit the form. The new passage will appear connected to its parent in the lineage graph.</li>
+            </ol>
+          </p>
+          <p><strong>Deleting a Cell State:</strong> Click the 'Delete' button on a cell state's details view. <strong className="text-red-600">Important:</strong> You can only delete a cell state if it has *no children* (i.e., you haven't passaged anything *from* it yet).</p>
+          <p><strong>Editing Details:</strong> Click on a cell state in the graph, then use the form on the right to update its parameters or notes.</p>
+          <p><strong>Predicting Density:</strong> Click the 'Predict Density' button on a cell state's details to estimate cell density at a future time point based on its recorded parameters.</p>
+           <p><strong>Exporting Data:</strong> Use the 'Export CSV' button to download all cell state data.</p>
+          
+        </div>
+      </details>
+      {/* Instructions Section End */}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* States List Column */}
         <div className="lg:col-span-1 space-y-4">
@@ -331,17 +374,16 @@ export default function States() {
         {/* State Details / Lineage Column */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-xl font-semibold">State Lineage & Details</h2>
-          {selectedState ? (
+          {!showCreateState && selectedState && (
             <StateLineage 
-              state={selectedState}
-              states={states}
-              onSelectState={setSelectedState}
+              state={selectedState} 
+              states={states} 
+              onSelectState={handleSelectState} 
               onUpdateState={handleUpdateState}
+              onStatesChange={setStates} // Pass the state setter
+              isUpdating={updateState.isPending} // Use isPending for loading status
+              updateError={updateState.error?.message} // Pass error message
             />
-          ) : (
-            <div className="p-4 bg-gray-100 rounded-lg text-gray-500 h-[600px] flex items-center justify-center">
-              Select a state from the list to view its details and lineage.
-            </div>
           )}
         </div>
       </div>

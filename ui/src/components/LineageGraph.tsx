@@ -7,6 +7,7 @@ interface LineageGraphProps {
   state: CellState | null
   states: CellState[]
   onSelectState: (state: CellState) => void
+  onDeleteState: (stateId: number) => void
 }
 
 interface CustomNodeDatum extends TreeNodeDatum {
@@ -51,7 +52,7 @@ const defaultNodeDatum: CustomNodeDatum = {
   },
 }
 
-export default function LineageGraph({ state, states, onSelectState }: LineageGraphProps) {
+export default function LineageGraph({ state, states, onSelectState, onDeleteState }: LineageGraphProps) {
   // Convert our states into a tree structure that react-d3-tree can use
   const convertToTree = useCallback((currentState: CellState | null): CustomNodeDatum => {
     if (!currentState) {
@@ -116,6 +117,12 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
     }
   }, [states, onSelectState])
 
+  const handleDeleteClick = useCallback((stateId: number) => {
+    if (window.confirm("Are you sure you want to delete this state? This action cannot be undone if the state has no children.")) {
+      onDeleteState(stateId);
+    }
+  }, [onDeleteState]);
+
   return (
     <div className="w-full h-[600px] border rounded-lg bg-white p-4">
       {!state || !states.length ? (
@@ -158,6 +165,22 @@ export default function LineageGraph({ state, states, onSelectState }: LineageGr
                   strokeWidth="2"
                   onClick={toggleNode}
                 />
+                {customNode.stateId !== 0 && (
+                  <text
+                    x="18"
+                    y="-12"
+                    fontSize="12"
+                    fill="red"
+                    textAnchor="middle"
+                    cursor="pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(customNode.stateId);
+                    }}
+                  >
+                    X
+                  </text>
+                )}
                 {customNode.transitionType && (
                   <text
                     textAnchor="middle"

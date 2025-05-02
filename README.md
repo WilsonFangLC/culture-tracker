@@ -37,6 +37,27 @@ A minimal viable lab-passage tracker for researchers to record and track cell cu
 - State Management: React Query
 - Authentication: FastAPI-Users (JWT in http-only cookie)
 
+## Project Structure
+
+- **`api/`**: Contains the backend FastAPI application.
+    - `app/`: Core application code.
+        - `routers/`: API endpoint definitions.
+    - `tests/`: Backend tests.
+    - `venv/`: Python virtual environment (usually excluded from version control).
+    - `requirements.txt`: Python dependencies.
+- **`ui/`**: Contains the frontend React application (built with Vite).
+    - `src/`: Frontend source code.
+        - `components/`: Reusable React components.
+        - `pages/`: Top-level page components.
+        - `utils/`: Utility functions, including API interaction logic.
+    - `dist/`: Production build output (usually excluded from version control).
+    - `index.html`: Main HTML entry point for the frontend.
+    - `package.json`: Node.js dependencies and scripts.
+- **`src/`**: Seems to be an older or potentially unused source directory. Needs review. (If you know what this is for, please let me know, and I can update the description!)
+- **`app.db`**: SQLite database file used in development.
+- **`docker-compose.yml`**: Defines services for local development (API, UI).
+- **`README.md`**: This file - project overview, setup, and documentation.
+
 ## Next Steps
 
 1. **Database Upgrade**

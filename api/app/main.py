@@ -17,6 +17,8 @@ from .schemas import CellStateCreate, CellStateRead, CellStateUpdate
 
 # Import the new export router
 from .routers import export as export_router
+# Import the new cell_states router
+from .routers import cell_states as cell_states_router
 
 loaded_dotenv = load_dotenv() # Load environment variables from .env file
 print(f"---DEBUG: load_dotenv() found file: {loaded_dotenv} ---")
@@ -39,6 +41,8 @@ app.add_middleware(
 
 # Include the export router
 app.include_router(export_router.router, prefix="/api")
+# Include the cell_states router
+app.include_router(cell_states_router.router, prefix="/api")
 
 # Initialize database and run migrations
 @app.on_event("startup")

@@ -2,6 +2,7 @@ from sqlmodel import select
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
 from datetime import datetime
+from fastapi import HTTPException
 
 from .models import CellState
 from .schemas import CellStateCreate
@@ -85,18 +86,22 @@ def get_cell_state_lineage(
 
 def delete_cell_state(session: Session, state_id: int) -> bool:
     """
-    Delete a cell state.
-    Updates child states to remove parent reference.
+    Delete a cell state only if it has no children.
+    Returns True if deleted, False if not found.
+    Raises HTTPException 409 if the state has children.
     """
     state = session.get(CellState, state_id)
     if state is None:
         return False
 
-    # Update child states to remove parent reference
-    for child in state.children:
-        child.parent_id = None
+    # Check if the state has children
+    if state.children:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete state with children. Please delete descendants first."
+        )
 
-    # Delete the state itself
+    # If no children, proceed with deletion
     session.delete(state)
     session.commit()
     return True 

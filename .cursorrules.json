@@ -1,0 +1,74 @@
+{
+  "rules": [
+    {
+      "type": "file",
+      "path": "README.md",
+      "reason": "Project overview, setup, and structure documentation."
+    },
+    {
+      "type": "file",
+      "path": "api/app/main.py",
+      "reason": "Main entry point for the FastAPI backend application."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/main.tsx",
+      "reason": "Main entry point for the React frontend application."
+    },
+    {
+      "type": "directory",
+      "path": "api/app/routers/",
+      "reason": "Contains API endpoint definitions for the backend."
+    },
+    {
+      "type": "file",
+      "path": "api/app/models.py",
+      "reason": "Contains backend data models (SQLModel)."
+    },
+     {
+        "type": "file",
+        "path": "api/app/schemas.py",
+        "reason": "Contains backend Pydantic schemas for data validation and serialization."
+      },
+      {
+        "type": "file",
+        "path": "api/app/crud.py",
+        "reason": "Contains backend CRUD (Create, Read, Update, Delete) operations."
+      },
+    {
+      "type": "directory",
+      "path": "ui/src/components/",
+      "reason": "Contains reusable React components for the frontend."
+    },
+    {
+      "type": "directory",
+      "path": "ui/src/pages/",
+      "reason": "Contains top-level page components for the frontend."
+    },
+    {
+      "type": "directory",
+      "path": "ui/src/utils/",
+      "reason": "Contains frontend utility functions, potentially including API interaction logic."
+    },
+        {
+      "type": "file",
+      "path": "ui/src/api.ts",
+      "reason": "Contains frontend API interaction logic."
+    },
+    {
+      "type": "file",
+      "path": "api/requirements.txt",
+      "reason": "Lists Python dependencies for the backend."
+    },
+    {
+      "type": "file",
+      "path": "ui/package.json",
+      "reason": "Lists Node.js dependencies and scripts for the frontend."
+    },
+    {
+      "type": "file",
+      "path": "docker-compose.yml",
+      "reason": "Defines services for local development environment."
+    }
+  ]
+} 

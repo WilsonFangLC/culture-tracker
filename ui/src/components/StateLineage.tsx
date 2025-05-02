@@ -1,6 +1,6 @@
-import { CellState } from '../api'
+import { CellState, deleteCellState } from '../api'
 import LineageGraph from './LineageGraph'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
 import { calculatePredictedDensity } from '../utils/calculations'
 import dayjs from 'dayjs'
@@ -10,8 +10,9 @@ dayjs.extend(utc)
 interface StateLineageProps {
   state: CellState | null;
   states: CellState[];
-  onSelectState: (state: CellState) => void;
+  onSelectState: (state: CellState | null) => void;
   onUpdateState: (stateId: number, updateData: { parameters: any; additional_notes?: string }) => void;
+  onStatesChange: (states: CellState[]) => void;
   isUpdating?: boolean;
   updateError?: string;
 }
@@ -21,6 +22,7 @@ export default function StateLineage({
   states, 
   onSelectState, 
   onUpdateState,
+  onStatesChange,
   isUpdating,
   updateError 
 }: StateLineageProps) {
@@ -98,6 +100,33 @@ export default function StateLineage({
     // ... existing code ...
   };
 
+  const handleDeleteState = useCallback(async (stateId: number) => {
+    try {
+      await deleteCellState(stateId);
+      // Update local state by removing the deleted state
+      const updatedStates = states.filter(s => s.id !== stateId);
+      onStatesChange(updatedStates); // Notify parent component
+      // Optionally, if the currently selected state was deleted, clear the selection
+      if (state?.id === stateId) {
+        onSelectState(null); // Assuming onSelectState(null) deselects
+      }
+    } catch (error: any) {
+      console.error("Failed to delete state:", error);
+      if (error.response && error.response.status === 409) {
+        // Specific error for conflict (state has children)
+        window.alert("Error: Cannot delete state with children. Please delete descendants first.");
+      } else if (error.response && error.response.status === 404) {
+        // Specific error for not found 
+        window.alert("Error: State not found.");
+        // Optionally remove from local state if API confirms not found
+         onStatesChange(states.filter(s => s.id !== stateId));
+      } else {
+        // Generic error message
+        window.alert(`Failed to delete state. ${error.message || 'Please try again.'}`);
+      }
+    }
+  }, [states, state, onStatesChange, onSelectState]);
+
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
@@ -150,6 +179,7 @@ export default function StateLineage({
           state={state}
           states={states}
           onSelectState={onSelectState}
+          onDeleteState={handleDeleteState}
         />
       ) : (
         <div className="space-y-4">
@@ -235,6 +265,14 @@ export default function StateLineage({
                         >
                           Edit
                         </button>
+                        {/* Add Delete Button for List View */}
+                        <button 
+                          className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600" 
+                          onClick={() => handleDeleteState(s.id)}
+                        >
+                          Delete
+                        </button>
+                        {/* End Delete Button */}
                       </div>
                     </div>
                   );

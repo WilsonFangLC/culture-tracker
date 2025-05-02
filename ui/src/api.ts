@@ -118,4 +118,20 @@ export const useUpdateState = () => {
       queryClient.invalidateQueries({ queryKey: ['state', data.id] })
     },
   })
-} 
+}
+
+// Function to delete a cell state
+export const deleteCellState = async (stateId: number) => {
+  try {
+    const response = await api.delete(`/api/cell_states/${stateId}`); // Use the correct endpoint with /api prefix
+    // Check for 204 No Content status
+    if (response.status !== 204) {
+      throw new Error(`API responded with status ${response.status}`);
+    }
+    return true; // Indicate success
+  } catch (error: any) {
+    console.error(`Failed to delete state ${stateId}:`, error);
+    // Re-throw the error object which might contain response details
+    throw error;
+  }
+}; 
