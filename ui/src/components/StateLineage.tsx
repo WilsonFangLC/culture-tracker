@@ -199,9 +199,6 @@ export default function StateLineage({
                     >
                       <div className="flex items-center space-x-2">
                         <span className="font-medium">{s.name || `State ${s.id}`}</span>
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">
-                          Status {s.parameters?.status ?? 'N/A'}
-                        </span>
                       </div>
                       <div className="text-sm text-gray-500">
                         {dayjs.utc(s.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}

@@ -21,14 +21,11 @@ def get_cell_states(
     session: Session,
     skip: int = 0,
     limit: int = 100,
-    status: Optional[str] = None
 ) -> List[CellState]:
     """
-    Get paginated list of cell states, optionally filtered by status.
+    Get paginated list of cell states.
     """
     query = select(CellState)
-    if status:
-        query = query.where(CellState.parameters['status'].astext == status)
     result = session.execute(
         query.offset(skip).limit(limit)
     )

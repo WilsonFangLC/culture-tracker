@@ -17,7 +17,6 @@ interface CreateStateFormProps {
 
 // Define parameter keys for measurement dropdown
 const measurableParameters: Array<keyof CellStateCreate['parameters']> = [
-  'status',
   'temperature_c',
   'volume_ml',
   'location',
@@ -43,19 +42,18 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   const [manualTimestamp, setManualTimestamp] = useState<string>(defaultDateTimeLocal);
 
   const [formData, setFormData] = useState({
-    name: "",
+    name: "", // Default: empty, placeholder will guide
     parent_id: undefined as number | undefined,
-    temperature_c: 37,
-    volume_ml: 20,
-    location: 'incubator',
-    status: '1',
-    cell_density: 0,
-    viability: 100,
-    storage_location: '',
-    growth_rate: 0,
-    doubling_time: 0,
-    density_limit: 0,
-    additional_notes: '',
+    temperature_c: 37, // Default: 37
+    volume_ml: 10, // Default: 10
+    location: 'Incubator 1', // Default: Incubator 1
+    cell_density: 1e5, // Default: 100,000
+    viability: 100, // Default: 100%
+    storage_location: '', // Default: empty
+    growth_rate: Math.log(2) / 1, // Default: Calculated from 1h doubling time
+    doubling_time: 1, // Default: 1 hour
+    density_limit: 1e6, // Default: 1,000,000
+    additional_notes: '', // Default: empty
   });
 
   // State for measurement transition
@@ -65,7 +63,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
 
   const [splitStates, setSplitStates] = useState<Array<{
     name: string;
-    status: string;
     temperature_c: number;
     volume_ml: number;
     location: string;
@@ -171,7 +168,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
         ...basePayload, // Use base payload
         name: state.name, // Override name
         parameters: { // Use split state parameters
-          status: state.status,
           temperature_c: state.temperature_c,
           volume_ml: state.volume_ml,
           location: state.location,
@@ -228,7 +224,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       onSubmit([{
         ...basePayload,
         parameters: {
-          status: formData.status,
           temperature_c: formData.temperature_c,
           volume_ml: formData.volume_ml,
           location: formData.location,
@@ -248,7 +243,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   const addSplitState = () => {
     setSplitStates([...splitStates, {
       name: "",
-      status: '1',
       temperature_c: 37,
       volume_ml: 20,
       location: 'incubator',
@@ -448,22 +442,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
               </div>
 
               <div className="space-y-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
-                  <select
-                    className="mt-1 w-full p-2 border rounded"
-                    value={state.status}
-                    onChange={(e) => updateSplitState(index, 'status', e.target.value)}
-                  >
-                    <option value="1">Status 1</option>
-                    <option value="2">Status 2</option>
-                    <option value="3">Status 3</option>
-                    <option value="4">Status 4</option>
-                  </select>
-                </div>
-
                 {/* Cell Parameters */}
                 <div className="space-y-2">
                   <div>
@@ -570,11 +548,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
            {/* Keep existing single form fields if needed for 'single' type, but hide for 'measurement' */}
            {transitionType === 'single' && (
              <>
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <input type="text" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="mt-1 w-full p-2 border rounded" />
-              </div>
               {/* Temperature */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>

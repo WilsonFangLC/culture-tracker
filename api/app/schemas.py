@@ -10,7 +10,7 @@ class CellStateBase(BaseModel):
 
     @validator('parameters')
     def validate_parameters(cls, v):
-        required_fields = ['status', 'temperature_c', 'volume_ml', 'location']
+        required_fields = ['temperature_c', 'volume_ml', 'location']
         for field in required_fields:
             if field not in v:
                 raise ValueError(f"Missing required parameter: {field}")

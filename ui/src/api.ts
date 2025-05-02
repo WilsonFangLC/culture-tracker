@@ -47,7 +47,6 @@ export interface CellStateCreate {
   timestamp: string;
   parent_id?: number;
   parameters: {
-    status: string;
     temperature_c: number;
     volume_ml: number;
     location: string;
