@@ -5,11 +5,7 @@ import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-import { useQuery } from 'react-query'
-import { fetchStates } from '../api'
-import AddStateForm from '../components/AddStateForm'
-import StateTree from '../components/StateTree'
-import { StateNode } from '../types'
+
 dayjs.extend(utc)
 
 // Helper function to format prediction results
