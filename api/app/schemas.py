@@ -1,5 +1,5 @@
 from typing import Optional, Dict, List
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from datetime import datetime
 
 class CellStateBase(BaseModel):
@@ -7,14 +7,6 @@ class CellStateBase(BaseModel):
     timestamp: datetime
     parameters: Dict
     parent_id: Optional[int] = None
-
-    @validator('parameters')
-    def validate_parameters(cls, v):
-        required_fields = ['temperature_c', 'volume_ml', 'location']
-        for field in required_fields:
-            if field not in v:
-                raise ValueError(f"Missing required parameter: {field}")
-        return v
 
 class CellStateCreate(CellStateBase):
     transition_type: Optional[str] = None

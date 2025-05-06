@@ -34,37 +34,23 @@ export interface CellState {
   name: string
   timestamp: string
   parent_id: number | null
-  parameters: Record<string, any>
+  parameters: Record<string, any> & {
+    transition_parameters?: Record<string, any>
+  }
   notes?: string
   children?: CellState[]
   transition_type?: string | null
-  transition_parameters?: {
-    operation_type?: string;
-    [key: string]: any;
-  }
   additional_notes?: string
-  created_by: string
 }
 
 export interface CellStateCreate {
   name: string;
   timestamp: string;
   parent_id?: number;
-  parameters: {
-    temperature_c: number;
-    volume_ml: number;
-    location: string;
-    cell_density: number;
-    viability: number;
-    storage_location: string;
-    growth_rate?: number;
-    density_limit?: number;
+  parameters: Record<string, any> & {
+    transition_parameters?: Record<string, any>
   };
-  transition_type?: 'single' | 'split' | 'measurement';
-  transition_parameters?: {
-    operation_type?: 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'measurement' | 'split';
-    [key: string]: any;
-  };
+  transition_type?: string;
   additional_notes?: string;
 }
 
@@ -140,4 +126,9 @@ export const deleteCellState = async (stateId: number) => {
     // Re-throw the error object which might contain response details
     throw error;
   }
+};
+
+// Function to get CSV export URL
+export const getExportCsvUrl = () => {
+  return `${api.defaults.baseURL}/api/export/csv`;
 }; 

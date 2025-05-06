@@ -1,82 +1,84 @@
 import { useState } from 'react'
 import { CellState } from '../api'
+import DynamicParameters from './DynamicParameters'
 
 interface EditStateFormProps {
   state: CellState;
   onSubmit: (data: {
-    parameters: {
-      status: string;
-      temperature_c: number;
-      volume_ml: number;
-      location: string;
-      cell_density: number;
-      viability: number;
-      storage_location: string;
-      growth_rate: number;
-      density_limit: number;
-    };
+    parameters: Record<string, any>;
     additional_notes?: string;
   }) => void;
   onCancel: () => void;
 }
 
 export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFormProps) {
-  const [formData, setFormData] = useState({
-    status: state.parameters.status || '1',
-    temperature_c: state.parameters.temperature_c ?? 0,
-    volume_ml: state.parameters.volume_ml ?? 0,
-    location: state.parameters.location || '',
-    cell_density: state.parameters.cell_density ?? 0,
-    viability: state.parameters.viability ?? 0,
-    storage_location: state.parameters.storage_location || '',
-    growth_rate: state.parameters.growth_rate ?? 0,
-    density_limit: state.parameters.density_limit ?? 0,
-    additional_notes: state.additional_notes || '',
-  })
+  // Initialize with all parameters from the state
+  const [parameters, setParameters] = useState<Record<string, any>>({ ...state.parameters });
+  const [additionalNotes, setAdditionalNotes] = useState(state.additional_notes || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Submitting form with data:', formData)
-    const { additional_notes, ...parameters } = formData;
+    console.log('Submitting form with parameters:', parameters)
     onSubmit({
       parameters,
-      additional_notes,
+      additional_notes: additionalNotes,
     })
-  }
-
-  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Omit<typeof formData, 'additional_notes'>) => {
-    const value = e.target.value === '' ? 0 : parseFloat(e.target.value)
-    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg">
       <h3 className="text-lg font-semibold">Edit State {state.id}</h3>
       
-      {/* Display created_by (read-only) */}
-      <div className="text-sm text-gray-500">
-        Created By: <span className="font-medium capitalize">{state.created_by}</span>
-      </div>
-      
-      {/* Status Selection */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Status
-        </label>
-        <select
-          className="mt-1 w-full p-2 border rounded"
-          value={formData.status}
-          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-        >
-          <option value="1">Status 1</option>
-          <option value="2">Status 2</option>
-          <option value="3">Status 3</option>
-          <option value="4">Status 4</option>
-        </select>
-      </div>
+      {/* Common Parameters Section */}
+      <div className="space-y-4">
+        <h4 className="font-medium">Common Parameters</h4>
+        
+        {/* Temperature */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Temperature (°C)
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full p-2 border rounded"
+            value={parameters.temperature_c ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters({ ...parameters, temperature_c: value });
+            }}
+          />
+        </div>
 
-      {/* Cell Parameters */}
-      <div className="space-y-2">
+        {/* Volume */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Volume (ml)
+          </label>
+          <input
+            type="number"
+            className="mt-1 w-full p-2 border rounded"
+            value={parameters.volume_ml ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters({ ...parameters, volume_ml: value });
+            }}
+          />
+        </div>
+
+        {/* Location */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Location
+          </label>
+          <input
+            type="text"
+            className="mt-1 w-full p-2 border rounded"
+            value={parameters.location || ''}
+            onChange={(e) => setParameters({ ...parameters, location: e.target.value })}
+          />
+        </div>
+
+        {/* Cell Density */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Cell Density (cells/ml)
@@ -85,10 +87,15 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             type="number"
             min="0"
             className="mt-1 w-full p-2 border rounded"
-            value={formData.cell_density}
-            onChange={(e) => handleNumericChange(e, 'cell_density')}
+            value={parameters.cell_density ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters({ ...parameters, cell_density: value });
+            }}
           />
         </div>
+
+        {/* Viability */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Viability (%)
@@ -98,83 +105,91 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             min="0"
             max="100"
             className="mt-1 w-full p-2 border rounded"
-            value={formData.viability}
-            onChange={(e) => handleNumericChange(e, 'viability')}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Storage Location
-          </label>
-          <input
-            type="text"
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.storage_location}
-            onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
-          />
-        </div>
-      </div>
-
-      {/* State Parameters */}
-      <div className="space-y-2">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Temperature (°C)
-          </label>
-          <input
-            type="number"
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.temperature_c}
-            onChange={(e) => handleNumericChange(e, 'temperature_c')}
+            value={parameters.viability ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters({ ...parameters, viability: value });
+            }}
           />
         </div>
 
+        {/* Growth Rate */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Volume (ml)
+            Growth Rate (per hour)
           </label>
-          <input
-            type="number"
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.volume_ml}
-            onChange={(e) => handleNumericChange(e, 'volume_ml')}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Location
-          </label>
-          <input
-            type="text"
-            className="mt-1 w-full p-2 border rounded"
-            value={formData.location}
-            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
           <input
             type="number"
             step="any"
             className="mt-1 w-full p-2 border rounded"
-            value={formData.growth_rate}
-            onChange={(e) => handleNumericChange(e, 'growth_rate')}
-            placeholder="e.g., 0.03 (per hour)"
+            value={parameters.growth_rate ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters({ ...parameters, growth_rate: value });
+              
+              // Update doubling time if growth rate changes and is valid
+              if (value && value > 0) {
+                setParameters(prev => ({
+                  ...prev,
+                  growth_rate: value,
+                  doubling_time: Math.log(2) / value
+                }));
+              } else {
+                setParameters(prev => ({
+                  ...prev,
+                  growth_rate: value
+                }));
+              }
+            }}
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+
+        {/* Doubling Time */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Doubling Time (hours)
+          </label>
           <input
             type="number"
             step="any"
             className="mt-1 w-full p-2 border rounded"
-            value={formData.density_limit}
-            onChange={(e) => handleNumericChange(e, 'density_limit')}
-            placeholder="e.g., 1.5e6 (cells/ml)"
+            value={parameters.doubling_time ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              
+              // Update growth rate if doubling time changes and is valid
+              if (value && value > 0) {
+                setParameters(prev => ({
+                  ...prev,
+                  doubling_time: value,
+                  growth_rate: Math.log(2) / value
+                }));
+              } else {
+                setParameters(prev => ({
+                  ...prev,
+                  doubling_time: value
+                }));
+              }
+            }}
           />
         </div>
       </div>
+
+      {/* Dynamic Parameters */}
+      <DynamicParameters 
+        parameters={Object.entries(parameters)
+          .filter(([key]) => !['temperature_c', 'volume_ml', 'location', 'cell_density', 
+                              'viability', 'growth_rate', 'doubling_time'].includes(key))
+          .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})}
+        onChange={(newCustomParams) => {
+          // Merge the custom parameters with the common ones
+          setParameters({
+            ...parameters,
+            ...newCustomParams
+          });
+        }}
+        className="mt-6"
+      />
 
       {/* Additional Notes */}
       <div>
@@ -185,8 +200,8 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
           id="additional_notes"
           rows={3}
           className="mt-1 w-full p-2 border rounded"
-          value={formData.additional_notes}
-          onChange={(e) => setFormData({ ...formData, additional_notes: e.target.value })}
+          value={additionalNotes}
+          onChange={(e) => setAdditionalNotes(e.target.value)}
         />
       </div>
 
