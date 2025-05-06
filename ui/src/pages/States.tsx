@@ -334,7 +334,17 @@ export default function States() {
                          <div><span className="font-medium">Density Limit:</span> {formatPrediction(state.parameters.density_limit)} (cells/mL)</div>
                       )}
                       {state.transition_type && (
-                        <div><span className="font-medium">Transition:</span> {state.transition_type}</div>
+                        <div><span className="font-medium">Operation:</span> {
+                          // Show the operation type from transition_parameters if available
+                          // Otherwise show a user-friendly version of the transition type
+                          state.transition_parameters?.operation_type 
+                            ? state.transition_parameters.operation_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+                            : state.transition_type === 'single' 
+                              ? 'Single Transition'
+                              : state.transition_type === 'split'
+                                ? 'Split Culture'
+                                : 'Measurement'
+                        }</div>
                       )}
                     </div>
                     {/* Prediction Button */} 

@@ -38,6 +38,10 @@ export interface CellState {
   notes?: string
   children?: CellState[]
   transition_type?: string | null
+  transition_parameters?: {
+    operation_type?: string;
+    [key: string]: any;
+  }
   additional_notes?: string
   created_by: string
 }
@@ -57,7 +61,10 @@ export interface CellStateCreate {
     density_limit?: number;
   };
   transition_type?: 'single' | 'split' | 'measurement';
-  transition_parameters?: Record<string, any>;
+  transition_parameters?: {
+    operation_type?: 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'measurement' | 'split';
+    [key: string]: any;
+  };
   additional_notes?: string;
 }
 
