@@ -162,6 +162,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     density_limit: number;
     distribution: number;
     operation_type: OperationType;
+    showOptionalParams?: boolean;
+    doubling_time?: number;
+    number_of_vials?: number;
+    total_cells?: number;
   }>>([])
 
   // --- Calculation Logic --- 
@@ -426,9 +430,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           stateNotes = operationDescriptions[state.operation_type];
         }
         
+        // For harvest operations, we need to use cell_density as end_density in transition_parameters
+        const transitionParams = { 
+          operation_type: state.operation_type,
+          ...(state.operation_type === 'harvest' ? { 
+            end_density: state.cell_density,
+            cell_type: parentState?.transition_parameters?.cell_type || ''
+          } : {}) 
+        };
+        
+        // Ensure name includes "Harvest" for harvest operations if not already specified
+        let stateName = state.name;
+        if (state.operation_type === 'harvest' && !stateName.toLowerCase().includes('harvest')) {
+          stateName = stateName ? `Harvest: ${stateName}` : `Harvest of Split ${formData.name || 'Unknown'}`;
+        }
+        
         return {
           ...basePayload, // Use base payload
-          name: state.name, // Override name
+          name: stateName, // Use name with harvest prefix if needed
           parameters: { // Use split state parameters
             temperature_c: state.temperature_c,
             volume_ml: state.volume_ml,
@@ -440,7 +459,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
             density_limit: state.density_limit,
           },
           transition_type: splitTransitionType, // Use the appropriate transition type
-          transition_parameters: { operation_type: state.operation_type }, // Store operation type 
+          transition_parameters: transitionParams, // Use operation-specific params
           additional_notes: stateNotes,
         };
       });
@@ -505,18 +524,25 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   }
 
   const addSplitState = () => {
+    // Use defaults from operationDefaults for passage operation
+    const passageDefaults = operationDefaults['passage'];
+    
     setSplitStates([...splitStates, {
       name: "",
-      temperature_c: 37,
-      volume_ml: 20,
-      location: 'incubator',
-      cell_density: 0,
-      viability: 100,
-      storage_location: '',
-      growth_rate: 0,
-      density_limit: 0,
+      temperature_c: passageDefaults.temperature_c || 37,
+      volume_ml: passageDefaults.volume_ml || 20,
+      location: passageDefaults.location || 'incubator',
+      cell_density: passageDefaults.cell_density || 5e4,
+      viability: passageDefaults.viability || 95,
+      storage_location: passageDefaults.storage_location || '',
+      growth_rate: passageDefaults.growth_rate || 0,
+      density_limit: passageDefaults.density_limit || 0,
+      doubling_time: passageDefaults.doubling_time || 0,
       distribution: 0,
       operation_type: 'passage',
+      showOptionalParams: false,
+      number_of_vials: 1,
+      total_cells: 0
     }])
   }
 
@@ -527,6 +553,19 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   const updateSplitState = (index: number, field: string, value: any) => {
     const newSplitStates = [...splitStates]
     newSplitStates[index] = { ...newSplitStates[index], [field]: value }
+    
+    // Handle linked parameters (growth rate and doubling time)
+    if (field === 'growth_rate' || field === 'doubling_time') {
+      const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+      
+      if (!isNaN(numericValue) && numericValue > 0) {
+        if (field === 'growth_rate') {
+          newSplitStates[index].doubling_time = Math.log(2) / numericValue;
+        } else { // field === 'doubling_time'
+          newSplitStates[index].growth_rate = Math.log(2) / numericValue;
+        }
+      }
+    }
     
     // If operation type is changed, apply the defaults for that operation
     if (field === 'operation_type' && typeof value === 'string') {
@@ -539,7 +578,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
         ...newSplitStates[index], 
         ...defaults,
         name: newSplitStates[index].name, 
-        distribution: newSplitStates[index].distribution 
+        distribution: newSplitStates[index].distribution,
+        showOptionalParams: newSplitStates[index].showOptionalParams 
       };
     }
     
@@ -1685,6 +1725,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                 >
                   <option value="passage">Passage (Continue Culture)</option>
                   <option value="freeze">Freeze (Store Sample)</option>
+                  <option value="harvest">Harvest (Throw Away)</option>
                   {/* Removed Start New Culture option as requested */}
                   {/* Skip thaw since it doesn't make sense for a split */}
                   {/* Skip measurement since it doesn't make sense for a split */}
@@ -1697,74 +1738,257 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
               </div>
 
               <div className="space-y-2">
-                {/* Cell Parameters */}
+                {/* Cell Parameters based on operation type */}
                 <div className="space-y-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Cell Density (cells/ml)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.cell_density}
-                      onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Viability (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.viability}
-                      onChange={(e) => updateSplitState(index, 'viability', parseFloat(e.target.value))}
-                    />
-                  </div>
+                  {state.operation_type === 'harvest' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        End Cell Density (cells/ml)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.cell_density} 
+                        onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Final cell density at the time of harvest</p>
+                    </div>
+                  ) : state.operation_type === 'freeze' ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Number of Frozen Vials
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          className="mt-1 w-full p-2 border rounded"
+                          value={state.number_of_vials || 1} 
+                          onChange={(e) => updateSplitState(index, 'number_of_vials', parseInt(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Total Cells per Vial
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="mt-1 w-full p-2 border rounded"
+                          value={state.cell_density}
+                          onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Vial Volume (ml)
+                        </label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full p-2 border rounded"
+                          value={state.volume_ml}
+                          onChange={(e) => updateSplitState(index, 'volume_ml', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Storage Temperature (°C)
+                        </label>
+                        <input
+                          type="number"
+                          className="mt-1 w-full p-2 border rounded"
+                          value={state.temperature_c}
+                          onChange={(e) => updateSplitState(index, 'temperature_c', parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Storage Location
+                        </label>
+                        <input
+                          type="text"
+                          className="mt-1 w-full p-2 border rounded"
+                          value={state.storage_location}
+                          onChange={(e) => updateSplitState(index, 'storage_location', e.target.value)}
+                          placeholder="e.g., Freezer 2, Box A, Position A1"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">Specific storage location of vials</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        {state.operation_type === 'passage' ? 'New Passage Start Cell Density (cells/ml)' : 'Cell Density (cells/ml)'}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.cell_density}
+                        onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Viability is essential only for passage */}
+                  {state.operation_type === 'passage' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Viability (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.viability}
+                        onChange={(e) => updateSplitState(index, 'viability', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {/* State Parameters */}
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Temperature (°C)
-                    </label>
-                    <input
-                      type="number"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.temperature_c}
-                      onChange={(e) => updateSplitState(index, 'temperature_c', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Volume (ml)
-                    </label>
-                    <input
-                      type="number"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.volume_ml}
-                      onChange={(e) => updateSplitState(index, 'volume_ml', parseFloat(e.target.value))}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      className="mt-1 w-full p-2 border rounded"
-                      value={state.location}
-                      onChange={(e) => updateSplitState(index, 'location', e.target.value)}
-                    />
-                  </div>
-                </div>
+                
+                {/* State Parameters - Moved to optional parameters */}
+                {/* Empty div to preserve structure */}
+                <div></div>
               </div>
+              
+              {/* Show/Hide Optional Parameters Toggle */}
+              <div className="pt-3">
+                <button
+                  type="button"
+                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                  onClick={() => {
+                    // Create new split states array
+                    const newSplitStates = [...splitStates];
+                    // Toggle showOptionalParams for this state (add if not exists)
+                    newSplitStates[index] = { 
+                      ...newSplitStates[index], 
+                      showOptionalParams: !newSplitStates[index].showOptionalParams 
+                    };
+                    setSplitStates(newSplitStates);
+                  }}
+                >
+                  {state.showOptionalParams ? '↑ Hide' : '↓ Show'} Optional Parameters
+                </button>
+              </div>
+              
+              {/* Optional Parameters Section */}
+              {state.showOptionalParams && (
+                <div className="space-y-3 mt-3 pl-2 border-l-2 border-gray-200">
+                  {/* Temperature - only show if not freeze */}
+                  {state.operation_type !== 'freeze' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+                      <input
+                        type="number"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.temperature_c}
+                        onChange={(e) => updateSplitState(index, 'temperature_c', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Volume - only show if not freeze */}
+                  {state.operation_type !== 'freeze' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Volume (ml)</label>
+                      <input
+                        type="number"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.volume_ml}
+                        onChange={(e) => updateSplitState(index, 'volume_ml', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Location - only show if not freeze */}
+                  {state.operation_type !== 'freeze' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Location</label>
+                      <input
+                        type="text"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.location}
+                        onChange={(e) => updateSplitState(index, 'location', e.target.value)}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Viability - only show if not passage */}
+                  {state.operation_type !== 'passage' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="mt-1 w-full p-2 border rounded"
+                        value={state.viability}
+                        onChange={(e) => updateSplitState(index, 'viability', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Growth Rate */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={state.growth_rate || 0}
+                      onChange={(e) => updateSplitState(index, 'growth_rate', parseFloat(e.target.value))}
+                      className="mt-1 w-full p-2 border rounded"
+                      placeholder="e.g., 0.03 (per hour)"
+                    />
+                  </div>
+                  
+                  {/* Doubling Time - Add this calculation later */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Doubling Time (hours)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={state.doubling_time || 0}
+                      onChange={(e) => updateSplitState(index, 'doubling_time', parseFloat(e.target.value))}
+                      className="mt-1 w-full p-2 border rounded"
+                      placeholder="e.g., 23.1 (hours)"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Calculated automatically if Growth Rate is entered, and vice-versa.</p>
+                  </div>
+                  
+                  {/* Density Limit */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={state.density_limit || 0}
+                      onChange={(e) => updateSplitState(index, 'density_limit', parseFloat(e.target.value))}
+                      className="mt-1 w-full p-2 border rounded"
+                      placeholder="e.g., 1.5e6 (cells/ml)"
+                    />
+                  </div>
+                  
+                  {/* Additional operation-specific optional parameters */}
+                  {state.operation_type === 'freeze' && (
+                    <>
+                      {/* No additional parameters needed for freeze operations */}
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {/* Harvest Warning */}
+              {state.operation_type === 'harvest' && (
+                <div className="bg-amber-50 p-3 rounded border mt-2">
+                  <p className="text-amber-700 text-sm">
+                    ⚠️ Harvest is a terminal operation. This portion of the culture will be considered harvested and cannot be used as a parent for future operations.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
 
