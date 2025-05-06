@@ -8,7 +8,6 @@ interface CreateStateFormProps {
     parent_id?: number;
     parameters: CellStateCreate['parameters'];
     transition_type?: 'single' | 'split' | 'measurement';
-    transition_parameters?: Record<string, any>;
     additional_notes?: string;
   }>) => void;
   onCancel: () => void;
@@ -374,29 +373,31 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       timestamp: newTimestamp.toISOString(), // Use validated manual timestamp
       parent_id: formData.parent_id,
       additional_notes: notes,
-      // Store operation type so future filtering will work properly
-      transition_parameters: { 
-        operation_type: operationType,
-        ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
-        ...(operationType === 'passage' ? { 
-          parent_end_density: formData.parent_end_density,
-          cell_type: parentState?.transition_parameters?.cell_type || ''
-        } : {}),
-        ...(operationType === 'freeze' ? {
-          parent_end_density: formData.parent_end_density,
-          number_of_vials: formData.number_of_vials,
-          total_cells: formData.total_cells,
-          cell_type: parentState?.transition_parameters?.cell_type || ''
-        } : {}),
-        ...(operationType === 'thaw' ? {
-          number_of_passages: formData.number_of_passages,
-          cell_type: parentState?.transition_parameters?.cell_type || ''
-        } : {}),
-        ...(operationType === 'harvest' ? {
-          end_density: formData.end_density,
-          cell_type: parentState?.transition_parameters?.cell_type || ''
-        } : {})
-      }
+      // Remove transition_parameters from the base payload
+    };
+
+    // Create transition parameters object to be included in parameters
+    const transitionParams = { 
+      operation_type: operationType,
+      ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
+      ...(operationType === 'passage' ? { 
+        parent_end_density: formData.parent_end_density,
+        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+      } : {}),
+      ...(operationType === 'freeze' ? {
+        parent_end_density: formData.parent_end_density,
+        number_of_vials: formData.number_of_vials,
+        total_cells: formData.total_cells,
+        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+      } : {}),
+      ...(operationType === 'thaw' ? {
+        number_of_passages: formData.number_of_passages,
+        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+      } : {}),
+      ...(operationType === 'harvest' ? {
+        end_density: formData.end_density,
+        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+      } : {})
     };
 
     if (transitionType === 'split') {
@@ -435,7 +436,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           operation_type: state.operation_type,
           ...(state.operation_type === 'harvest' ? { 
             end_density: state.cell_density,
-            cell_type: parentState?.transition_parameters?.cell_type || ''
+            cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
           } : {}) 
         };
         
@@ -457,9 +458,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
             storage_location: state.storage_location,
             growth_rate: state.growth_rate,
             density_limit: state.density_limit,
+            // Add transition parameters inside parameters
+            transition_parameters: transitionParams
           },
           transition_type: splitTransitionType, // Use the appropriate transition type
-          transition_parameters: transitionParams, // Use operation-specific params
+          // Remove from root level
           additional_notes: stateNotes,
         };
       });
@@ -495,6 +498,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
       }
 
       newParameters[measuredParameter] = finalMeasuredValue;
+      
+      // Add transition parameters to the parameters object
+      newParameters.transition_parameters = transitionParams;
 
       onSubmit([{
         ...basePayload,
@@ -516,6 +522,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
           growth_rate: formData.growth_rate,
           doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
+          // Add transition parameters inside the parameters object
+          transition_parameters: transitionParams
         } as CellStateCreate['parameters'], // Explicitly type the parameters object
         transition_type: 'single',
         additional_notes: formData.additional_notes,
@@ -746,7 +754,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     } else if (operationType === 'passage') {
       // Check if parent exists
       const hasParent = !!parentState;
-      const parentCellType = hasParent ? parentState.transition_parameters?.cell_type || '' : '';
+      const parentCellType = hasParent ? parentState.parameters?.transition_parameters?.cell_type || '' : '';
       
       return (
         <>
@@ -767,8 +775,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                   <h5 className="text-sm font-semibold mb-2">Parent Information</h5>
                   <div className="text-sm">
                     <p><span className="font-medium">Name:</span> {parentState.name}</p>
-                    {parentState.transition_parameters?.cell_type && (
-                      <p><span className="font-medium">Cell Type:</span> {parentState.transition_parameters.cell_type}</p>
+                    {parentState.parameters?.transition_parameters?.cell_type && (
+                      <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
                     <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
                   </div>
@@ -948,8 +956,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                   <h5 className="text-sm font-semibold mb-2">Parent Information</h5>
                   <div className="text-sm">
                     <p><span className="font-medium">Name:</span> {parentState.name}</p>
-                    {parentState.transition_parameters?.cell_type && (
-                      <p><span className="font-medium">Cell Type:</span> {parentState.transition_parameters.cell_type}</p>
+                    {parentState.parameters?.transition_parameters?.cell_type && (
+                      <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
                     <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
                   </div>
@@ -1134,8 +1142,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
     } else if (operationType === 'thaw') {
       // Check if parent (frozen vial) exists
       const hasParent = !!parentState;
-      const isFrozenVial = hasParent && parentState.transition_parameters?.operation_type === 'freeze';
-      const parentCellType = hasParent ? parentState.transition_parameters?.cell_type || '' : '';
+      const isFrozenVial = hasParent && parentState.parameters?.transition_parameters?.operation_type === 'freeze';
+      const parentCellType = hasParent ? parentState.parameters?.transition_parameters?.cell_type || '' : '';
       
       return (
         <>
@@ -1162,11 +1170,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                   <h5 className="text-sm font-semibold mb-2">Frozen Vial Information</h5>
                   <div className="text-sm">
                     <p><span className="font-medium">Vial Name:</span> {parentState.name}</p>
-                    {parentState.transition_parameters?.cell_type && (
-                      <p><span className="font-medium">Cell Type:</span> {parentState.transition_parameters.cell_type}</p>
+                    {parentState.parameters?.transition_parameters?.cell_type && (
+                      <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
-                    {parentState.transition_parameters?.total_cells && (
-                      <p><span className="font-medium">Total Cells:</span> {Number(parentState.transition_parameters.total_cells).toLocaleString()} cells</p>
+                    {parentState.parameters?.transition_parameters?.total_cells && (
+                      <p><span className="font-medium">Total Cells:</span> {Number(parentState.parameters.transition_parameters.total_cells).toLocaleString()} cells</p>
                     )}
                     {parentState.parameters?.storage_location && (
                       <p><span className="font-medium">Storage Location:</span> {parentState.parameters.storage_location}</p>
@@ -1349,8 +1357,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
                   <h5 className="text-sm font-semibold mb-2">Parent Information</h5>
                   <div className="text-sm">
                     <p><span className="font-medium">Name:</span> {parentState.name}</p>
-                    {parentState.transition_parameters?.cell_type && (
-                      <p><span className="font-medium">Cell Type:</span> {parentState.transition_parameters.cell_type}</p>
+                    {parentState.parameters?.transition_parameters?.cell_type && (
+                      <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
                     <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
                   </div>

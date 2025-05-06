@@ -94,6 +94,16 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
     try:
         logger.info(f"[create_state] Received state data. Timestamp from schema: {repr(state.timestamp)}")
+        logger.info(f"[create_state] Parameters: {state.parameters}")
+        if state.parameters and 'transition_parameters' in state.parameters:
+            logger.info(f"[create_state] Found transition_parameters: {state.parameters['transition_parameters']}")
+        else:
+            logger.info("[create_state] No transition_parameters found in parameters.")
+            
+        if hasattr(state, 'transition_parameters'):
+            logger.info(f"[create_state] Found root transition_parameters: {state.transition_parameters}")
+        else:
+            logger.info("[create_state] No root transition_parameters attribute.")
 
         db_state = CellState(
             name=state.name,

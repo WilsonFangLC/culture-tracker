@@ -33,11 +33,16 @@ const RawListView: React.FC = () => {
     const paramKeys = new Set<string>(ALL_POSSIBLE_PARAMETERS);
     const transitionParamKeys = new Set<string>(ALL_POSSIBLE_TRANSITION_PARAMETERS);
     
+    // Debug output
+    console.log('Processing states for parameters:', states);
+    
     // Process states to extract all possible parameter keys and flatten nested structures
     const processed = states.map(state => {
       const flatState = { ...state };
       const flatParams: Record<string, any> = {};
       const transitionParams: Record<string, any> = {};
+      
+      console.log(`Processing state ${state.id}, params:`, state.parameters);
       
       // Extract regular parameters
       if (state.parameters) {
@@ -51,6 +56,7 @@ const RawListView: React.FC = () => {
       
       // Extract transition parameters if they exist
       if (state.parameters?.transition_parameters) {
+        console.log(`State ${state.id} transition params:`, state.parameters.transition_parameters);
         Object.entries(state.parameters.transition_parameters).forEach(([key, value]) => {
           transitionParamKeys.add(key);
           transitionParams[key] = value;
@@ -63,6 +69,9 @@ const RawListView: React.FC = () => {
         transitionParams
       };
     });
+    
+    console.log('Final parameter keys:', Array.from(paramKeys));
+    console.log('Final transition parameter keys:', Array.from(transitionParamKeys));
     
     return {
       allParameterKeys: Array.from(paramKeys).sort(),

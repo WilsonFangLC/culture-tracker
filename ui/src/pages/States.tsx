@@ -333,18 +333,8 @@ export default function States() {
                       {state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
                          <div><span className="font-medium">Density Limit:</span> {formatPrediction(state.parameters.density_limit)} (cells/mL)</div>
                       )}
-                      {state.transition_type && (
-                        <div><span className="font-medium">Operation:</span> {
-                          // Show the operation type from transition_parameters if available
-                          // Otherwise show a user-friendly version of the transition type
-                          state.transition_parameters?.operation_type 
-                            ? state.transition_parameters.operation_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
-                            : state.transition_type === 'single' 
-                              ? 'Single Transition'
-                              : state.transition_type === 'split'
-                                ? 'Split Culture'
-                                : 'Measurement'
-                        }</div>
+                      {state.parameters.transition_parameters?.operation_type && (
+                        <div><span className="font-medium">Operation:</span> {state.parameters.transition_parameters.operation_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</div>
                       )}
                     </div>
                     {/* Prediction Button */} 

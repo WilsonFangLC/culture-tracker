@@ -42,6 +42,8 @@ def format_value(value):
         return value.isoformat()
     if isinstance(value, dict):
         return json.dumps(value) # Serialize dicts to JSON strings
+    if isinstance(value, (list, tuple)):
+        return json.dumps(value) # Serialize lists to JSON strings
     if value is None:
         return ""
     return str(value)
@@ -62,6 +64,7 @@ def collect_all_parameter_keys(states: List[CellState], include_nested=True) -> 
     for state in states:
         # Extract parameters
         if isinstance(state.parameters, dict):
+            # Add all parameters from this state (including custom ones)
             result['parameters'].update(state.parameters.keys())
             
             # Look for transition_parameters inside parameters
@@ -72,6 +75,11 @@ def collect_all_parameter_keys(states: List[CellState], include_nested=True) -> 
     # even if no state currently has them
     result['parameters'].update(ALL_POSSIBLE_PARAMETERS)
     result['transition_parameters'].update(ALL_POSSIBLE_TRANSITION_PARAMETERS)
+    
+    # Remove 'transition_parameters' from regular parameters if it exists
+    # to avoid duplication, as we handle it separately
+    if 'transition_parameters' in result['parameters']:
+        result['parameters'].remove('transition_parameters')
     
     return result
 
@@ -115,9 +123,6 @@ def generate_csv_rows(states: List[CellState]) -> Iterator[str]:
     headers = base_headers + [f"param_{key}" for key in parameter_keys]
     headers += [f"tp_{key}" for key in transition_parameter_keys]
     
-    # Add full parameters as JSON in the last column for reference
-    headers.append("parameters_json")
-    
     writer.writerow(headers)
     yield output.getvalue() # Yield header row first
     output.seek(0)
@@ -134,7 +139,6 @@ def generate_csv_rows(states: List[CellState]) -> Iterator[str]:
             "transition_type": state.transition_type,
             "additional_notes": state.additional_notes,
             "notes": state.notes,
-            "parameters_json": state.parameters
         }
         
         # Add flattened parameters
@@ -196,7 +200,6 @@ async def export_cell_states_csv(
           
           headers = base_headers + [f"param_{key}" for key in param_keys]
           headers += [f"tp_{key}" for key in tp_keys]
-          headers.append("parameters_json")
           
           writer.writerow(headers)
           yield output.getvalue() # Yield header row only
