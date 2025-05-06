@@ -1,0 +1,71 @@
+.process-node-group {
+  position: relative; /* Needed for absolute positioning of the tooltip */
+  cursor: pointer; /* Indicate interactivity */
+}
+
+/* Basic tooltip styling */
+.process-node-group::after {
+  content: attr(data-tooltip); /* Use the data attribute for content */
+  position: absolute;
+  bottom: 110%; /* Position above the node */
+  left: 50%;
+  transform: translateX(-50%); /* Center the tooltip */
+  background-color: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap; /* Respect newlines in the tooltip content */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  z-index: 10; /* Ensure tooltip is on top */
+  pointer-events: none; /* Prevent tooltip from blocking clicks on node */
+  min-width: 150px; /* Give it some minimum width */
+  text-align: center;
+}
+
+/* Show tooltip on hover */
+.process-node-group:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Optional: Simple arrow for the tooltip */
+.process-node-group::before {
+  content: '';
+  position: absolute;
+  bottom: 110%; /* Align with tooltip bottom edge */
+  left: 50%;
+  transform: translateX(-50%) translateY(100%); /* Position below tooltip */
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent; /* Arrow pointing down */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.process-node-group:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Path styling */
+.process-path {
+  stroke: #ccc;
+  stroke-width: 1.5;
+  fill: none;
+}
+
+/* Completed node specific styling */
+.process-node-completed circle {
+  filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.2));
+}
+
+/* Ongoing node specific styling */
+.process-node-ongoing circle {
+  filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.15));
+} 

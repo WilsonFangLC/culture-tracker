@@ -1,5 +1,6 @@
 import { CellState, deleteCellState } from '../api'
 import LineageGraph from './LineageGraph'
+import ProcessGraph from './ProcessGraph'
 import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
 import { calculatePredictedDensity } from '../utils/calculations'
@@ -26,7 +27,7 @@ export default function StateLineage({
   isUpdating,
   updateError 
 }: StateLineageProps) {
-  const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph')
+  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process-graph'>('process-graph')
   const [editingState, setEditingState] = useState<CellState | null>(null)
 
   // Sync editingState if the state prop updates after an update
@@ -146,7 +147,15 @@ export default function StateLineage({
             }`}
             onClick={() => setViewMode('graph')}
           >
-            Graph View
+            State Graph
+          </button>
+          <button
+            className={`px-3 py-1 rounded ${
+              viewMode === 'process-graph' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
+            }`}
+            onClick={() => setViewMode('process-graph')}
+          >
+            Process Graph
           </button>
         </div>
       </div>
@@ -174,6 +183,13 @@ export default function StateLineage({
             </div>
           )}
         </div>
+      ) : viewMode === 'process-graph' ? (
+        <ProcessGraph
+          state={state}
+          states={states}
+          onSelectState={onSelectState}
+          onDeleteState={handleDeleteState}
+        />
       ) : viewMode === 'graph' ? (
         <LineageGraph
           state={state}
