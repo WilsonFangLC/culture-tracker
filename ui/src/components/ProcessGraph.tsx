@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { CellState, CellStateCreate } from '../api';
 import './ProcessGraph.css'; // We'll create this later
 import CreateStateForm from './CreateStateForm';
+import { createPortal } from 'react-dom';
+import NodeDetailsPanel from './NodeDetailsPanel';
 
 // Add debounce utility
 const debounce = (fn: Function, ms = 300) => {
@@ -73,6 +75,10 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // State creation modal
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedParentForCreate, setSelectedParentForCreate] = useState<CellState | null>(null);
+  
+  // Add state for controlling details panel
+  const [detailsPanelOpen, setDetailsPanelOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<CellState | null>(null);
   
   // Find operation type from transition parameters
   const getOperationType = (state: CellState): ProcessNodeType | null => {
@@ -307,12 +313,18 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       }));
   }, [processes]);
 
-  // Handle node click to select the state
+  // Handle node click to select the state and open details panel
   const handleNodeClick = useCallback((processData: ProcessData, e: React.MouseEvent) => {
     // If we're panning, don't select nodes
     if (isPanning) return;
     
+    // Select the state
     onSelectState(processData.startState);
+    
+    // Set the selected node and open the details panel
+    setSelectedNode(processData.startState);
+    setDetailsPanelOpen(true);
+    
     // Force edge recalculation after click
     setTimeout(() => setForceUpdate(prev => prev + 1), 50);
   }, [onSelectState, isPanning]);
@@ -458,6 +470,11 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   const handleCreateStateCancel = useCallback(() => {
     setShowCreateForm(false);
     setSelectedParentForCreate(null);
+  }, []);
+
+  // Handle closing the details panel
+  const handleCloseDetailsPanel = useCallback(() => {
+    setDetailsPanelOpen(false);
   }, []);
 
   // Get CSS class for node based on process type and status
@@ -900,6 +917,13 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
           );
         })}
       </div>
+      
+      {/* Add NodeDetailsPanel */}
+      <NodeDetailsPanel 
+        isOpen={detailsPanelOpen}
+        node={selectedNode}
+        onClose={handleCloseDetailsPanel}
+      />
       
       {/* State creation modal */}
       {showCreateForm && onCreateState && (
