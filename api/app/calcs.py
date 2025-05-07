@@ -1,6 +1,6 @@
 import math
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any
 
 # ISO format used in our API
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M"
@@ -63,4 +63,80 @@ def calc_cumulative_pd(
         return None
     if parent_pd is None:
         return current_pd
-    return current_pd + parent_pd 
+    return current_pd + parent_pd
+
+def calculate_measured_parameters(
+    start_density: float,
+    end_density: float,
+    start_time: str,
+    end_time: str
+) -> Dict[str, Any]:
+    """
+    Calculate measured growth parameters from observed density changes.
+    
+    Args:
+        start_density: Initial cell density
+        end_density: Final cell density
+        start_time: ISO format start time
+        end_time: ISO format end time
+        
+    Returns:
+        Dict containing measured_growth_rate, measured_doubling_time, and measured_density_limit
+    """
+    try:
+        # Convert times to datetime objects
+        start = datetime.fromisoformat(start_time)
+        end = datetime.fromisoformat(end_time)
+        
+        # Calculate time difference in hours
+        hours = (end - start).total_seconds() / 3600.0
+        
+        if hours <= 0:
+            raise ValueError("End time must be after start time")
+        
+        if start_density <= 0 or end_density <= 0:
+            raise ValueError("Densities must be positive")
+        
+        # If end density is lower than start, we can't use logistic model
+        if end_density < start_density:
+            # Could use exponential decay model instead, but for now return null
+            return {
+                "measured_growth_rate": None,
+                "measured_doubling_time": None,
+                "measured_density_limit": None
+            }
+        
+        # Calculate growth rate (assumes exponential phase if end_density < 2*start_density)
+        # For exponential phase: N(t) = N0 * e^(r*t)
+        # So r = ln(N(t)/N0) / t
+        growth_rate = math.log(end_density / start_density) / hours
+        
+        # Calculate doubling time (ln(2)/r)
+        doubling_time = math.log(2) / growth_rate if growth_rate > 0 else None
+        
+        # Estimate density_limit from the data
+        # In logistic model, if we assume we're in mid-phase growth,
+        # we can estimate K (density limit) based on observed growth
+        # Using: K = N0 * N1 * (N1 - N0) / (N1^2 - N0^2)
+        # This is a very rough estimate, more data points would give better results
+        
+        # Simple approximation: if growth has slowed significantly, use 2x end_density as limit
+        if end_density > 1.5 * start_density:
+            density_limit = 2 * end_density  # Simple approximation
+        else:
+            # For very slow growth, this might indicate we're near carrying capacity
+            density_limit = 1.2 * end_density
+        
+        return {
+            "measured_growth_rate": round(growth_rate, 6),
+            "measured_doubling_time": round(doubling_time, 2) if doubling_time else None,
+            "measured_density_limit": round(density_limit, 0)
+        }
+        
+    except (ValueError, TypeError) as e:
+        print(f"Error calculating growth parameters: {str(e)}")
+        return {
+            "measured_growth_rate": None,
+            "measured_doubling_time": None,
+            "measured_density_limit": None
+        } 

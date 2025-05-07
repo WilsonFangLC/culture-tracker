@@ -13,7 +13,9 @@ interface EditStateFormProps {
 
 export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFormProps) {
   // Initialize with all parameters from the state
-  const [parameters, setParameters] = useState<Record<string, any>>({ ...state.parameters });
+  const [parameters, setParameters] = useState({
+    ...state.parameters
+  });
   const [additionalNotes, setAdditionalNotes] = useState(state.additional_notes || '');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,30 +116,33 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
           </div>
         </div>
 
-        {/* Growth Rate */}
+        {/* Growth Rate (now Hypothesized Growth Rate) */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Growth Rate (per hour)
+            Hypothesized Growth Rate (per hour)
           </label>
           <input
             type="number"
             step="any"
             className="mt-1 w-full p-2 border rounded"
-            value={parameters.growth_rate ?? ''}
+            value={parameters.hypothesized_growth_rate ?? parameters.growth_rate ?? ''}
             onChange={(e) => {
               const value = e.target.value === '' ? null : parseFloat(e.target.value);
-              setParameters({ ...parameters, growth_rate: value });
               
               // Update doubling time if growth rate changes and is valid
               if (value && value > 0) {
                 setParameters(prev => ({
                   ...prev,
+                  hypothesized_growth_rate: value,
+                  hypothesized_doubling_time: Math.log(2) / value,
+                  // Keep legacy parameters in sync for backward compatibility
                   growth_rate: value,
                   doubling_time: Math.log(2) / value
                 }));
               } else {
                 setParameters(prev => ({
                   ...prev,
+                  hypothesized_growth_rate: value,
                   growth_rate: value
                 }));
               }
@@ -145,16 +150,16 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
           />
         </div>
 
-        {/* Doubling Time */}
+        {/* Doubling Time (now Hypothesized Doubling Time) */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Doubling Time (hours)
+            Hypothesized Doubling Time (hours)
           </label>
           <input
             type="number"
             step="any"
             className="mt-1 w-full p-2 border rounded"
-            value={parameters.doubling_time ?? ''}
+            value={parameters.hypothesized_doubling_time ?? parameters.doubling_time ?? ''}
             onChange={(e) => {
               const value = e.target.value === '' ? null : parseFloat(e.target.value);
               
@@ -162,15 +167,41 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
               if (value && value > 0) {
                 setParameters(prev => ({
                   ...prev,
+                  hypothesized_doubling_time: value,
+                  hypothesized_growth_rate: Math.log(2) / value,
+                  // Keep legacy parameters in sync for backward compatibility
                   doubling_time: value,
                   growth_rate: Math.log(2) / value
                 }));
               } else {
                 setParameters(prev => ({
                   ...prev,
+                  hypothesized_doubling_time: value,
                   doubling_time: value
                 }));
               }
+            }}
+          />
+        </div>
+
+        {/* Density Limit (now Hypothesized Density Limit) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Hypothesized Density Limit (cells/ml)
+          </label>
+          <input
+            type="number"
+            step="any"
+            className="mt-1 w-full p-2 border rounded"
+            value={parameters.hypothesized_density_limit ?? parameters.density_limit ?? ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? null : parseFloat(e.target.value);
+              setParameters(prev => ({
+                ...prev,
+                hypothesized_density_limit: value,
+                // Keep legacy parameter in sync for backward compatibility
+                density_limit: value
+              }));
             }}
           />
         </div>
@@ -194,12 +225,11 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
 
       {/* Additional Notes */}
       <div>
-        <label htmlFor="additional_notes" className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700">
           Additional Notes
         </label>
         <textarea
-          id="additional_notes"
-          rows={3}
+          rows={4}
           className="mt-1 w-full p-2 border rounded"
           value={additionalNotes}
           onChange={(e) => setAdditionalNotes(e.target.value)}

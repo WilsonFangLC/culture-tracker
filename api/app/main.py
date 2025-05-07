@@ -137,6 +137,54 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
             db_state.timestamp = db_state.timestamp.replace(tzinfo=timezone.utc)
         logger.info(f"[create_state] State refreshed. Timestamp: {repr(db_state.timestamp)}")
         
+        # Add auto-calculation of measured parameters if this is a child state
+        # If this state has a parent, and is not a measurement, we can calculate measured parameters for the parent
+        if (db_state.parent_id and 
+            db_state.parameters and 
+            db_state.parameters.get('transition_parameters') and 
+            db_state.parameters['transition_parameters'].get('operation_type') != 'measurement'):
+            
+            # Get the parent state
+            parent_state = session.get(CellState, db_state.parent_id)
+            
+            if parent_state:
+                # Check if both parent and child have cell_density defined
+                parent_density = parent_state.parameters.get('cell_density')
+                child_density = db_state.parameters.get('cell_density')
+                
+                if (parent_density is not None and child_density is not None and
+                    isinstance(parent_density, (int, float)) and isinstance(child_density, (int, float)) and
+                    parent_density > 0 and child_density > 0):
+                    
+                    # Check if parent already has measured parameters (don't overwrite existing values)
+                    has_measured = False
+                    for key in parent_state.parameters.keys():
+                        if key.startswith('measured_'):
+                            has_measured = True
+                            break
+                    
+                    if not has_measured:
+                        try:
+                            # Import the calculation function
+                            from .calcs import calculate_measured_parameters
+                            
+                            # Calculate measured parameters
+                            measured_params = calculate_measured_parameters(
+                                start_density=parent_density,
+                                end_density=child_density,
+                                start_time=str(parent_state.timestamp),
+                                end_time=str(db_state.timestamp)
+                            )
+                            
+                            # Update the parent state with measured parameters
+                            parent_state.parameters.update(measured_params)
+                            session.add(parent_state)
+                            session.commit()
+                            
+                            logger.info(f"Auto-calculated measured parameters for state {parent_state.id}: {measured_params}")
+                        except Exception as e:
+                            logger.error(f"Error calculating measured parameters: {str(e)}")
+        
         return db_state
     except HTTPException as http_exc:
         raise http_exc # Re-raise validation errors

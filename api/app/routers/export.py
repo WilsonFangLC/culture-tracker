@@ -24,12 +24,12 @@ OperationType = str  # 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'me
 
 # Define which parameters apply to which operation types
 OPERATION_PARAMETER_MAPPING: Dict[str, List[str]] = {
-    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'cell_type'],
-    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type'],
-    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type'],
-    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'number_of_passages', 'cell_type'],
-    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_value', 'cell_type'],
-    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type'],
+    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'cell_type'],
+    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'parent_end_density', 'cell_type'],
+    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type'],
+    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'number_of_passages', 'cell_type'],
+    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'measured_value', 'cell_type'],
+    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'hypothesized_growth_rate', 'hypothesized_doubling_time', 'hypothesized_density_limit', 'measured_growth_rate', 'measured_doubling_time', 'measured_density_limit', 'parent_end_density', 'cell_type'],
     'harvest': ['temperature_c', 'volume_ml', 'location', 'viability', 'end_density', 'cell_type'],
 }
 
@@ -41,9 +41,17 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
     "location": {"displayName": "Location", "applicableToAllNodes": True},
     "cell_density": {"displayName": "Initial Cell Density", "applicableToAllNodes": True},
     "viability": {"displayName": "Viability (%)", "applicableToAllNodes": True},
-    "growth_rate": {"displayName": "Growth Rate", "applicableToAllNodes": True},
-    "doubling_time": {"displayName": "Doubling Time", "applicableToAllNodes": True},
-    "density_limit": {"displayName": "Density Limit", "applicableToAllNodes": True},
+    
+    # Renamed parameters with hypothesized prefix
+    "hypothesized_growth_rate": {"displayName": "Hypothesized Growth Rate", "applicableToAllNodes": True},
+    "hypothesized_doubling_time": {"displayName": "Hypothesized Doubling Time", "applicableToAllNodes": True},
+    "hypothesized_density_limit": {"displayName": "Hypothesized Density Limit", "applicableToAllNodes": True},
+    
+    # New measured parameters
+    "measured_growth_rate": {"displayName": "Measured Growth Rate", "applicableToAllNodes": True},
+    "measured_doubling_time": {"displayName": "Measured Doubling Time", "applicableToAllNodes": True},
+    "measured_density_limit": {"displayName": "Measured Density Limit", "applicableToAllNodes": True},
+    
     "storage_location": {"displayName": "Storage Location", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
     
     # Operation-specific parameters
@@ -57,6 +65,11 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
     
     # Former transition parameters, now regular parameters
     "operation_type": {"displayName": "Operation Type", "applicableToAllNodes": True},
+    
+    # Legacy parameters (for backward compatibility)
+    "growth_rate": {"displayName": "Growth Rate (Legacy)", "applicableToAllNodes": True},
+    "doubling_time": {"displayName": "Doubling Time (Legacy)", "applicableToAllNodes": True},
+    "density_limit": {"displayName": "Density Limit (Legacy)", "applicableToAllNodes": True},
 }
 
 # Get all possible parameter keys
