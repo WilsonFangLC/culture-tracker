@@ -5,7 +5,14 @@
   background-color: #f5f5f5;
   position: relative;
   border-radius: 8px;
-  overflow: auto;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none; /* Disable browser touch behaviors */
+}
+
+/* Container in space key down mode */
+.process-graph-container.space-key-down {
+  cursor: grab;
 }
 
 /* Legend */
@@ -18,8 +25,9 @@
   border-radius: 5px;
   padding: 8px 12px;
   font-size: 12px;
-  z-index: 10;
+  z-index: 20;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
 }
 
 .legend-item {
@@ -49,9 +57,28 @@
 .process-graph-canvas {
   width: 100%;
   height: 100%;
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   padding: 1rem;
-  transition: transform 0.2s ease;
+  transition: transform 0.15s ease;
+  overflow: visible;
+  cursor: default;
+  will-change: transform;
+  pointer-events: auto;
+}
+
+.process-graph-canvas.is-panning {
+  cursor: grabbing !important;
+  transition: none; /* Disable transition during active panning for responsiveness */
+}
+
+/* Canvas wrapper to provide scrolling if needed */
+.process-graph-canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  position: relative;
 }
 
 /* Empty message when no processes */
@@ -62,9 +89,10 @@
   transform: translate(-50%, -50%);
   color: #6b7280;
   font-size: 16px;
+  pointer-events: none;
 }
 
-/* Process Node */
+/* Process Node with improved appearance for dragging */
 .process-node {
   position: absolute;
   width: 230px;
@@ -74,12 +102,20 @@
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.2s;
   z-index: 1;
+  transform-origin: center;
 }
 
+/* Restore hover effects */
 .process-node:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
   z-index: 2;
+}
+
+/* When panning is active, disable hover effects */
+.process-graph-canvas.is-panning .process-node:hover {
+  transform: none;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* Node selection */
@@ -247,7 +283,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 10;
+  z-index: 20;
+  pointer-events: auto;
 }
 
 .zoom-controls {
@@ -257,6 +294,16 @@
   padding: 6px;
   display: flex;
   gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.process-graph-help-text {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #4b5563;
+  text-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -289,6 +336,26 @@
 
 .control-button.add-state:hover {
   background-color: #2563eb;
+}
+
+/* Edges SVG layer */
+.edges-svg {
+  z-index: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Make edges more visible */
+.edges-svg line,
+.edges-svg path {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Modal for state creation */

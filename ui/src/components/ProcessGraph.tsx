@@ -53,6 +53,7 @@ interface EdgeData {
 }
 
 export default function ProcessGraph({ state, states, onSelectState, onDeleteState, onCreateState }: ProcessGraphProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState<EdgeData[]>([]);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -61,6 +62,13 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // Zoom state
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showZoomControls, setShowZoomControls] = useState(true);
+  
+  // Pan state
+  const [isPanning, setIsPanning] = useState(false);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [startPanPoint, setStartPanPoint] = useState({ x: 0, y: 0 });
+  const [startPanOffset, setStartPanOffset] = useState({ x: 0, y: 0 });
+  const [isSpaceKeyDown, setIsSpaceKeyDown] = useState(false);
   
   // State creation modal
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -300,11 +308,14 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   }, [processes]);
 
   // Handle node click to select the state
-  const handleNodeClick = useCallback((processData: ProcessData) => {
+  const handleNodeClick = useCallback((processData: ProcessData, e: React.MouseEvent) => {
+    // If we're panning, don't select nodes
+    if (isPanning) return;
+    
     onSelectState(processData.startState);
     // Force edge recalculation after click
     setTimeout(() => setForceUpdate(prev => prev + 1), 50);
-  }, [onSelectState]);
+  }, [onSelectState, isPanning]);
 
   const handleDeleteClick = useCallback((stateId: number) => {
     if (window.confirm("Are you sure you want to delete this state?")) {
@@ -314,21 +325,110 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   // Handle zoom in
   const handleZoomIn = useCallback(() => {
-    setZoomLevel(prev => Math.min(prev + 0.2, 3));
-    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+    setZoomLevel(prev => {
+      const newZoom = Math.min(prev + 0.2, 3);
+      // Force edge recalculation after zoom
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+      return newZoom;
+    });
   }, []);
   
   // Handle zoom out
   const handleZoomOut = useCallback(() => {
-    setZoomLevel(prev => Math.max(prev - 0.2, 0.4));
-    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev - 0.2, 0.4);
+      // Force edge recalculation after zoom
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+      return newZoom;
+    });
   }, []);
   
   // Handle zoom reset
   const handleZoomReset = useCallback(() => {
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
     setTimeout(() => setForceUpdate(prev => prev + 1), 50);
   }, []);
+  
+  // Handle mouse down for panning
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only enable panning with middle mouse button or when holding Spacebar
+    if (e.button === 1 || (e.button === 0 && isSpaceKeyDown)) {
+      setIsPanning(true);
+      setStartPanPoint({ x: e.clientX, y: e.clientY });
+      setStartPanOffset({ ...panOffset });
+      
+      // Prevent text selection during panning
+      e.preventDefault();
+      
+      // Apply grabbing cursor to the container
+      if (containerRef.current) {
+        containerRef.current.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none'; // Prevent text selection
+      }
+    }
+  }, [panOffset, isSpaceKeyDown]);
+  
+  // Handle mouse move for panning
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return;
+    
+    const newX = startPanOffset.x + (e.clientX - startPanPoint.x) / zoomLevel;
+    const newY = startPanOffset.y + (e.clientY - startPanPoint.y) / zoomLevel;
+    
+    setPanOffset({ x: newX, y: newY });
+    
+    // Edge recalculation happens on mousemove only when panning to avoid performance issues
+    if (e.movementX !== 0 || e.movementY !== 0) {
+      setForceUpdate(prev => prev + 1);
+    }
+    
+    e.preventDefault();
+  }, [isPanning, startPanOffset, startPanPoint, zoomLevel]);
+  
+  // Handle mouse up for ending pan
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (isPanning) {
+      setIsPanning(false);
+      
+      // Final edge recalculation after panning stops
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+      
+      // Reset cursor
+      if (containerRef.current) {
+        containerRef.current.style.cursor = isSpaceKeyDown ? 'grab' : 'default';
+        document.body.style.userSelect = ''; // Restore text selection
+      }
+      
+      e.preventDefault();
+    }
+  }, [isPanning, isSpaceKeyDown]);
+  
+  // Handle mouse leave for safety
+  const handleMouseLeave = useCallback(() => {
+    if (isPanning) {
+      setIsPanning(false);
+      
+      // Final edge recalculation after panning stops
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+      
+      // Reset cursor
+      if (containerRef.current) {
+        containerRef.current.style.cursor = isSpaceKeyDown ? 'grab' : 'default';
+        document.body.style.userSelect = ''; // Restore text selection
+      }
+    }
+  }, [isPanning, isSpaceKeyDown]);
+  
+  // Calculate cursor based on interaction state
+  const getCursor = useCallback(() => {
+    if (isPanning) {
+      return 'grabbing';
+    } else if (isSpaceKeyDown) {
+      return 'grab';
+    }
+    return 'default';
+  }, [isPanning, isSpaceKeyDown]);
   
   // Handle opening the create form
   const handleOpenCreateForm = useCallback((parentState: CellState | null = null) => {
@@ -432,55 +532,119 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // Use layoutEffect for more precise timing of measurements
   useLayoutEffect(() => {
     calculateEdges();
-  }, [calculateEdges, forceUpdate]);
+  }, [calculateEdges, forceUpdate, zoomLevel, panOffset]);
   
   // Set up observer to recalculate edges when needed
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
     
     const debouncedCalculateEdges = debounce(calculateEdges, 50);
     
     // Use ResizeObserver to detect size changes
     const resizeObserver = new ResizeObserver(debouncedCalculateEdges);
-    resizeObserver.observe(canvas);
-    
-    // Use MutationObserver to detect DOM changes that might affect positions
-    const mutationObserver = new MutationObserver(debouncedCalculateEdges);
-    mutationObserver.observe(canvas, { 
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
+    resizeObserver.observe(container);
     
     // Handle more events that could affect positioning
-    canvas.addEventListener('scroll', debouncedCalculateEdges);
     window.addEventListener('resize', debouncedCalculateEdges);
     window.addEventListener('transitionend', debouncedCalculateEdges);
-    document.addEventListener('click', () => setTimeout(calculateEdges, 10));
+    
+    // Handle keyboard events for space bar panning
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Add space bar functionality for panning mode
+      if (e.code === 'Space' && !e.repeat) {
+        setIsSpaceKeyDown(true);
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'grab';
+        }
+        // Prevent default space behavior (like scrolling)
+        e.preventDefault();
+      }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsSpaceKeyDown(false);
+        if (isPanning) {
+          setIsPanning(false);
+        }
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'default';
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    // Add a wheel event listener at the document level to capture all wheel events
+    const preventDefaultWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+      }
+    };
+    
+    container.addEventListener('wheel', preventDefaultWheel, { passive: false });
     
     // Initial calculation after a small delay to ensure DOM is ready
     setTimeout(calculateEdges, 100);
     
     return () => {
       resizeObserver.disconnect();
-      mutationObserver.disconnect();
-      canvas.removeEventListener('scroll', debouncedCalculateEdges);
       window.removeEventListener('resize', debouncedCalculateEdges);
       window.removeEventListener('transitionend', debouncedCalculateEdges);
-      document.removeEventListener('click', () => setTimeout(calculateEdges, 10));
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      container.removeEventListener('wheel', preventDefaultWheel);
     };
-  }, [calculateEdges]);
+  }, [calculateEdges, isPanning, isSpaceKeyDown]);
 
+  // Handle wheel event for zooming
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Determine zoom direction
+    if (e.ctrlKey || e.metaKey) {
+      // Prevent default browser zooming behavior
+      e.preventDefault();
+      
+      const rect = containerRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      
+      // Calculate position relative to the container
+      const x = (clientX - rect.left) / zoomLevel - panOffset.x;
+      const y = (clientY - rect.top) / zoomLevel - panOffset.y;
+      
+      // Determine zoom direction and factor (for smoother zooming)
+      const zoomFactor = 0.1;
+      const direction = e.deltaY < 0 ? 1 : -1;
+      
+      // Update zoom level and pan offset
+      setZoomLevel(prev => {
+        const newZoom = Math.max(0.4, Math.min(3, prev + direction * zoomFactor));
+        
+        // Calculate scale change
+        const scale = newZoom / prev;
+        
+        // Update pan offset to zoom toward/from mouse position
+        setPanOffset({
+          x: x - scale * (x - panOffset.x),
+          y: y - scale * (y - panOffset.y)
+        });
+        
+        // Force edge recalculation
+        setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+        
+        return newZoom;
+      });
+    }
+  }, [zoomLevel, panOffset]);
+  
   // SVG component for edge rendering with improved positioning
   const EdgesSVG = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || edges.length === 0) return null;
     
     const canvasRect = canvas.getBoundingClientRect();
-    const scrollLeft = canvas.scrollLeft;
-    const scrollTop = canvas.scrollTop;
     
     return (
       <svg 
@@ -500,15 +664,19 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
           if (!edge.sourceDomRect || !edge.targetDomRect) return null;
           
           // Calculate position relative to canvas with improved precision
-          const sourceX = edge.sourceDomRect.right - canvasRect.left + scrollLeft;
-          const sourceY = edge.sourceDomRect.top + (edge.sourceDomRect.height/2) - canvasRect.top + scrollTop;
-          const targetX = edge.targetDomRect.left - canvasRect.left + scrollLeft;
-          const targetY = edge.targetDomRect.top + (edge.targetDomRect.height/2) - canvasRect.top + scrollTop;
+          // Account for zoom and pan offset
+          const sourceX = (edge.sourceDomRect.right - canvasRect.left) / zoomLevel;
+          const sourceY = (edge.sourceDomRect.top + (edge.sourceDomRect.height/2) - canvasRect.top) / zoomLevel;
+          const targetX = (edge.targetDomRect.left - canvasRect.left) / zoomLevel;
+          const targetY = (edge.targetDomRect.top + (edge.targetDomRect.height/2) - canvasRect.top) / zoomLevel;
           
           // Skip drawing if positions aren't valid
           if (isNaN(sourceX) || isNaN(sourceY) || isNaN(targetX) || isNaN(targetY)) {
             return null;
           }
+          
+          // Normalize stroke width based on zoom level to maintain visual consistency
+          const strokeWidth = Math.max(1, 2 / zoomLevel);
           
           // For straight line when nodes are roughly at the same height
           if (Math.abs(sourceY - targetY) <= 10) {
@@ -520,7 +688,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                 x2={targetX}
                 y2={targetY}
                 stroke="#9ca3af"
-                strokeWidth="2"
+                strokeWidth={strokeWidth}
               />
             );
           }
@@ -533,17 +701,30 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
               key={edge.id}
               d={`M ${sourceX} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetX} ${targetY}`}
               stroke="#9ca3af"
-              strokeWidth="2"
+              strokeWidth={strokeWidth}
               fill="none"
             />
           );
         })}
       </svg>
     );
-  }, [edges]);
+  }, [edges, zoomLevel]);
 
   return (
-    <div className="process-graph-container">
+    <div 
+      className={`process-graph-container ${isSpaceKeyDown ? 'space-key-down' : ''}`}
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onWheel={e => {
+        if (e.ctrlKey || e.metaKey) {
+          handleWheel(e);
+          e.stopPropagation();
+        }
+      }}
+    >
       <div className="process-graph-controls">
         <div className="zoom-controls">
           <button
@@ -556,7 +737,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
           <button
             className="control-button zoom-reset"
             onClick={handleZoomReset}
-            title="Reset Zoom"
+            title="Reset Zoom & Pan"
           >
             ↺
           </button>
@@ -578,6 +759,11 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
             Add State
           </button>
         )}
+        
+        <div className="process-graph-help-text">
+          <div>Hold Space + Click and drag to pan</div>
+          <div>Ctrl + Mouse wheel to zoom</div>
+        </div>
       </div>
       
       <div className="process-graph-legend">
@@ -590,13 +776,14 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       </div>
       
       <div 
-        className="process-graph-canvas" 
+        className={`process-graph-canvas ${isPanning ? 'is-panning' : ''}`}
         ref={canvasRef}
         style={{
-          transform: `scale(${zoomLevel})`,
+          transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
           transformOrigin: '0 0',
           height: `${100 / zoomLevel}%`,
           width: `${100 / zoomLevel}%`,
+          cursor: getCursor(),
         }}
       >
         <EdgesSVG />
@@ -619,7 +806,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                 left: `${processData.position.x}px`,
                 top: `${processData.position.y}px`
               }}
-              onClick={() => handleNodeClick(processData)}
+              onClick={(e) => handleNodeClick(processData, e)}
               data-id={processData.id}
               data-parent-id={processData.parentId || ''}
             >
