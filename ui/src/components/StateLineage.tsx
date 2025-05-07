@@ -1,4 +1,4 @@
-import { CellState, deleteCellState } from '../api'
+import { CellState, deleteCellState, useCreateState, CellStateCreate } from '../api'
 import LineageGraph from './LineageGraph'
 import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
@@ -29,6 +29,7 @@ export default function StateLineage({
 }: StateLineageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('graph')
   const [editingState, setEditingState] = useState<CellState | null>(null)
+  const createStateMutation = useCreateState();
 
   // Sync editingState if the state prop updates after an update
   useEffect(() => {
@@ -128,6 +129,30 @@ export default function StateLineage({
     }
   }, [states, state, onStatesChange, onSelectState]);
 
+  // Handle create state
+  const handleCreateState = useCallback(async (stateData: Array<{
+    name: string;
+    timestamp: string;
+    parent_id?: number;
+    parameters: CellStateCreate['parameters'];
+    transition_type?: 'single' | 'split' | 'measurement';
+    additional_notes?: string;
+  }>) => {
+    try {
+      // Create all states in sequence
+      for (const data of stateData) {
+        await createStateMutation.mutateAsync(data);
+      }
+      // Refresh state list
+      if (states.length > 0) {
+        onStatesChange([...states]); // Trigger a refresh
+      }
+    } catch (error) {
+      console.error("Failed to create state:", error);
+      window.alert("Failed to create state. Please try again.");
+    }
+  }, [createStateMutation, states, onStatesChange]);
+
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
@@ -196,6 +221,7 @@ export default function StateLineage({
           states={states}
           onSelectState={onSelectState}
           onDeleteState={handleDeleteState}
+          onCreateState={handleCreateState}
         />
       ) : (
         <div className="space-y-4">

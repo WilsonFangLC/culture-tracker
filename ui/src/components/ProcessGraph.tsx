@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CellState } from '../api';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CellState, CellStateCreate } from '../api';
 import './ProcessGraph.css'; // We'll create this later
+import CreateStateForm from './CreateStateForm';
 
 // Add debounce utility
 const debounce = (fn: Function, ms = 300) => {
@@ -16,6 +17,14 @@ interface ProcessGraphProps {
   states: CellState[];
   onSelectState: (state: CellState) => void;
   onDeleteState: (stateId: number) => void;
+  onCreateState?: (data: Array<{
+    name: string;
+    timestamp: string;
+    parent_id?: number;
+    parameters: CellStateCreate['parameters'];
+    transition_type?: 'single' | 'split' | 'measurement';
+    additional_notes?: string;
+  }>) => void;
 }
 
 // Define node types
@@ -43,10 +52,19 @@ interface EdgeData {
   targetDomRect: DOMRect | null;
 }
 
-export default function ProcessGraph({ state, states, onSelectState, onDeleteState }: ProcessGraphProps) {
+export default function ProcessGraph({ state, states, onSelectState, onDeleteState, onCreateState }: ProcessGraphProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState<EdgeData[]>([]);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [forceUpdate, setForceUpdate] = useState(0);
+  
+  // Zoom state
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [showZoomControls, setShowZoomControls] = useState(true);
+  
+  // State creation modal
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedParentForCreate, setSelectedParentForCreate] = useState<CellState | null>(null);
   
   // Find operation type from transition parameters
   const getOperationType = (state: CellState): ProcessNodeType | null => {
@@ -284,6 +302,8 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // Handle node click to select the state
   const handleNodeClick = useCallback((processData: ProcessData) => {
     onSelectState(processData.startState);
+    // Force edge recalculation after click
+    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
   }, [onSelectState]);
 
   const handleDeleteClick = useCallback((stateId: number) => {
@@ -291,6 +311,54 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       onDeleteState(stateId);
     }
   }, [onDeleteState]);
+
+  // Handle zoom in
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(prev + 0.2, 3));
+    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+  }, []);
+  
+  // Handle zoom out
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => Math.max(prev - 0.2, 0.4));
+    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+  }, []);
+  
+  // Handle zoom reset
+  const handleZoomReset = useCallback(() => {
+    setZoomLevel(1);
+    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+  }, []);
+  
+  // Handle opening the create form
+  const handleOpenCreateForm = useCallback((parentState: CellState | null = null) => {
+    if (onCreateState) {
+      setSelectedParentForCreate(parentState);
+      setShowCreateForm(true);
+    }
+  }, [onCreateState]);
+  
+  // Handle form submission
+  const handleCreateStateSubmit = useCallback((data: Array<{
+    name: string;
+    timestamp: string;
+    parent_id?: number;
+    parameters: CellStateCreate['parameters'];
+    transition_type?: 'single' | 'split' | 'measurement';
+    additional_notes?: string;
+  }>) => {
+    if (onCreateState) {
+      onCreateState(data);
+      setShowCreateForm(false);
+      setSelectedParentForCreate(null);
+    }
+  }, [onCreateState]);
+  
+  // Handle form cancel
+  const handleCreateStateCancel = useCallback(() => {
+    setShowCreateForm(false);
+    setSelectedParentForCreate(null);
+  }, []);
 
   // Get CSS class for node based on process type and status
   const getNodeClass = (processType: ProcessNodeType, status: ProcessStatus, isSelected: boolean) => {
@@ -319,70 +387,130 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
     }
   }, []);
 
-  // Calculate edge paths
+  // Calculate edge paths with improved positioning
   const calculateEdges = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || processRelationships.length === 0) return;
 
+    // Force reflow to ensure accurate measurements
+    void canvas.offsetHeight;
+    
     const canvasRect = canvas.getBoundingClientRect();
-    const newEdges = processRelationships.map(rel => {
+    const scrollLeft = canvas.scrollLeft;
+    const scrollTop = canvas.scrollTop;
+    
+    const validEdges: EdgeData[] = [];
+    
+    processRelationships.forEach(rel => {
       const sourceNode = nodeRefs.current.get(rel.sourceId);
       const targetNode = nodeRefs.current.get(rel.targetId);
       
-      return {
-        ...rel,
-        sourceDomRect: sourceNode?.getBoundingClientRect() || null,
-        targetDomRect: targetNode?.getBoundingClientRect() || null
-      };
-    }).filter(edge => edge.sourceDomRect && edge.targetDomRect);
+      if (!sourceNode || !targetNode) return;
+      
+      const sourceRect = sourceNode.getBoundingClientRect();
+      const targetRect = targetNode.getBoundingClientRect();
+      
+      // Skip if rectangles are invalid
+      if (!sourceRect || !targetRect || 
+          sourceRect.width <= 0 || sourceRect.height <= 0 ||
+          targetRect.width <= 0 || targetRect.height <= 0) {
+        return;
+      }
+      
+      validEdges.push({
+        id: rel.id,
+        sourceId: rel.sourceId,
+        targetId: rel.targetId,
+        sourceDomRect: sourceRect,
+        targetDomRect: targetRect
+      });
+    });
 
-    setEdges(newEdges);
+    setEdges(validEdges);
   }, [processRelationships]);
 
+  // Use layoutEffect for more precise timing of measurements
+  useLayoutEffect(() => {
+    calculateEdges();
+  }, [calculateEdges, forceUpdate]);
+  
   // Set up observer to recalculate edges when needed
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Calculate edges initially and after resize/scroll
-    calculateEdges();
-    
-    const debouncedCalculateEdges = debounce(calculateEdges, 100);
+    const debouncedCalculateEdges = debounce(calculateEdges, 50);
     
     // Use ResizeObserver to detect size changes
     const resizeObserver = new ResizeObserver(debouncedCalculateEdges);
     resizeObserver.observe(canvas);
     
-    // Handle scroll events
+    // Use MutationObserver to detect DOM changes that might affect positions
+    const mutationObserver = new MutationObserver(debouncedCalculateEdges);
+    mutationObserver.observe(canvas, { 
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+    
+    // Handle more events that could affect positioning
     canvas.addEventListener('scroll', debouncedCalculateEdges);
     window.addEventListener('resize', debouncedCalculateEdges);
+    window.addEventListener('transitionend', debouncedCalculateEdges);
+    document.addEventListener('click', () => setTimeout(calculateEdges, 10));
+    
+    // Initial calculation after a small delay to ensure DOM is ready
+    setTimeout(calculateEdges, 100);
     
     return () => {
       resizeObserver.disconnect();
+      mutationObserver.disconnect();
       canvas.removeEventListener('scroll', debouncedCalculateEdges);
       window.removeEventListener('resize', debouncedCalculateEdges);
+      window.removeEventListener('transitionend', debouncedCalculateEdges);
+      document.removeEventListener('click', () => setTimeout(calculateEdges, 10));
     };
   }, [calculateEdges]);
 
-  // SVG component for edge rendering
+  // SVG component for edge rendering with improved positioning
   const EdgesSVG = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || edges.length === 0) return null;
     
     const canvasRect = canvas.getBoundingClientRect();
+    const scrollLeft = canvas.scrollLeft;
+    const scrollTop = canvas.scrollTop;
     
     return (
-      <svg className="edges-svg" width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}>
+      <svg 
+        className="edges-svg" 
+        width="100%" 
+        height="100%" 
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          overflow: 'visible', 
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+      >
         {edges.map(edge => {
           if (!edge.sourceDomRect || !edge.targetDomRect) return null;
           
-          // Calculate position relative to canvas
-          const sourceX = edge.sourceDomRect.right - canvasRect.left + canvas.scrollLeft;
-          const sourceY = edge.sourceDomRect.top + edge.sourceDomRect.height/2 - canvasRect.top + canvas.scrollTop;
-          const targetX = edge.targetDomRect.left - canvasRect.left + canvas.scrollLeft;
-          const targetY = edge.targetDomRect.top + edge.targetDomRect.height/2 - canvasRect.top + canvas.scrollTop;
+          // Calculate position relative to canvas with improved precision
+          const sourceX = edge.sourceDomRect.right - canvasRect.left + scrollLeft;
+          const sourceY = edge.sourceDomRect.top + (edge.sourceDomRect.height/2) - canvasRect.top + scrollTop;
+          const targetX = edge.targetDomRect.left - canvasRect.left + scrollLeft;
+          const targetY = edge.targetDomRect.top + (edge.targetDomRect.height/2) - canvasRect.top + scrollTop;
           
-          // For straight line
+          // Skip drawing if positions aren't valid
+          if (isNaN(sourceX) || isNaN(sourceY) || isNaN(targetX) || isNaN(targetY)) {
+            return null;
+          }
+          
+          // For straight line when nodes are roughly at the same height
           if (Math.abs(sourceY - targetY) <= 10) {
             return (
               <line
@@ -416,6 +544,42 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   return (
     <div className="process-graph-container">
+      <div className="process-graph-controls">
+        <div className="zoom-controls">
+          <button
+            className="control-button zoom-in"
+            onClick={handleZoomIn}
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            className="control-button zoom-reset"
+            onClick={handleZoomReset}
+            title="Reset Zoom"
+          >
+            ↺
+          </button>
+          <button
+            className="control-button zoom-out"
+            onClick={handleZoomOut}
+            title="Zoom Out"
+          >
+            -
+          </button>
+        </div>
+        
+        {onCreateState && (
+          <button
+            className="control-button add-state"
+            onClick={() => handleOpenCreateForm(null)}
+            title="Add New State"
+          >
+            Add State
+          </button>
+        )}
+      </div>
+      
       <div className="process-graph-legend">
         <div className="legend-item">
           <span className="legend-icon open"></span> Open Process (active)
@@ -425,7 +589,16 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         </div>
       </div>
       
-      <div className="process-graph-canvas" ref={canvasRef}>
+      <div 
+        className="process-graph-canvas" 
+        ref={canvasRef}
+        style={{
+          transform: `scale(${zoomLevel})`,
+          transformOrigin: '0 0',
+          height: `${100 / zoomLevel}%`,
+          width: `${100 / zoomLevel}%`,
+        }}
+      >
         <EdgesSVG />
         
         {processes.length === 0 && (
@@ -455,15 +628,30 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                 <span className="process-status">
                   ({processData.status === 'open' ? 'active' : 'complete'})
                 </span>
-                <button 
-                  className="delete-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteClick(processData.startState.id);
-                  }}
-                >
-                  ×
-                </button>
+                <div className="node-actions">
+                  {onCreateState && (
+                    <button 
+                      className="add-child-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenCreateForm(processData.startState);
+                      }}
+                      title="Add Child State"
+                    >
+                      +
+                    </button>
+                  )}
+                  <button 
+                    className="delete-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(processData.startState.id);
+                    }}
+                    title="Delete State"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
               
               <div className="process-node-label">
@@ -495,6 +683,26 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
           );
         })}
       </div>
+      
+      {/* State creation modal */}
+      {showCreateForm && onCreateState && (
+        <div className="modal-overlay">
+          <div className="modal-content state-form-modal">
+            <div className="modal-header">
+              <h2>{selectedParentForCreate ? `Create Child State for "${selectedParentForCreate.name}"` : 'Create New State'}</h2>
+              <button className="modal-close" onClick={handleCreateStateCancel}>×</button>
+            </div>
+            <div className="modal-body">
+              <CreateStateForm 
+                onSubmit={handleCreateStateSubmit}
+                onCancel={handleCreateStateCancel}
+                existingStates={states}
+                initialParentId={selectedParentForCreate?.id}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
