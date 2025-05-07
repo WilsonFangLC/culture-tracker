@@ -1,6 +1,7 @@
 import { CellState, deleteCellState } from '../api'
 import LineageGraph from './LineageGraph'
 import ProcessGraph from './ProcessGraph'
+import FlowGraph from './FlowGraph'
 import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
 import { calculatePredictedDensity } from '../utils/calculations'
@@ -27,8 +28,9 @@ export default function StateLineage({
   isUpdating,
   updateError 
 }: StateLineageProps) {
-  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process-graph'>('process-graph')
+  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process-graph' | 'flow'>('flow')
   const [editingState, setEditingState] = useState<CellState | null>(null)
+  const [createModalState, setCreateModalState] = useState<{ open: boolean; parentId?: number }>({ open: false });
 
   // Sync editingState if the state prop updates after an update
   useEffect(() => {
@@ -94,8 +96,6 @@ export default function StateLineage({
     }
   };
 
-  // const isSplitTransition = selectedState?.transition_type === 'split'; // Commented out: Unused variable
-
   // Function to initiate prediction
   const handlePredictClick = (stateId: number) => {
     // ... existing code ...
@@ -128,83 +128,64 @@ export default function StateLineage({
     }
   }, [states, state, onStatesChange, onSelectState]);
 
-  return (
-    <div className="mt-4 p-4 bg-white rounded-lg">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">State Lineage</h3>
-        <div className="flex space-x-2">
-          <button
-            className={`px-3 py-1 rounded ${
-              viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-            onClick={() => setViewMode('list')}
-          >
-            List View
-          </button>
-          <button
-            className={`px-3 py-1 rounded ${
-              viewMode === 'graph' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-            onClick={() => setViewMode('graph')}
-          >
-            State Graph
-          </button>
-          <button
-            className={`px-3 py-1 rounded ${
-              viewMode === 'process-graph' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-            onClick={() => setViewMode('process-graph')}
-          >
-            Process Graph
-          </button>
-        </div>
-      </div>
+  // Handle state creation
+  const handleCreateState = async (stateData: any[]) => {
+    try {
+      // You'll need to implement the API call to create the state
+      // This is a placeholder for where you'd make that API call
+      console.log("Creating state with data:", stateData);
+      
+      // For demo purposes, let's simulate a successful creation
+      // In a real implementation, you'd make an API call and update the states
+      alert('State creation would happen here. Implement the API call.');
+      
+      // After successful creation, you'd typically update the states list
+      // For now, we'll just log it
+    } catch (error) {
+      console.error("Failed to create state:", error);
+      alert('Error creating state');
+    }
+  };
 
-      {editingState ? (
-        <div className="space-y-4">
-          {updateError && (
-            <div className="p-4 bg-red-100 text-red-700 rounded-lg">
-              Error updating state: {updateError}
-            </div>
-          )}
-          <EditStateForm
-            state={editingState}
-            onSubmit={async (data) => {
-              // Perform the update and wait for completion
-              await onUpdateState(editingState.id, data)
-              // Close the edit form once update succeeds
-              setEditingState(null)
-            }}
-            onCancel={() => setEditingState(null)}
-          />
-          {isUpdating && (
-            <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
-              Saving changes...
-            </div>
-          )}
-        </div>
-      ) : viewMode === 'process-graph' ? (
+  // Render function to handle all different view modes
+  const renderContent = () => {
+    if (viewMode === 'flow') {
+      return (
+        <FlowGraph
+          state={state}
+          states={states}
+          onSelectState={onSelectState}
+          onDeleteState={handleDeleteState}
+          onCreateState={handleCreateState}
+        />
+      );
+    } else if (viewMode === 'process-graph') {
+      return (
         <ProcessGraph
           state={state}
           states={states}
           onSelectState={onSelectState}
           onDeleteState={handleDeleteState}
         />
-      ) : viewMode === 'graph' ? (
+      );
+    } else if (viewMode === 'graph') {
+      return (
         <LineageGraph
           state={state}
           states={states}
           onSelectState={onSelectState}
           onDeleteState={handleDeleteState}
         />
-      ) : (
-        <div className="space-y-4">
+      );
+    } else {
+      // List view
+      return (
+        <div className="h-full overflow-auto">
           {Object.entries(generations).length > 0 ? (
             Object.entries(generations).map(([generation, states]) => (
               <div key={generation} className="flex flex-wrap gap-4">
                 {states.map((s) => {
                   const siblings = getSiblings(s);
-                  // const isSplitTransition = siblings.length > 1; // Commented out: Unused variable
                   
                   return (
                     <div
@@ -278,14 +259,12 @@ export default function StateLineage({
                         >
                           Edit
                         </button>
-                        {/* Add Delete Button for List View */}
                         <button 
                           className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600" 
                           onClick={() => handleDeleteState(s.id)}
                         >
                           Delete
                         </button>
-                        {/* End Delete Button */}
                       </div>
                     </div>
                   );
@@ -298,6 +277,55 @@ export default function StateLineage({
             </div>
           )}
         </div>
+      );
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="border-b border-gray-200 pb-4 mb-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Cell State Lineage</h2>
+          <div className="flex gap-2">
+            <select
+              className="border rounded p-1 text-sm"
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as any)}
+            >
+              <option value="list">Table View</option>
+              <option value="graph">Basic Graph</option>
+              <option value="process-graph">Process Graph</option>
+              <option value="flow">Flow Graph</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {editingState ? (
+        <div className="space-y-4">
+          {updateError && (
+            <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+              Error updating state: {updateError}
+            </div>
+          )}
+          <EditStateForm
+            state={editingState}
+            onSubmit={async (data) => {
+              // Perform the update and wait for completion
+              await onUpdateState(editingState.id, data)
+              // Close the edit form once update succeeds
+              setEditingState(null)
+            }}
+            onCancel={() => setEditingState(null)}
+          />
+          {isUpdating && (
+            <div className="p-4 bg-blue-50 text-blue-700 rounded-lg">
+              Saving changes...
+            </div>
+          )}
+        </div>
+      ) : (
+        renderContent()
       )}
     </div>
   );

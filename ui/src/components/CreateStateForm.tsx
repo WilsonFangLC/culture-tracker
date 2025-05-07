@@ -12,6 +12,7 @@ interface CreateStateFormProps {
   }>) => void;
   onCancel: () => void;
   existingStates: CellState[];
+  initialParentId?: number;
 }
 
 // Define parameter keys for measurement dropdown
@@ -57,7 +58,7 @@ const operationProcessDescriptions: Record<OperationType, string> = {
   harvest: 'Complete an ongoing process by harvesting'
 };
 
-export default function CreateStateForm({ onSubmit, onCancel, existingStates }: CreateStateFormProps) {
+export default function CreateStateForm({ onSubmit, onCancel, existingStates, initialParentId }: CreateStateFormProps) {
   const states = existingStates;
 
   // Add state for the selected operation type (domain-specific terminology)
@@ -76,7 +77,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates }: 
   // Define formData state without using parentParameters in initialization
   const [formData, setFormData] = useState({
     name: "", // Default: empty, placeholder will guide
-    parent_id: undefined as number | undefined,
+    parent_id: initialParentId as number | undefined,
     temperature_c: -80, // Default: -80 (freezer temperature)
     volume_ml: 10, // Default: 10
     location: 'Incubator 1', // Default: Incubator 1
