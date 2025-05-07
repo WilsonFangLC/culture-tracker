@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CellState } from '../api';
 import './ProcessGraph.css'; // We'll create this later
+
+// Add debounce utility
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(this: any, ...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  };
+};
 
 interface ProcessGraphProps {
   state: CellState | null;
@@ -25,9 +34,19 @@ interface ProcessData {
   parentId?: string;
 }
 
+// Interface for edge data
+interface EdgeData {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  sourceDomRect: DOMRect | null;
+  targetDomRect: DOMRect | null;
+}
+
 export default function ProcessGraph({ state, states, onSelectState, onDeleteState }: ProcessGraphProps) {
-  // Ref for the canvas container to calculate positions
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState<EdgeData[]>([]);
+  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   
   // Find operation type from transition parameters
   const getOperationType = (state: CellState): ProcessNodeType | null => {
@@ -99,19 +118,19 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   // Transform CellState data into process nodes
   const processes = useMemo(() => {
+    console.log('--- Building process nodes ---');
+
     // Find states that start processes
     const processStartStates = states.filter(s => {
       const operationType = getOperationType(s);
-      if (operationType === null) return false; // Must have an op type
-
-      if (s.parent_id === null) return true; // Is a root op state
-
-      const parentState = states.find(p => p.id === s.parent_id);
-      if (!parentState) return true; // Orphaned op state, treat as a root for a new process branch
+      if (operationType === null) return false; // Must have an operation type
       
-      // Parent must NOT be an op state for this to be a new visual process node
-      return getOperationType(parentState) === null; 
+      // All states with operation types should be shown as process nodes
+      return true;
     });
+    
+    console.log(`Found ${processStartStates.length} states with operation types`);
+    console.log('Process start state IDs:', processStartStates.map(s => s.id));
     
     // Group by process, tracking start and end states
     const processesByStartId: Record<number, {
@@ -119,6 +138,20 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       endState: CellState | null;
       measurements: CellState[];
     }> = {};
+    
+    // Log any duplicate state IDs in the original array 
+    const stateIdCounts = new Map<number, number>();
+    states.forEach(s => {
+      stateIdCounts.set(s.id, (stateIdCounts.get(s.id) || 0) + 1);
+    });
+    
+    const duplicateStateIds = Array.from(stateIdCounts.entries())
+      .filter(([id, count]) => count > 1)
+      .map(([id]) => id);
+    
+    if (duplicateStateIds.length > 0) {
+      console.log('WARNING: Found duplicate state IDs in the original states array:', duplicateStateIds);
+    }
     
     for (const startState of processStartStates) {
       const endState = findEndState(startState);
@@ -128,6 +161,9 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         measurements: []
       };
     }
+    
+    // Check for any duplicate process definitions
+    console.log(`Created ${Object.keys(processesByStartId).length} process definitions`);
     
     // Associate measurements with their processes
     associateMeasurementsWithProcesses(processesByStartId);
@@ -219,8 +255,31 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       });
     }
     
-    return processDataList;
+    // Deduplicate processes by ID to ensure no duplicates
+    const uniqueProcessMap = new Map<string, ProcessData>();
+    for (const process of processDataList) {
+      uniqueProcessMap.set(process.id, process);
+    }
+    
+    // Use the unique processes for rendering
+    const uniqueProcessList = Array.from(uniqueProcessMap.values());
+    console.log(`Filtered ${processDataList.length} processes to ${uniqueProcessList.length} unique processes`);
+    
+    return uniqueProcessList;
   }, [states]);
+
+  // Extract parent-child relationships for edges
+  const processRelationships = useMemo(() => {
+    return processes
+      .filter(process => process.parentId)
+      .map(process => ({
+        id: `edge-${process.parentId}-to-${process.id}`,
+        sourceId: process.parentId!,
+        targetId: process.id,
+        sourceDomRect: null,
+        targetDomRect: null
+      }));
+  }, [processes]);
 
   // Handle node click to select the state
   const handleNodeClick = useCallback((processData: ProcessData) => {
@@ -251,117 +310,109 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
     return classes.join(' ');
   };
 
-  // Effect to draw connections between parent and child processes
+  // Set up node refs
+  const setNodeRef = useCallback((node: HTMLDivElement | null, id: string) => {
+    if (node) {
+      nodeRefs.current.set(id, node);
+    } else {
+      nodeRefs.current.delete(id);
+    }
+  }, []);
+
+  // Calculate edge paths
+  const calculateEdges = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || processRelationships.length === 0) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const newEdges = processRelationships.map(rel => {
+      const sourceNode = nodeRefs.current.get(rel.sourceId);
+      const targetNode = nodeRefs.current.get(rel.targetId);
+      
+      return {
+        ...rel,
+        sourceDomRect: sourceNode?.getBoundingClientRect() || null,
+        targetDomRect: targetNode?.getBoundingClientRect() || null
+      };
+    }).filter(edge => edge.sourceDomRect && edge.targetDomRect);
+
+    setEdges(newEdges);
+  }, [processRelationships]);
+
+  // Set up observer to recalculate edges when needed
   useEffect(() => {
-    const drawEdges = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
-      // Get all nodes with parent references
-      const nodeElements = canvas.querySelectorAll('.process-node[data-parent-id]');
-      
-      nodeElements.forEach((nodeElement) => {
-        const node = nodeElement as HTMLElement;
-        const parentId = node.getAttribute('data-parent-id');
-        if (!parentId) return;
-        
-        const parent = canvas.querySelector(`.process-node[data-id="${parentId}"]`) as HTMLElement;
-        if (!parent) return;
-        
-        // Get the edge element
-        const edge = node.querySelector('.process-edge') as HTMLElement;
-        if (!edge) return;
-        
-        // Calculate positions
-        const parentRect = parent.getBoundingClientRect();
-        const nodeRect = node.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        // Calculate center points
-        const parentCenter = {
-          x: parentRect.left + parentRect.width / 2,
-          y: parentRect.top + parentRect.height / 2
-        };
-        
-        const nodeCenter = {
-          x: nodeRect.left + nodeRect.width / 2,
-          y: nodeRect.top + nodeRect.height / 2
-        };
-        
-        // Adjust for canvas position/scroll
-        const scrollOffsetX = canvas.scrollLeft;
-        const scrollOffsetY = canvas.scrollTop;
-        
-        // Determine edge start and end points (from parent right to child left)
-        const startX = parentRect.right - canvasRect.left + scrollOffsetX;
-        const startY = parentCenter.y - canvasRect.top + scrollOffsetY;
-        
-        const endX = nodeRect.left - canvasRect.left + scrollOffsetX;
-        const endY = nodeCenter.y - canvasRect.top + scrollOffsetY;
-        
-        // Position the edge
-        const length = Math.max(endX - startX, 10); // Ensure minimum width
-        
-        edge.style.width = `${length}px`;
-        edge.style.height = '2px';
-        edge.style.position = 'absolute';
-        edge.style.left = `-${length}px`; // Position to the left of the node
-        edge.style.top = `${nodeRect.height / 2}px`;
-        
-        // If the nodes are at different vertical positions, use a path with a bend
-        if (Math.abs(startY - endY) > 10) {
-          // Create SVG for curved path if not already created
-          if (!edge.querySelector('svg')) {
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
-            svg.style.position = 'absolute';
-            svg.style.overflow = 'visible';
-            
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('stroke', '#9ca3af');
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('fill', 'none');
-            
-            svg.appendChild(path);
-            edge.appendChild(svg);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Calculate edges initially and after resize/scroll
+    calculateEdges();
+    
+    const debouncedCalculateEdges = debounce(calculateEdges, 100);
+    
+    // Use ResizeObserver to detect size changes
+    const resizeObserver = new ResizeObserver(debouncedCalculateEdges);
+    resizeObserver.observe(canvas);
+    
+    // Handle scroll events
+    canvas.addEventListener('scroll', debouncedCalculateEdges);
+    window.addEventListener('resize', debouncedCalculateEdges);
+    
+    return () => {
+      resizeObserver.disconnect();
+      canvas.removeEventListener('scroll', debouncedCalculateEdges);
+      window.removeEventListener('resize', debouncedCalculateEdges);
+    };
+  }, [calculateEdges]);
+
+  // SVG component for edge rendering
+  const EdgesSVG = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || edges.length === 0) return null;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    return (
+      <svg className="edges-svg" width="100%" height="100%" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none' }}>
+        {edges.map(edge => {
+          if (!edge.sourceDomRect || !edge.targetDomRect) return null;
+          
+          // Calculate position relative to canvas
+          const sourceX = edge.sourceDomRect.right - canvasRect.left + canvas.scrollLeft;
+          const sourceY = edge.sourceDomRect.top + edge.sourceDomRect.height/2 - canvasRect.top + canvas.scrollTop;
+          const targetX = edge.targetDomRect.left - canvasRect.left + canvas.scrollLeft;
+          const targetY = edge.targetDomRect.top + edge.targetDomRect.height/2 - canvasRect.top + canvas.scrollTop;
+          
+          // For straight line
+          if (Math.abs(sourceY - targetY) <= 10) {
+            return (
+              <line
+                key={edge.id}
+                x1={sourceX}
+                y1={sourceY}
+                x2={targetX}
+                y2={targetY}
+                stroke="#9ca3af"
+                strokeWidth="2"
+              />
+            );
           }
           
-          // Get the SVG and path
-          const svg = edge.querySelector('svg') as SVGElement;
-          const path = svg.querySelector('path') as SVGPathElement;
+          // For curved line (when source and target are at different Y positions)
+          const midX = sourceX + (targetX - sourceX) / 2;
           
-          // Calculate path
-          const midX = length / 2;
-          const controlPoint1X = midX - 20;
-          const controlPoint2X = midX + 20;
-          
-          // Create bezier curve path
-          const d = `M 0,0 C ${controlPoint1X},0 ${controlPoint2X},${endY - startY} ${length},${endY - startY}`;
-          
-          path.setAttribute('d', d);
-        }
-      });
-    };
-    
-    // Draw edges on load and window resize
-    drawEdges();
-    window.addEventListener('resize', drawEdges);
-    
-    // Add listener for canvas scroll events
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.addEventListener('scroll', drawEdges);
-    }
-    
-    // Return cleanup function
-    return () => {
-      window.removeEventListener('resize', drawEdges);
-      if (canvas) {
-        canvas.removeEventListener('scroll', drawEdges);
-      }
-    };
-  }, [processes]);
+          return (
+            <path
+              key={edge.id}
+              d={`M ${sourceX} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetX} ${targetY}`}
+              stroke="#9ca3af"
+              strokeWidth="2"
+              fill="none"
+            />
+          );
+        })}
+      </svg>
+    );
+  }, [edges]);
 
   return (
     <div className="process-graph-container">
@@ -375,6 +426,8 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       </div>
       
       <div className="process-graph-canvas" ref={canvasRef}>
+        <EdgesSVG />
+        
         {processes.length === 0 && (
           <div className="empty-message">No process data available</div>
         )}
@@ -387,6 +440,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
           return (
             <div 
               key={processData.id}
+              ref={node => setNodeRef(node, processData.id)}
               className={getNodeClass(processData.processType, processData.status, isSelected)}
               style={{
                 left: `${processData.position.x}px`,
@@ -437,9 +491,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                   </div>
                 )}
               </div>
-              
-              {/* Edge for connecting to parent */}
-              {processData.parentId && <div className="process-edge"></div>}
             </div>
           );
         })}

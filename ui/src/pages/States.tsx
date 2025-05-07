@@ -249,19 +249,17 @@ export default function States() {
           <p><strong>Purpose:</strong> This tool helps you track the lineage and passage number of your cell cultures.</p>
           <p><strong>Viewing Cells:</strong> The lineage graph below shows your cell states. Each box represents a specific culture or passage. Click on a box to see its details on the right.</p>
           <p><strong>Adding a New Culture:</strong> To add a brand new cell line (with no parent), use the 'Create New State' button or form, leave the 'Parent State' selection empty, and fill in the other details.</p>
-          <p><strong>Passaging Cells (Adding a Child):</strong> To record a new passage derived from an existing one:
-            <ol className="list-decimal list-inside ml-4">
-              <li>Use the 'Create New State' button or form.</li>
-              <li>Select the ID of the parent cell state (the one you passaged *from*) in the 'Parent State' selection.</li>
-              <li>Fill in the details for the *new* passage (name, passage number, date, etc.).</li>
-              <li>Submit the form. The new passage will appear connected to its parent in the lineage graph.</li>
-            </ol>
-          </p>
+          <p><strong>Passaging Cells (Adding a Child):</strong> To record a new passage derived from an existing one:</p>
+          <ol className="list-decimal list-inside ml-4">
+            <li>Use the 'Create New State' button or form.</li>
+            <li>Select the ID of the parent cell state (the one you passaged *from*) in the 'Parent State' selection.</li>
+            <li>Fill in the details for the *new* passage (name, passage number, date, etc.).</li>
+            <li>Submit the form. The new passage will appear connected to its parent in the lineage graph.</li>
+          </ol>
           <p><strong>Deleting a Cell State:</strong> Click the 'Delete' button on a cell state's details view. <strong className="text-red-600">Important:</strong> You can only delete a cell state if it has *no children* (i.e., you haven't passaged anything *from* it yet).</p>
           <p><strong>Editing Details:</strong> Click on a cell state in the graph, then use the form on the right to update its parameters or notes.</p>
           <p><strong>Predicting Density:</strong> Click the 'Predict Density' button on a cell state's details to estimate cell density at a future time point based on its recorded parameters.</p>
-           <p><strong>Exporting Data:</strong> Use the 'Export CSV' button to download all cell state data.</p>
-          
+          <p><strong>Exporting Data:</strong> Use the 'Export CSV' button to download all cell state data.</p>
         </div>
       </details>
       {/* Instructions Section End */}
