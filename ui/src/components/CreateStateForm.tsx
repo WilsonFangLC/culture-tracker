@@ -160,7 +160,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     storage_location: string;
     growth_rate: number;
     density_limit: number;
-    distribution: number;
     operation_type: OperationType;
     showOptionalParams?: boolean;
     doubling_time?: number;
@@ -327,6 +326,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       alert('A parent state must be selected for harvest operations.');
       return;
     }
+    
+    // For start_new_culture, parent_id should be undefined
+    if (operationType === 'start_new_culture') {
+      // No need to validate parent, as it should be undefined
+      // Setting it explicitly to undefined to ensure consistency
+      formData.parent_id = undefined;
+    }
 
     // --- Time Validation ---
     if (!manualTimestamp) {
@@ -406,13 +412,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
          alert('Please add at least one state for a split transition.');
          return;
       }
-      // Validate total distribution
-      const totalDistribution = splitStates.reduce((sum, state) => sum + state.distribution, 0)
-      if (totalDistribution !== 100) {
-        alert('Total distribution must equal 100%')
-        return
+      
+      // Validate parent_end_density is provided
+      if (!formData.parent_end_density) {
+        alert('Parent end cell density is required for split operations.');
+        return;
       }
-
+      
       // Create states for each split
       const statesToSubmit = splitStates.map(state => {
         // Get the corresponding transition type for this split's operation
@@ -435,8 +441,17 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         // For harvest operations, we need to use cell_density as end_density in transition_parameters
         const transitionParams = { 
           operation_type: state.operation_type,
+          parent_end_density: formData.parent_end_density, // Include parent_end_density for all split states
           ...(state.operation_type === 'harvest' ? { 
             end_density: state.cell_density,
+            cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+          } : {}),
+          ...(state.operation_type === 'passage' ? {
+            cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
+          } : {}),
+          ...(state.operation_type === 'freeze' ? {
+            number_of_vials: state.number_of_vials,
+            total_cells: state.total_cells,
             cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
           } : {}) 
         };
@@ -459,6 +474,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             storage_location: state.storage_location,
             growth_rate: state.growth_rate,
             density_limit: state.density_limit,
+            // Add cell_type to main parameters for consistency
+            cell_type: parentState?.parameters?.transition_parameters?.cell_type || '',
             // Add transition parameters inside parameters
             transition_parameters: transitionParams
           },
@@ -502,6 +519,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       
       // Add transition parameters to the parameters object
       newParameters.transition_parameters = transitionParams;
+      
+      // Ensure cell_type is included in the main parameters for consistency
+      if (parentState?.parameters?.transition_parameters?.cell_type) {
+        newParameters.cell_type = parentState.parameters.transition_parameters.cell_type;
+      }
 
       onSubmit([{
         ...basePayload,
@@ -523,6 +545,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           growth_rate: formData.growth_rate,
           doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
+          // Include cell_type in main parameters for display purposes
+          ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
           // Add transition parameters inside the parameters object
           transition_parameters: transitionParams
         } as CellStateCreate['parameters'], // Explicitly type the parameters object
@@ -547,7 +571,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       growth_rate: passageDefaults.growth_rate || 0,
       density_limit: passageDefaults.density_limit || 0,
       doubling_time: passageDefaults.doubling_time || 0,
-      distribution: 0,
       operation_type: 'passage',
       showOptionalParams: false,
       number_of_vials: 1,
@@ -582,12 +605,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       const defaults = operationDefaults[operationType];
       
       // Apply defaults while keeping existing values for fields that are not in defaults
-      // and preserving name and distribution
+      // and preserving name
       newSplitStates[index] = { 
         ...newSplitStates[index], 
         ...defaults,
-        name: newSplitStates[index].name, 
-        distribution: newSplitStates[index].distribution,
+        name: newSplitStates[index].name,
         showOptionalParams: newSplitStates[index].showOptionalParams 
       };
     }
@@ -1547,25 +1569,27 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
       )}
       
-      {/* State Name */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          State Name
-        </label>
-        <input
-          type="text"
-          className="mt-1 w-full p-2 border rounded"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Enter a descriptive name for this state"
-          required={operationType !== 'harvest'} // Not required for harvest
-        />
-        {operationType === 'harvest' && (
-          <p className="mt-1 text-xs text-red-500">
-            Include "Harvest" in the name to prevent this culture from being used as a parent.
-          </p>
-        )}
-      </div>
+      {/* State Name - Hidden for split operation */}
+      {transitionType !== 'split' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            State Name
+          </label>
+          <input
+            type="text"
+            className="mt-1 w-full p-2 border rounded"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Enter a descriptive name for this state"
+            required={operationType !== 'harvest'} // Not required for harvest
+          />
+          {operationType === 'harvest' && (
+            <p className="mt-1 text-xs text-red-500">
+              Include "Harvest" in the name to prevent this culture from being used as a parent.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Parent State Selection - Hidden for Start New Culture */}
       {operationType !== 'start_new_culture' && (
@@ -1678,6 +1702,26 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       {transitionType === 'split' && splitStates.length > 0 && (
         <div className="space-y-4">
           <h4 className="font-medium text-gray-800">Split State Details</h4>
+          
+          {/* Parent End Density - Required for split operations */}
+          <div className="mb-4 p-4 border rounded-lg bg-blue-50">
+            <label className="block text-sm font-medium text-gray-700">
+              Parent End Cell Density (cells/ml)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              className="mt-1 w-full p-2 border rounded"
+              value={formData.parent_end_density}
+              onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) }))}
+              required
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Cell density of the parent culture at the time of splitting (required)
+            </p>
+          </div>
+          
           {splitStates.map((state, index) => (
             <div key={index} className="p-4 border rounded-lg">
               <div className="flex justify-between items-center mb-4">
@@ -1703,22 +1747,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   onChange={(e) => updateSplitState(index, 'name', e.target.value)}
                   placeholder="Enter a descriptive name for this split state"
                   required
-                />
-              </div>
-
-              {/* Distribution */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Distribution (%)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className="mt-1 w-full p-2 border rounded"
-                  value={state.distribution}
-                  onChange={(e) => updateSplitState(index, 'distribution', parseFloat(e.target.value))}
                 />
               </div>
 

@@ -1,37 +1,65 @@
 import React, { useMemo, useState } from 'react';
 import { CellState, useStates, getExportCsvUrl } from '../api';
 
-// Define the same comprehensive list of all possible parameters as in the backend
-const ALL_POSSIBLE_PARAMETERS = [
-  // Basic parameters
-  "temperature_c", "volume_ml", "location", "cell_density", "viability",
-  "growth_rate", "doubling_time", "density_limit", "storage_location",
+// Define operation types
+type OperationType = 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'measurement' | 'split' | 'harvest';
+
+// Define which parameters apply to which operation types
+const OPERATION_PARAMETER_MAPPING: Record<OperationType, string[]> = {
+  start_new_culture: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'cell_type', 'operation_type'],
+  passage: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type', 'operation_type'],
+  freeze: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
+  thaw: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'number_of_passages', 'cell_type', 'operation_type'],
+  measurement: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_value', 'cell_type', 'operation_type'],
+  split: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type', 'operation_type'],
+  harvest: ['temperature_c', 'volume_ml', 'location', 'viability', 'end_density', 'cell_type', 'operation_type'],
+};
+
+// Define all possible parameters with metadata
+const ALL_PARAMETER_METADATA: Record<string, { 
+  displayName: string; 
+  applicableToAllNodes: boolean;
+  operationSpecific?: OperationType[];
+}> = {
+  // Basic parameters that can apply to all nodes
+  "temperature_c": { displayName: "Temperature (°C)", applicableToAllNodes: true },
+  "volume_ml": { displayName: "Volume (ml)", applicableToAllNodes: true },
+  "location": { displayName: "Location", applicableToAllNodes: true },
+  "cell_density": { displayName: "Initial Cell Density", applicableToAllNodes: true },
+  "viability": { displayName: "Viability (%)", applicableToAllNodes: true },
+  "growth_rate": { displayName: "Growth Rate", applicableToAllNodes: true },
+  "doubling_time": { displayName: "Doubling Time", applicableToAllNodes: true },
+  "density_limit": { displayName: "Density Limit", applicableToAllNodes: true },
+  "storage_location": { displayName: "Storage Location", applicableToAllNodes: false, operationSpecific: ['freeze'] },
   
   // Operation-specific parameters
-  "cell_type", "parent_end_density", "number_of_vials", "total_cells",
-  "number_of_passages", "end_density", "distribution", "measured_value"
-];
+  "cell_type": { displayName: "Cell Type", applicableToAllNodes: true, operationSpecific: ['start_new_culture'] },
+  "parent_end_density": { displayName: "Parent End Density", applicableToAllNodes: false, operationSpecific: ['passage', 'freeze', 'split'] },
+  "number_of_vials": { displayName: "Number of Vials", applicableToAllNodes: false, operationSpecific: ['freeze'] },
+  "total_cells": { displayName: "Total Cells", applicableToAllNodes: false, operationSpecific: ['freeze'] },
+  "number_of_passages": { displayName: "Number of Passages", applicableToAllNodes: false, operationSpecific: ['thaw'] },
+  "end_density": { displayName: "End Density", applicableToAllNodes: false, operationSpecific: ['harvest'] },
+  "measured_value": { displayName: "Measured Value", applicableToAllNodes: false, operationSpecific: ['measurement'] },
+  
+  // Former transition parameters, now regular parameters
+  "operation_type": { displayName: "Operation Type", applicableToAllNodes: true },
+};
 
-// Define all possible transition parameters
-const ALL_POSSIBLE_TRANSITION_PARAMETERS = [
-  "operation_type", "cell_type", "parent_end_density", "number_of_vials", 
-  "total_cells", "number_of_passages", "end_density", "distribution"
-];
+// Get all possible parameter keys
+const ALL_POSSIBLE_PARAMETERS = Object.keys(ALL_PARAMETER_METADATA);
 
 const RawListView: React.FC = () => {
   const { data: states, isLoading, error } = useStates();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Extract and flatten all parameters, including nested ones
-  const { allParameterKeys, allTransitionParameterKeys, flattenedStates } = useMemo(() => {
+  const { allParameterKeys, flattenedStates } = useMemo(() => {
     if (!states) return { 
       allParameterKeys: [...ALL_POSSIBLE_PARAMETERS], 
-      allTransitionParameterKeys: [...ALL_POSSIBLE_TRANSITION_PARAMETERS],
       flattenedStates: []
     };
     
     const paramKeys = new Set<string>(ALL_POSSIBLE_PARAMETERS);
-    const transitionParamKeys = new Set<string>(ALL_POSSIBLE_TRANSITION_PARAMETERS);
     
     // Debug output
     console.log('Processing states for parameters:', states);
@@ -40,7 +68,6 @@ const RawListView: React.FC = () => {
     const processed = states.map(state => {
       const flatState = { ...state };
       const flatParams: Record<string, any> = {};
-      const transitionParams: Record<string, any> = {};
       
       console.log(`Processing state ${state.id}, params:`, state.parameters);
       
@@ -54,28 +81,28 @@ const RawListView: React.FC = () => {
         });
       }
       
-      // Extract transition parameters if they exist
+      // Extract transition parameters if they exist and merge with regular parameters
       if (state.parameters?.transition_parameters) {
         console.log(`State ${state.id} transition params:`, state.parameters.transition_parameters);
         Object.entries(state.parameters.transition_parameters).forEach(([key, value]) => {
-          transitionParamKeys.add(key);
-          transitionParams[key] = value;
+          // Don't overwrite existing params unless the value is empty or null
+          if (!(key in flatParams) || flatParams[key] === null || flatParams[key] === '') {
+            paramKeys.add(key);
+            flatParams[key] = value;
+          }
         });
       }
       
       return {
         ...flatState,
-        flatParams,
-        transitionParams
+        flatParams
       };
     });
     
     console.log('Final parameter keys:', Array.from(paramKeys));
-    console.log('Final transition parameter keys:', Array.from(transitionParamKeys));
     
     return {
       allParameterKeys: Array.from(paramKeys).sort(),
-      allTransitionParameterKeys: Array.from(transitionParamKeys).sort(),
       flattenedStates: processed
     };
   }, [states]);
@@ -103,19 +130,47 @@ const RawListView: React.FC = () => {
         }
       }
       
-      // Search in transition parameters
-      for (const [key, value] of Object.entries(state.transitionParams)) {
-        if (
-          key.toLowerCase().includes(term) || 
-          String(value).toLowerCase().includes(term)
-        ) {
-          return true;
-        }
-      }
-      
       return false;
     });
   }, [flattenedStates, searchTerm]);
+  
+  // Function to determine if a parameter is applicable to a state based on its operation type
+  const isParameterApplicable = (paramKey: string, operationType: OperationType | undefined): boolean => {
+    // If there's no operation type, assume all common parameters are applicable
+    if (!operationType) {
+      return ALL_PARAMETER_METADATA[paramKey]?.applicableToAllNodes || false;
+    }
+    
+    // Check if the parameter is applicable to this operation type
+    const applicableParams = OPERATION_PARAMETER_MAPPING[operationType] || [];
+    return applicableParams.includes(paramKey);
+  };
+  
+  // Function to render parameter value with proper display
+  const renderParameterValue = (state: any, paramKey: string): JSX.Element => {
+    const operationType = state.flatParams.operation_type as OperationType | undefined;
+    
+    // Check if this parameter applies to this operation type
+    const isApplicable = isParameterApplicable(paramKey, operationType);
+    
+    // Get the value
+    const value = state.flatParams[paramKey];
+    
+    if (!isApplicable) {
+      // Parameter doesn't apply to this operation type
+      return <span className="text-gray-400">N/A</span>;
+    } else if (value === undefined || value === null || value === '') {
+      // Parameter is applicable but not provided (optional)
+      return <span className="text-yellow-500">-</span>;
+    } else {
+      // Parameter has a value
+      // Special formatting for some parameter types
+      if (paramKey === 'cell_type') {
+        return <span className="font-medium text-green-700">{value}</span>;
+      }
+      return <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>;
+    }
+  };
   
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading data: {(error as Error).message}</div>;
@@ -146,6 +201,18 @@ const RawListView: React.FC = () => {
         />
       </div>
       
+      <div className="mb-4 bg-gray-100 p-3 rounded">
+        <h3 className="font-medium mb-2">Legend:</h3>
+        <ul className="text-sm">
+          <li><span className="text-gray-400">N/A</span> - Parameter not applicable to this operation type</li>
+          <li><span className="text-yellow-500">-</span> - Optional parameter not provided</li>
+          <li className="mt-2">Column Header Colors:</li>
+          <li><span className="inline-block w-3 h-3 bg-gray-800 mr-1"></span> Basic information (ID, Name, etc.)</li>
+          <li><span className="inline-block w-3 h-3 bg-blue-700 mr-1"></span> Global parameters (apply to all operation types)</li>
+          <li><span className="inline-block w-3 h-3 bg-purple-700 mr-1"></span> Operation-specific parameters</li>
+        </ul>
+      </div>
+      
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border text-sm">
           <thead className="bg-gray-100 sticky top-0">
@@ -160,15 +227,13 @@ const RawListView: React.FC = () => {
               
               {/* Parameter Headers */}
               {allParameterKeys.map(key => (
-                <th key={`param-${key}`} className="border p-2 bg-blue-700 text-white">
-                  {key}
-                </th>
-              ))}
-              
-              {/* Transition Parameter Headers */}
-              {allTransitionParameterKeys.map(key => (
-                <th key={`tp-${key}`} className="border p-2 bg-green-700 text-white">
-                  TP: {key}
+                <th key={`param-${key}`} className={`border p-2 ${ALL_PARAMETER_METADATA[key]?.applicableToAllNodes ? 'bg-blue-700' : 'bg-purple-700'} text-white`}>
+                  {ALL_PARAMETER_METADATA[key]?.displayName || key}
+                  {!ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
+                    <div className="text-xs font-normal">
+                      ({ALL_PARAMETER_METADATA[key]?.operationSpecific?.join(', ')})
+                    </div>
+                  }
                 </th>
               ))}
             </tr>
@@ -180,29 +245,14 @@ const RawListView: React.FC = () => {
                 <td className="border p-2">{state.id}</td>
                 <td className="border p-2">{state.name || '-'}</td>
                 <td className="border p-2">{new Date(state.timestamp).toLocaleString()}</td>
-                <td className="border p-2">{state.parent_id || '-'}</td>
+                <td className="border p-2">{state.parent_id ? state.parent_id : 'No parent'}</td>
                 <td className="border p-2">{state.transition_type || '-'}</td>
                 <td className="border p-2">{state.additional_notes || state.notes || '-'}</td>
                 
-                {/* Parameters */}
+                {/* Parameters with NA/optional distinction */}
                 {allParameterKeys.map(key => (
                   <td key={`param-${key}-${state.id}`} className="border p-2">
-                    {state.flatParams[key] !== undefined 
-                      ? typeof state.flatParams[key] === 'object'
-                        ? JSON.stringify(state.flatParams[key])
-                        : String(state.flatParams[key])
-                      : '-'}
-                  </td>
-                ))}
-                
-                {/* Transition Parameters */}
-                {allTransitionParameterKeys.map(key => (
-                  <td key={`tp-${key}-${state.id}`} className="border p-2">
-                    {state.transitionParams[key] !== undefined 
-                      ? typeof state.transitionParams[key] === 'object'
-                        ? JSON.stringify(state.transitionParams[key])
-                        : String(state.transitionParams[key])
-                      : '-'}
+                    {renderParameterValue(state, key)}
                   </td>
                 ))}
               </tr>

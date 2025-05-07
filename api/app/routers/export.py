@@ -2,7 +2,7 @@ import io
 import csv
 import json
 from datetime import datetime
-from typing import List, Iterator, Dict, Any, Set
+from typing import List, Iterator, Dict, Any, Set, Union, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -19,67 +19,123 @@ from ..crud import get_cell_states
 
 router = APIRouter()
 
-# Define a comprehensive list of all possible parameters
-ALL_POSSIBLE_PARAMETERS = [
-    # Basic parameters
-    "temperature_c", "volume_ml", "location", "cell_density", "viability",
-    "growth_rate", "doubling_time", "density_limit", "storage_location",
+# Define operation types
+OperationType = str  # 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'measurement' | 'split' | 'harvest'
+
+# Define which parameters apply to which operation types
+OPERATION_PARAMETER_MAPPING: Dict[str, List[str]] = {
+    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'cell_type'],
+    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type'],
+    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type'],
+    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'number_of_passages', 'cell_type'],
+    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_value', 'cell_type'],
+    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density', 'cell_type'],
+    'harvest': ['temperature_c', 'volume_ml', 'location', 'viability', 'end_density', 'cell_type'],
+}
+
+# Define all possible parameters with metadata
+ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
+    # Basic parameters that can apply to all nodes
+    "temperature_c": {"displayName": "Temperature (°C)", "applicableToAllNodes": True},
+    "volume_ml": {"displayName": "Volume (ml)", "applicableToAllNodes": True},
+    "location": {"displayName": "Location", "applicableToAllNodes": True},
+    "cell_density": {"displayName": "Initial Cell Density", "applicableToAllNodes": True},
+    "viability": {"displayName": "Viability (%)", "applicableToAllNodes": True},
+    "growth_rate": {"displayName": "Growth Rate", "applicableToAllNodes": True},
+    "doubling_time": {"displayName": "Doubling Time", "applicableToAllNodes": True},
+    "density_limit": {"displayName": "Density Limit", "applicableToAllNodes": True},
+    "storage_location": {"displayName": "Storage Location", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
     
     # Operation-specific parameters
-    "cell_type", "parent_end_density", "number_of_vials", "total_cells",
-    "number_of_passages", "end_density", "distribution", "measured_value"
-]
+    "cell_type": {"displayName": "Cell Type", "applicableToAllNodes": True, "operationSpecific": ['start_new_culture']},
+    "parent_end_density": {"displayName": "Parent End Density", "applicableToAllNodes": False, "operationSpecific": ['passage', 'freeze', 'split']},
+    "number_of_vials": {"displayName": "Number of Vials", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
+    "total_cells": {"displayName": "Total Cells", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
+    "number_of_passages": {"displayName": "Number of Passages", "applicableToAllNodes": False, "operationSpecific": ['thaw']},
+    "end_density": {"displayName": "End Density", "applicableToAllNodes": False, "operationSpecific": ['harvest']},
+    "measured_value": {"displayName": "Measured Value", "applicableToAllNodes": False, "operationSpecific": ['measurement']},
+    
+    # Former transition parameters, now regular parameters
+    "operation_type": {"displayName": "Operation Type", "applicableToAllNodes": True},
+}
 
-# Define all possible transition parameters
-ALL_POSSIBLE_TRANSITION_PARAMETERS = [
-    "operation_type", "cell_type", "parent_end_density", "number_of_vials", 
-    "total_cells", "number_of_passages", "end_density", "distribution"
-]
+# Get all possible parameter keys
+ALL_POSSIBLE_PARAMETERS = list(ALL_PARAMETER_METADATA.keys())
 
-def format_value(value):
-    """Helper to format values for CSV, handling dicts and datetimes."""
+def is_parameter_applicable(param_key: str, operation_type: Optional[str]) -> bool:
+    """
+    Determine if a parameter is applicable to a specific operation type.
+    
+    Args:
+        param_key: The parameter key to check
+        operation_type: The operation type, or None if not specified
+        
+    Returns:
+        bool: True if the parameter is applicable, False otherwise
+    """
+    # If no operation type, only basic parameters apply
+    if not operation_type:
+        return ALL_PARAMETER_METADATA.get(param_key, {}).get("applicableToAllNodes", False)
+    
+    # Check if the parameter is in the list for this operation type
+    applicable_params = OPERATION_PARAMETER_MAPPING.get(operation_type, [])
+    return param_key in applicable_params
+
+def format_value(value, param_key: str = None, operation_type: Optional[str] = None) -> str:
+    """
+    Helper to format values for CSV, handling dicts, datetimes, and NA values.
+    
+    Args:
+        value: The value to format
+        param_key: The parameter key (optional, for determining applicability)
+        operation_type: The operation type (optional, for determining applicability)
+    
+    Returns:
+        str: The formatted value
+    """
+    # If param_key is provided, check if it's applicable to this operation type
+    if param_key and operation_type is not None:
+        if not is_parameter_applicable(param_key, operation_type):
+            return "N/A"  # Parameter is not applicable to this operation type
+    
+    # Format the value
+    if value is None:
+        return ""  # Optional parameter not provided
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, dict):
-        return json.dumps(value) # Serialize dicts to JSON strings
+        return json.dumps(value)  # Serialize dicts to JSON strings
     if isinstance(value, (list, tuple)):
-        return json.dumps(value) # Serialize lists to JSON strings
-    if value is None:
-        return ""
+        return json.dumps(value)  # Serialize lists to JSON strings
+    
     return str(value)
 
-def collect_all_parameter_keys(states: List[CellState], include_nested=True) -> Dict[str, Set[str]]:
+def collect_all_parameter_keys(states: List[CellState], include_nested=True) -> Set[str]:
     """
     Collects all parameter keys from all states, including nested parameters.
     
-    Returns a dictionary with:
-    - 'parameters': Set of all parameter keys from the parameters field
-    - 'transition_parameters': Set of all parameter keys from transition_parameters if they exist
+    Returns a set of all parameter keys
     """
-    result = {
-        'parameters': set(),
-        'transition_parameters': set()
-    }
+    result = set()
     
     for state in states:
         # Extract parameters
         if isinstance(state.parameters, dict):
             # Add all parameters from this state (including custom ones)
-            result['parameters'].update(state.parameters.keys())
+            result.update(state.parameters.keys())
             
             # Look for transition_parameters inside parameters
             if include_nested and 'transition_parameters' in state.parameters and isinstance(state.parameters['transition_parameters'], dict):
-                result['transition_parameters'].update(state.parameters['transition_parameters'].keys())
+                result.update(state.parameters['transition_parameters'].keys())
     
     # Add all possible parameters we know about to ensure they're in the CSV headers
     # even if no state currently has them
-    result['parameters'].update(ALL_POSSIBLE_PARAMETERS)
-    result['transition_parameters'].update(ALL_POSSIBLE_TRANSITION_PARAMETERS)
+    result.update(ALL_POSSIBLE_PARAMETERS)
     
     # Remove 'transition_parameters' from regular parameters if it exists
     # to avoid duplication, as we handle it separately
-    if 'transition_parameters' in result['parameters']:
-        result['parameters'].remove('transition_parameters')
+    if 'transition_parameters' in result:
+        result.remove('transition_parameters')
     
     return result
 
@@ -90,16 +146,50 @@ def flatten_parameters(state: CellState) -> Dict[str, Any]:
     """
     flat_data = {}
     
+    # Get the operation type for applicability checks
+    operation_type = None
+    cell_type = None
+    if isinstance(state.parameters, dict) and 'transition_parameters' in state.parameters:
+        operation_type = state.parameters['transition_parameters'].get('operation_type')
+        # Get cell_type from transition parameters if available
+        cell_type = state.parameters['transition_parameters'].get('cell_type')
+    
     # Add all regular parameters
     if isinstance(state.parameters, dict):
         for key, value in state.parameters.items():
             if key != 'transition_parameters':  # Handle transition_parameters separately
-                flat_data[f"param_{key}"] = value
+                # For cell_type, check if it exists in transition_parameters and use that if main param is empty
+                if key == 'cell_type' and (value is None or value == '') and cell_type:
+                    value = cell_type
+                
+                flat_data[key] = {
+                    'value': value,
+                    'is_applicable': is_parameter_applicable(key, operation_type)
+                }
                 
         # Handle transition_parameters if they exist
         if 'transition_parameters' in state.parameters and isinstance(state.parameters['transition_parameters'], dict):
             for key, value in state.parameters['transition_parameters'].items():
-                flat_data[f"tp_{key}"] = value
+                # Don't overwrite existing params unless the value is empty or null
+                if key not in flat_data or flat_data[key]['value'] is None or flat_data[key]['value'] == '':
+                    # Operation type is always applicable
+                    is_app = True
+                    if key == 'operation_type':
+                        is_app = True
+                    else:
+                        is_app = is_parameter_applicable(key, operation_type)
+                    
+                    flat_data[key] = {
+                        'value': value,
+                        'is_applicable': is_app
+                    }
+        
+        # Ensure cell_type is included in the main parameters if it doesn't exist but exists in transition_parameters
+        if 'cell_type' not in flat_data and cell_type:
+            flat_data["cell_type"] = {
+                'value': cell_type,
+                'is_applicable': is_parameter_applicable('cell_type', operation_type)
+            }
     
     return flat_data
 
@@ -109,22 +199,55 @@ def generate_csv_rows(states: List[CellState]) -> Iterator[str]:
     writer = csv.writer(output)
 
     # Collect all parameter keys from all states
-    all_keys = collect_all_parameter_keys(states)
-    parameter_keys = sorted(all_keys['parameters'])
-    transition_parameter_keys = sorted(all_keys['transition_parameters'])
+    all_parameter_keys = sorted(collect_all_parameter_keys(states))
     
-    # Define headers - adding all parameter keys as individual columns
-    base_headers = [
+    # Original data keys (for data processing)
+    base_header_keys = [
         "id", "name", "timestamp", "parent_id", 
         "transition_type", "additional_notes", "notes"
     ]
+    original_headers = base_header_keys + all_parameter_keys
     
-    # Add parameter keys and transition parameter keys as individual columns
-    headers = base_headers + [f"param_{key}" for key in parameter_keys]
-    headers += [f"tp_{key}" for key in transition_parameter_keys]
+    # Define base headers with proper display names
+    base_headers = [
+        "ID", "Name (global)", "Timestamp (global)", "Parent ID (global)", 
+        "Transition Type (global)", "Additional Notes (global)", "Notes (global)"
+    ]
     
-    writer.writerow(headers)
-    yield output.getvalue() # Yield header row first
+    # Add parameter keys with proper display names and applicability information
+    param_headers = []
+    for key in all_parameter_keys:
+        metadata = ALL_PARAMETER_METADATA.get(key, {})
+        display_name = metadata.get("displayName", key)
+        
+        # Check if it's applicable to all nodes or operation-specific
+        if metadata.get("applicableToAllNodes", False):
+            param_headers.append(f"{display_name} (global)")
+        elif "operationSpecific" in metadata:
+            op_specific = ", ".join(metadata.get("operationSpecific", []))
+            param_headers.append(f"{display_name} ({op_specific} specific)")
+        else:
+            param_headers.append(f"{display_name}")
+    
+    # Combine all headers
+    display_headers = base_headers + param_headers
+    
+    # Add a legend row explaining NA and empty values
+    legend_row = ["LEGEND:"] + ["" for _ in range(len(display_headers) - 1)]
+    writer.writerow(legend_row)
+    
+    legend_explanation = ["'N/A' = Parameter not applicable to this operation type", 
+                          "'empty' = Optional parameter not provided"]
+    for explanation in legend_explanation:
+        explanation_row = [explanation] + ["" for _ in range(len(display_headers) - 1)]
+        writer.writerow(explanation_row)
+    
+    # Add a blank row before the actual headers
+    writer.writerow(["" for _ in range(len(display_headers))])
+    
+    # Write the actual headers
+    writer.writerow(display_headers)
+    yield output.getvalue()  # Yield legend and header rows
     output.seek(0)
     output.truncate(0)
 
@@ -141,12 +264,35 @@ def generate_csv_rows(states: List[CellState]) -> Iterator[str]:
             "notes": state.notes,
         }
         
+        # Get operation type for parameter applicability checks
+        operation_type = None
+        if isinstance(state.parameters, dict) and 'transition_parameters' in state.parameters:
+            operation_type = state.parameters['transition_parameters'].get('operation_type')
+        
         # Add flattened parameters
         flat_params = flatten_parameters(state)
-        row_data.update(flat_params)
         
-        # Build row in the correct order
-        row = [format_value(row_data.get(h)) for h in headers]
+        # Build row in the correct order with proper formatting
+        row = []
+        for header_key in original_headers:
+            if header_key in row_data:
+                # Basic fields
+                row.append(format_value(row_data[header_key]))
+            elif header_key in flat_params:
+                # Parameters
+                param_data = flat_params[header_key]
+                row.append(format_value(
+                    param_data['value'], 
+                    header_key, 
+                    operation_type if param_data['is_applicable'] else None
+                ))
+            else:
+                # Check if the parameter is applicable
+                if is_parameter_applicable(header_key, operation_type):
+                    row.append("")  # Empty but applicable
+                else:
+                    row.append("N/A")  # Not applicable
+        
         writer.writerow(row)
         yield output.getvalue()
         output.seek(0)
@@ -170,6 +316,7 @@ async def export_cell_states_csv(
     """
     Fetches all cell state data and returns it as a streaming CSV file with all parameters expanded.
     Includes columns for all possible parameters, even if not present in any current state.
+    Distinguishes between 'N/A' (not applicable to operation type) and empty (optional parameter not provided).
     """
     # Fetch all states. Using a large limit for simplicity.
     # A better approach for very large datasets might involve true streaming
@@ -190,18 +337,47 @@ async def export_cell_states_csv(
           
           # Include headers for all possible parameters in empty CSV
           all_possible_params = collect_all_parameter_keys([])
-          param_keys = sorted(all_possible_params['parameters'])
-          tp_keys = sorted(all_possible_params['transition_parameters'])
+          param_keys = sorted(all_possible_params)
           
+          # Define base headers with proper display names
           base_headers = [
-              "id", "name", "timestamp", "parent_id", 
-              "transition_type", "additional_notes", "notes"
+              "ID", "Name (global)", "Timestamp (global)", "Parent ID (global)", 
+              "Transition Type (global)", "Additional Notes (global)", "Notes (global)"
           ]
           
-          headers = base_headers + [f"param_{key}" for key in param_keys]
-          headers += [f"tp_{key}" for key in tp_keys]
+          # Add parameter keys with proper display names and applicability information
+          param_headers = []
+          for key in param_keys:
+              metadata = ALL_PARAMETER_METADATA.get(key, {})
+              display_name = metadata.get("displayName", key)
+              
+              # Check if it's applicable to all nodes or operation-specific
+              if metadata.get("applicableToAllNodes", False):
+                  param_headers.append(f"{display_name} (global)")
+              elif "operationSpecific" in metadata:
+                  op_specific = ", ".join(metadata.get("operationSpecific", []))
+                  param_headers.append(f"{display_name} ({op_specific} specific)")
+              else:
+                  param_headers.append(f"{display_name}")
           
-          writer.writerow(headers)
+          # Combine all headers
+          display_headers = base_headers + param_headers
+          
+          # Add a legend row explaining NA and empty values
+          legend_row = ["LEGEND:"] + ["" for _ in range(len(display_headers) - 1)]
+          writer.writerow(legend_row)
+          
+          legend_explanation = ["'N/A' = Parameter not applicable to this operation type", 
+                              "'empty' = Optional parameter not provided"]
+          for explanation in legend_explanation:
+              explanation_row = [explanation] + ["" for _ in range(len(display_headers) - 1)]
+              writer.writerow(explanation_row)
+          
+          # Add a blank row before the actual headers
+          writer.writerow(["" for _ in range(len(display_headers))])
+          
+          # Write the actual headers
+          writer.writerow(display_headers)
           yield output.getvalue() # Yield header row only
       
       filename = f"cell_culture_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"

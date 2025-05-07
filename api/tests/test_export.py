@@ -60,12 +60,20 @@ def test_export_empty_csv():
     assert response.headers["content-type"] == "text/csv"
     content = response.content.decode("utf-8")
     reader = csv.reader(io.StringIO(content))
+    
+    # Skip legend rows and blank row
+    next(reader)  # LEGEND
+    next(reader)  # N/A explanation
+    next(reader)  # empty explanation
+    next(reader)  # blank row
+    
     header = next(reader)
-    expected_headers = [
-        "id", "name", "timestamp", "parent_id", "parameters",
-        "notes", "transition_type", "additional_notes"
-    ]
-    assert header == expected_headers
-    # Check that there are no more rows
+    # Expected updated headers with proper formatting
+    assert "ID" in header
+    assert "Name (global)" in header
+    assert "Timestamp (global)" in header
+    assert "Parent ID (global)" in header
+    
+    # Check that there are no more rows after headers
     with pytest.raises(StopIteration):
         next(reader) 

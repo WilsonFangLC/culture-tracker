@@ -298,45 +298,162 @@ export default function States() {
                   No states found
                 </div>
               ) : (
-                states.map((state) => (
-                  <div
-                    key={state.id}
-                    className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                      selectedState?.id === state.id ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-50'
-                    }`}
-                    onClick={() => setSelectedState(state)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium">{state.name || `State ${state.id}`}</div>
-                        <div className="text-sm text-gray-500">
-                          {dayjs.utc(state.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
+                states.map((state) => {
+                  // Determine operation type
+                  const operationType = state.parameters?.transition_parameters?.operation_type;
+                  
+                  // Function to determine if parameter is applicable to this operation type
+                  const isParameterApplicable = (param: string) => {
+                    // Define operation-specific parameter mappings (should ideally be imported from a shared config)
+                    const parameterMap: Record<string, string[]> = {
+                      'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'cell_type'],
+                      'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density'],
+                      'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells'],
+                      'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'number_of_passages'],
+                      'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_value'],
+                      'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density'],
+                      'harvest': ['temperature_c', 'volume_ml', 'location', 'viability', 'end_density'],
+                    };
+                    
+                    // Common parameters that apply to all states
+                    const commonParams = ['temperature_c', 'volume_ml', 'location'];
+                    
+                    // If no operation type or parameter is common, consider it applicable
+                    if (!operationType || commonParams.includes(param)) {
+                      return true;
+                    }
+                    
+                    // Check if parameter is applicable to this operation type
+                    return parameterMap[operationType]?.includes(param) || false;
+                  };
+                  
+                  // Function to render a parameter value with proper NA handling
+                  const renderParameterValue = (paramKey: string, value: any) => {
+                    if (!isParameterApplicable(paramKey)) {
+                      return <span className="text-gray-400 italic">N/A</span>;
+                    }
+                    if (value === undefined || value === null) {
+                      return <span className="text-yellow-500">-</span>;
+                    }
+                    
+                    // Format different types of values appropriately
+                    if (typeof value === 'number') {
+                      if (paramKey === 'growth_rate') {
+                        return value.toFixed(4);
+                      } else if (paramKey === 'doubling_time') {
+                        return value.toFixed(2);
+                      } else if (paramKey === 'density_limit' || paramKey === 'cell_density') {
+                        return formatPrediction(value);
+                      }
+                      return value.toString();
+                    }
+                    
+                    return String(value);
+                  };
+                  
+                  return (
+                    <div
+                      key={state.id}
+                      className={`p-4 rounded-lg cursor-pointer transition-colors ${
+                        selectedState?.id === state.id ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedState(state)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium">{state.name || `State ${state.id}`}</div>
+                          <div className="text-sm text-gray-500">
+                            {dayjs.utc(state.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
+                          </div>
                         </div>
+                        {selectedState?.id === state.id && (
+                          <span className="text-blue-500 text-sm">Selected</span>
+                        )}
                       </div>
-                      {selectedState?.id === state.id && (
-                        <span className="text-blue-500 text-sm">Selected</span>
+                      
+                      {/* Display operation type prominently if available */}
+                      {operationType && (
+                        <div className="mt-1 mb-2 text-sm inline-block bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
+                          {operationType.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                        </div>
                       )}
-                    </div>
-                    <div className="mt-2 text-sm space-y-1">
-                      <div><span className="font-medium">Temp:</span> {state.parameters.temperature_c ?? 'N/A'}°C</div>
-                      <div><span className="font-medium">Volume:</span> {state.parameters.volume_ml ?? 'N/A'}ml</div>
-                      <div><span className="font-medium">Location:</span> {state.parameters.location || 'N/A'}</div>
-                      {/* Growth Rate / Doubling Time Display */}
-                      {state.parameters.growth_rate !== undefined && (
-                        <div><span className="font-medium">Growth Rate:</span> {state.parameters.growth_rate?.toFixed(4) ?? 'N/A'} (per hour)</div>
-                      )}
-                      {state.parameters.doubling_time !== undefined && (
-                        <div><span className="font-medium">Doubling Time:</span> {state.parameters.doubling_time?.toFixed(2) ?? 'N/A'} (hours)</div>
-                      )}
-                      {state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
-                         <div><span className="font-medium">Density Limit:</span> {formatPrediction(state.parameters.density_limit)} (cells/mL)</div>
-                      )}
-                      {state.parameters.transition_parameters?.operation_type && (
-                        <div><span className="font-medium">Operation:</span> {state.parameters.transition_parameters.operation_type.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</div>
-                      )}
-                    </div>
-                    {/* Prediction Button */} 
-                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      
+                      <div className="mt-2 text-sm space-y-1">
+                        {/* Show essential parameters based on operation type */}
+                        {isParameterApplicable('temperature_c') && (
+                          <div>
+                            <span className="font-medium">Temp:</span> {renderParameterValue('temperature_c', state.parameters.temperature_c)}°C
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('volume_ml') && (
+                          <div>
+                            <span className="font-medium">Volume:</span> {renderParameterValue('volume_ml', state.parameters.volume_ml)}ml
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('location') && (
+                          <div>
+                            <span className="font-medium">Location:</span> {renderParameterValue('location', state.parameters.location)}
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('cell_density') && (
+                          <div>
+                            <span className="font-medium">Cell Density:</span> {renderParameterValue('cell_density', state.parameters.cell_density)}
+                          </div>
+                        )}
+                        
+                        {/* Show operation-specific parameters */}
+                        {isParameterApplicable('parent_end_density') && (
+                          <div>
+                            <span className="font-medium">Parent End Density:</span> {renderParameterValue('parent_end_density', 
+                              state.parameters.transition_parameters?.parent_end_density)}
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('end_density') && (
+                          <div>
+                            <span className="font-medium">End Density:</span> {renderParameterValue('end_density', 
+                              state.parameters.transition_parameters?.end_density)}
+                          </div>
+                        )}
+                        
+                        {/* Growth Rate / Doubling Time Display */}
+                        {isParameterApplicable('growth_rate') && state.parameters.growth_rate !== undefined && (
+                          <div>
+                            <span className="font-medium">Growth Rate:</span> {renderParameterValue('growth_rate', state.parameters.growth_rate)} (per hour)
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('doubling_time') && state.parameters.doubling_time !== undefined && (
+                          <div>
+                            <span className="font-medium">Doubling Time:</span> {renderParameterValue('doubling_time', state.parameters.doubling_time)} (hours)
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('density_limit') && state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
+                          <div>
+                            <span className="font-medium">Density Limit:</span> {renderParameterValue('density_limit', state.parameters.density_limit)} (cells/mL)
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('number_of_vials') && state.parameters.transition_parameters?.number_of_vials && (
+                          <div>
+                            <span className="font-medium">Vials:</span> {renderParameterValue('number_of_vials', 
+                              state.parameters.transition_parameters.number_of_vials)}
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('storage_location') && state.parameters.storage_location && (
+                          <div>
+                            <span className="font-medium">Storage:</span> {renderParameterValue('storage_location', state.parameters.storage_location)}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Prediction Button */} 
+                      <div className="mt-2 pt-2 border-t border-gray-200">
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); // Prevent state selection when clicking button
@@ -344,11 +461,12 @@ export default function States() {
                           }}
                           className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
                         >
-                            Predict Density...
+                          Predict Density...
                         </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
