@@ -1,71 +1,267 @@
-.process-node-group {
-  position: relative; /* Needed for absolute positioning of the tooltip */
-  cursor: pointer; /* Indicate interactivity */
+/* Process Graph Container */
+.process-graph-container {
+  width: 100%;
+  height: 600px;
+  background-color: #f5f5f5;
+  position: relative;
+  border-radius: 8px;
+  overflow: auto;
 }
 
-/* Basic tooltip styling */
-.process-node-group::after {
-  content: attr(data-tooltip); /* Use the data attribute for content */
+/* Legend */
+.process-graph-legend {
   position: absolute;
-  bottom: 110%; /* Position above the node */
-  left: 50%;
-  transform: translateX(-50%); /* Center the tooltip */
-  background-color: #333;
-  color: #fff;
-  padding: 5px 10px;
-  border-radius: 4px;
+  top: 10px;
+  right: 10px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 8px 12px;
   font-size: 12px;
-  white-space: pre-wrap; /* Respect newlines in the tooltip content */
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-  z-index: 10; /* Ensure tooltip is on top */
-  pointer-events: none; /* Prevent tooltip from blocking clicks on node */
-  min-width: 150px; /* Give it some minimum width */
-  text-align: center;
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Show tooltip on hover */
-.process-node-group:hover::after {
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.legend-icon {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  margin-right: 6px;
+  background-color: #f5f5f5;
+}
+
+.legend-icon.open {
+  border: 1px dashed #9ca3af;
+}
+
+.legend-icon.completed {
+  border: 1px solid #9ca3af;
+}
+
+/* Canvas where nodes are placed */
+.process-graph-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  padding: 1rem;
+}
+
+/* Empty message when no processes */
+.empty-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Process Node */
+.process-node {
+  position: absolute;
+  width: 230px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+  z-index: 1;
+}
+
+.process-node:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  z-index: 2;
+}
+
+/* Node selection */
+.process-node.selected {
+  box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+/* Node status styles */
+.process-node.process-status-open {
+  border: 1px dashed #9ca3af;
+}
+
+.process-node.process-status-completed {
+  border: 1px solid #9ca3af;
+}
+
+/* Node type styles */
+.process-node.process-type-passage {
+  background-color: #f3f4f6;
+}
+
+.process-node.process-type-freeze {
+  background-color: #dbeafe;
+}
+
+.process-node.process-type-thaw {
+  background-color: #dcfce7;
+}
+
+.process-node.process-type-split {
+  background-color: #fef3c7;
+}
+
+.process-node.process-type-start_new_culture {
+  background-color: #f3e8ff;
+}
+
+/* Node header */
+.process-node-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Status indicator */
+.process-status {
+  font-size: 12px;
+  margin-left: 6px;
+  color: #6b7280;
+  font-weight: normal;
+}
+
+/* Process open status */
+.process-status-open .process-status {
+  color: #ef4444;
+}
+
+/* Process completed status */
+.process-status-completed .process-status {
+  color: #10b981;
+}
+
+/* Delete button */
+.delete-button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.delete-button:hover {
   opacity: 1;
-  visibility: visible;
 }
 
-/* Optional: Simple arrow for the tooltip */
-.process-node-group::before {
+/* Node label (name) */
+.process-node-label {
+  padding: 8px 12px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Node info */
+.process-node-info {
+  padding: 0 12px 12px;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.process-node-info > div {
+  margin-bottom: 4px;
+}
+
+.info-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+/* Measurement indicator */
+.measurement-indicator {
+  margin-top: 8px;
+  border-top: 1px dotted #e5e7eb;
+  padding-top: 6px;
+  color: #6366f1;
+}
+
+/* Edges between nodes */
+.process-edge {
+  position: absolute;
+  height: 2px;
+  background-color: #9ca3af;
+  z-index: 0;
+  pointer-events: none;
+  transform-origin: right center;
+}
+
+/* For edges with SVG paths */
+.process-edge svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Make sure edges are behind nodes */
+.process-graph-canvas::before {
   content: '';
   position: absolute;
-  bottom: 110%; /* Align with tooltip bottom edge */
-  left: 50%;
-  transform: translateX(-50%) translateY(100%); /* Position below tooltip */
-  border-width: 5px;
-  border-style: solid;
-  border-color: #333 transparent transparent transparent; /* Arrow pointing down */
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-  z-index: 11;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
 }
 
-.process-node-group:hover::before {
-  opacity: 1;
-  visibility: visible;
+/* Panning and zooming controls (optional) */
+.process-graph-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
 }
 
-/* Path styling */
-.process-path {
-  stroke: #ccc;
-  stroke-width: 1.5;
-  fill: none;
+.control-button {
+  width: 30px;
+  height: 30px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s;
 }
 
-/* Completed node specific styling */
-.process-node-completed circle {
-  filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.2));
+.control-button:hover {
+  background-color: #f9fafb;
 }
 
-/* Ongoing node specific styling */
-.process-node-ongoing circle {
-  filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.15));
+/* Some responsiveness */
+@media (max-width: 640px) {
+  .process-node {
+    width: 180px;
+  }
 } 

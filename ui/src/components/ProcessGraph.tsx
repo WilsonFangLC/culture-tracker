@@ -1,15 +1,6 @@
-import { Tree } from 'react-d3-tree';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { CellState } from '../api';
-import { useCallback, useMemo } from 'react';
-import { 
-  buildProcessTree, 
-  processTreeToD3Tree, 
-  ProcessNode, 
-  D3TreeNode,
-  ProcessStatus,
-  ProcessType
-} from '../utils/processTransform';
-import './ProcessGraph.css';
+import './ProcessGraph.css'; // We'll create this later
 
 interface ProcessGraphProps {
   state: CellState | null;
@@ -18,178 +9,441 @@ interface ProcessGraphProps {
   onDeleteState: (stateId: number) => void;
 }
 
-// Custom type for react-d3-tree node datum with our additional properties
-interface CustomNodeDatum extends D3TreeNode {
-  processId?: string;
-  processType?: ProcessType;
-  processStatus?: ProcessStatus;
-  startStateId?: number;
-  endStateId?: number | null;
-  __rd3t: {
-    id: string;
-    depth: number;
-    collapsed: boolean;
-  };
+// Define node types
+type ProcessNodeType = 'passage' | 'freeze' | 'thaw' | 'split' | 'start_new_culture';
+type ProcessStatus = 'open' | 'completed';
+
+// Interface for process data
+interface ProcessData {
+  id: string;
+  startState: CellState;
+  endState: CellState | null;
+  processType: ProcessNodeType;
+  status: ProcessStatus;
+  measurements: CellState[];
+  position: { x: number; y: number };
+  parentId?: string;
 }
 
 export default function ProcessGraph({ state, states, onSelectState, onDeleteState }: ProcessGraphProps) {
-  // Convert states into a process tree that react-d3-tree can use
-  const treeData = useMemo(() => {
-    if (!states.length) {
-      return { name: 'No Processes', attributes: {}, children: [] };
+  // Ref for the canvas container to calculate positions
+  const canvasRef = useRef<HTMLDivElement>(null);
+  
+  // Find operation type from transition parameters
+  const getOperationType = (state: CellState): ProcessNodeType | null => {
+    const operationType = state.parameters?.transition_parameters?.operation_type;
+    if (!operationType) return null;
+    
+    if (['passage', 'freeze', 'thaw', 'split', 'start_new_culture'].includes(operationType)) {
+      return operationType as ProcessNodeType;
     }
-    
-    const processNodes = buildProcessTree(states, state?.id);
-    // Get process nodes directly without the root "Processes" node
-    return processTreeToD3Tree(processNodes, true);
-  }, [states, state]);
+    return null;
+  };
 
-  // Handler for clicking a node
-  const handleNodeClick = useCallback((nodeDatum: any) => {
-    const node = nodeDatum as CustomNodeDatum;
+  // Determine if a state is a measurement
+  const isMeasurement = (state: CellState): boolean => {
+    return state.transition_type === 'measurement';
+  };
+  
+  // Find end state for a process
+  const findEndState = (startState: CellState): CellState | null => {
+    // Check if this state has any child that starts another process
+    const childProcess = states.find(s => 
+      s.parent_id === startState.id && 
+      s.parameters?.transition_parameters?.operation_type &&
+      s.parameters.transition_parameters.operation_type !== 'measurement'
+    );
     
-    // If this node has a startStateId, select that state
-    if (node.startStateId) {
-      const selectedState = states.find(s => s.id === node.startStateId);
-      if (selectedState) {
-        onSelectState(selectedState);
+    if (childProcess) return childProcess;
+    
+    // If no child process found, the process is still open
+    return null;
+  };
+  
+  // Group measurements with their related process
+  const associateMeasurementsWithProcesses = (processesByStartId: Record<number, {
+    startState: CellState;
+    endState: CellState | null;
+    measurements: CellState[];
+  }>) => {
+    const measurementStates = states.filter(isMeasurement);
+    
+    for (const measurement of measurementStates) {
+      if (!measurement.parent_id) continue;
+      
+      // Look for a process where this measurement's parent is either the start or part of the same branch
+      let foundProcessId = null;
+      
+      // Direct parent is a process start
+      if (processesByStartId[measurement.parent_id]) {
+        foundProcessId = measurement.parent_id;
+      } else {
+        // Otherwise, trace up the parent chain until we find a process start or root
+        let currentState = measurement;
+        while (currentState.parent_id) {
+          if (processesByStartId[currentState.parent_id]) {
+            foundProcessId = currentState.parent_id;
+            break;
+          }
+          const parent = states.find(s => s.id === currentState.parent_id);
+          if (!parent) break;
+          currentState = parent;
+        }
+      }
+      
+      if (foundProcessId) {
+        processesByStartId[foundProcessId].measurements.push(measurement);
       }
     }
-  }, [onSelectState, states]);
+  };
 
-  // Handler for delete button click
+  // Transform CellState data into process nodes
+  const processes = useMemo(() => {
+    // Find states that start processes
+    const processStartStates = states.filter(s => {
+      const operationType = getOperationType(s);
+      if (operationType === null) return false; // Must have an op type
+
+      if (s.parent_id === null) return true; // Is a root op state
+
+      const parentState = states.find(p => p.id === s.parent_id);
+      if (!parentState) return true; // Orphaned op state, treat as a root for a new process branch
+      
+      // Parent must NOT be an op state for this to be a new visual process node
+      return getOperationType(parentState) === null; 
+    });
+    
+    // Group by process, tracking start and end states
+    const processesByStartId: Record<number, {
+      startState: CellState;
+      endState: CellState | null;
+      measurements: CellState[];
+    }> = {};
+    
+    for (const startState of processStartStates) {
+      const endState = findEndState(startState);
+      processesByStartId[startState.id] = {
+        startState,
+        endState,
+        measurements: []
+      };
+    }
+    
+    // Associate measurements with their processes
+    associateMeasurementsWithProcesses(processesByStartId);
+    
+    // Process positions - calculate levels for each node (distance from root)
+    const nodeLevels: Record<number, number> = {};
+    
+    for (const startState of processStartStates) {
+      let level = 0;
+      let currentState = startState;
+      
+      while (currentState.parent_id) {
+        level++;
+        const parent = states.find(s => s.id === currentState.parent_id);
+        if (!parent) break;
+        currentState = parent;
+      }
+      
+      nodeLevels[startState.id] = level;
+    }
+    
+    // Group nodes by levels for layout
+    const nodesByLevel: Record<number, number[]> = {};
+    for (const [stateId, level] of Object.entries(nodeLevels)) {
+      if (!nodesByLevel[level]) nodesByLevel[level] = [];
+      nodesByLevel[level].push(Number(stateId));
+    }
+    
+    // Create positions based on levels
+    const xSpacing = 300;
+    const ySpacing = 120;
+    const positions: Record<number, { x: number, y: number }> = {};
+    
+    // Calculate positions by level
+    for (const [level, stateIds] of Object.entries(nodesByLevel)) {
+      const x = Number(level) * xSpacing + 50;
+      
+      stateIds.forEach((stateId, index) => {
+        const y = 50 + (index * ySpacing);
+        positions[stateId] = { x, y };
+      });
+    }
+    
+    // Create final process data
+    const processDataList: ProcessData[] = [];
+    
+    for (const [startStateId, process] of Object.entries(processesByStartId)) {
+      const { startState, endState, measurements } = process;
+      const processType = getOperationType(startState);
+      
+      if (!processType) continue;
+      
+      const position = positions[startState.id] || { x: 0, y: 0 };
+      let parentId: string | undefined = undefined;
+      
+      // Set parent ID for edges
+      if (startState.parent_id) {
+        let FarthestKnownParentProcessStartStateId: number | null = null;
+        let currentAncestorId: number | null = startState.parent_id;
+        const visitedAncestorIds = new Set<number>(); // To prevent infinite loops with cyclic data
+
+        while (currentAncestorId !== null && !visitedAncestorIds.has(currentAncestorId)) {
+          visitedAncestorIds.add(currentAncestorId);
+          const ancestorState = states.find(s => s.id === currentAncestorId);
+          if (!ancestorState) {
+            break; 
+          }
+          if (getOperationType(ancestorState) !== null) {
+            FarthestKnownParentProcessStartStateId = ancestorState.id;
+            break; 
+          }
+          currentAncestorId = ancestorState.parent_id;
+        }
+        
+        if (FarthestKnownParentProcessStartStateId !== null) {
+          parentId = `process-${FarthestKnownParentProcessStartStateId}`;
+        }
+      }
+      
+      processDataList.push({
+        id: `process-${startState.id}`,
+        startState,
+        endState,
+        processType,
+        status: endState ? 'completed' : 'open',
+        measurements,
+        position,
+        parentId
+      });
+    }
+    
+    return processDataList;
+  }, [states]);
+
+  // Handle node click to select the state
+  const handleNodeClick = useCallback((processData: ProcessData) => {
+    onSelectState(processData.startState);
+  }, [onSelectState]);
+
   const handleDeleteClick = useCallback((stateId: number) => {
-    if (window.confirm('Are you sure you want to delete this state?')) {
+    if (window.confirm("Are you sure you want to delete this state?")) {
       onDeleteState(stateId);
     }
   }, [onDeleteState]);
 
-  // Custom node renderer for our process nodes
-  const renderCustomNode = ({ nodeDatum, toggleNode }: any) => {
-    const node = nodeDatum as CustomNodeDatum;
+  // Get CSS class for node based on process type and status
+  const getNodeClass = (processType: ProcessNodeType, status: ProcessStatus, isSelected: boolean) => {
+    let classes = ['process-node'];
     
-    // Extract attributes to display
-    const attributeEntries = Object.entries(node.attributes || {}).filter(([key]) => 
-      key !== 'endTime' && key !== 'startTime'
-    );
+    // Add class for process type
+    classes.push(`process-type-${processType}`);
     
-    // Determine node appearance based on process status
-    const isCompleted = node.processStatus === 'completed';
-    const fillColor = isCompleted ? '#4CAF50' : '#2196F3';
-    const strokeColor = isCompleted ? '#388E3C' : '#1976D2';
-    const strokeWidth = isCompleted ? 2 : 1;
-    const strokeDasharray = isCompleted ? 'none' : '5,3';
+    // Add class for status
+    classes.push(`process-status-${status}`);
     
-    // Create tooltip content from attributes
-    const tooltipContent = Object.entries(node.attributes || {})
-      .map(([key, value]) => `${value}`)
-      .join('\n');
+    // Add class if selected
+    if (isSelected) {
+      classes.push('selected');
+    }
     
-    return (
-      <g 
-        className={`process-node-group ${isCompleted ? 'process-node-completed' : 'process-node-ongoing'}`}
-        data-tooltip={tooltipContent}
-        onClick={() => handleNodeClick(node)}
-      >
-        {/* Node circle */}
-        <circle
-          r={25}
-          fill={fillColor}
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-          strokeDasharray={strokeDasharray}
-          onClick={toggleNode}
-        />
-        
-        {/* Process type icon (can be enhanced with SVG icons) */}
-        <text
-          dy=".35em"
-          textAnchor="middle"
-          style={{ fill: 'white', fontSize: '12px', fontWeight: 'bold' }}
-        >
-          {node.processType?.charAt(0).toUpperCase()}
-        </text>
-        
-        {/* Node title */}
-        <text
-          y={40}
-          textAnchor="middle"
-          style={{ fontSize: '14px', fontWeight: 'bold' }}
-        >
-          {node.name.split(' (')[0]}
-        </text>
-        
-        {/* Delete button */}
-        {node.startStateId && (
-          <text
-            x="20"
-            y="-20"
-            fontSize="12"
-            fill="red"
-            textAnchor="middle"
-            cursor="pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (node.startStateId) {
-                handleDeleteClick(node.startStateId);
-              }
-            }}
-          >
-            X
-          </text>
-        )}
-        
-        {/* Attributes display */}
-        <g transform="translate(0, 55)">
-          {attributeEntries.map(([key, value], index) => (
-            <text
-              key={key}
-              textAnchor="middle"
-              y={index * 15}
-              style={{ fontSize: '10px', fill: '#555' }}
-            >
-              {value}
-            </text>
-          ))}
-        </g>
-      </g>
-    );
+    return classes.join(' ');
   };
 
+  // Effect to draw connections between parent and child processes
+  useEffect(() => {
+    const drawEdges = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // Get all nodes with parent references
+      const nodeElements = canvas.querySelectorAll('.process-node[data-parent-id]');
+      
+      nodeElements.forEach((nodeElement) => {
+        const node = nodeElement as HTMLElement;
+        const parentId = node.getAttribute('data-parent-id');
+        if (!parentId) return;
+        
+        const parent = canvas.querySelector(`.process-node[data-id="${parentId}"]`) as HTMLElement;
+        if (!parent) return;
+        
+        // Get the edge element
+        const edge = node.querySelector('.process-edge') as HTMLElement;
+        if (!edge) return;
+        
+        // Calculate positions
+        const parentRect = parent.getBoundingClientRect();
+        const nodeRect = node.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Calculate center points
+        const parentCenter = {
+          x: parentRect.left + parentRect.width / 2,
+          y: parentRect.top + parentRect.height / 2
+        };
+        
+        const nodeCenter = {
+          x: nodeRect.left + nodeRect.width / 2,
+          y: nodeRect.top + nodeRect.height / 2
+        };
+        
+        // Adjust for canvas position/scroll
+        const scrollOffsetX = canvas.scrollLeft;
+        const scrollOffsetY = canvas.scrollTop;
+        
+        // Determine edge start and end points (from parent right to child left)
+        const startX = parentRect.right - canvasRect.left + scrollOffsetX;
+        const startY = parentCenter.y - canvasRect.top + scrollOffsetY;
+        
+        const endX = nodeRect.left - canvasRect.left + scrollOffsetX;
+        const endY = nodeCenter.y - canvasRect.top + scrollOffsetY;
+        
+        // Position the edge
+        const length = Math.max(endX - startX, 10); // Ensure minimum width
+        
+        edge.style.width = `${length}px`;
+        edge.style.height = '2px';
+        edge.style.position = 'absolute';
+        edge.style.left = `-${length}px`; // Position to the left of the node
+        edge.style.top = `${nodeRect.height / 2}px`;
+        
+        // If the nodes are at different vertical positions, use a path with a bend
+        if (Math.abs(startY - endY) > 10) {
+          // Create SVG for curved path if not already created
+          if (!edge.querySelector('svg')) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.style.position = 'absolute';
+            svg.style.overflow = 'visible';
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('stroke', '#9ca3af');
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            
+            svg.appendChild(path);
+            edge.appendChild(svg);
+          }
+          
+          // Get the SVG and path
+          const svg = edge.querySelector('svg') as SVGElement;
+          const path = svg.querySelector('path') as SVGPathElement;
+          
+          // Calculate path
+          const midX = length / 2;
+          const controlPoint1X = midX - 20;
+          const controlPoint2X = midX + 20;
+          
+          // Create bezier curve path
+          const d = `M 0,0 C ${controlPoint1X},0 ${controlPoint2X},${endY - startY} ${length},${endY - startY}`;
+          
+          path.setAttribute('d', d);
+        }
+      });
+    };
+    
+    // Draw edges on load and window resize
+    drawEdges();
+    window.addEventListener('resize', drawEdges);
+    
+    // Add listener for canvas scroll events
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('scroll', drawEdges);
+    }
+    
+    // Return cleanup function
+    return () => {
+      window.removeEventListener('resize', drawEdges);
+      if (canvas) {
+        canvas.removeEventListener('scroll', drawEdges);
+      }
+    };
+  }, [processes]);
+
   return (
-    <div className="w-full h-[600px] border rounded-lg bg-white p-4">
-      {!state || !states.length ? (
-        <div className="flex items-center justify-center h-full text-gray-500">
-          No states available to display
+    <div className="process-graph-container">
+      <div className="process-graph-legend">
+        <div className="legend-item">
+          <span className="legend-icon open"></span> Open Process (active)
         </div>
-      ) : Array.isArray(treeData) && treeData.length > 0 ? (
-        // If treeData is an array (skipRootNode=true), pass the first node as the data
-        // This allows us to show only the relevant processes without the "Processes" root node
-        <Tree
-          data={treeData[0]}
-          orientation="vertical"
-          pathFunc="step"
-          translate={{ x: 400, y: 50 }}
-          separation={{ siblings: 2, nonSiblings: 2.5 }}
-          nodeSize={{ x: 200, y: 200 }}
-          onNodeClick={handleNodeClick}
-          transitionDuration={0}
-          renderCustomNodeElement={renderCustomNode}
-          pathClassFunc={() => 'process-path'}
-        />
-      ) : (
-        // If we don't have any array data, show a simple Tree with default data
-        <Tree
-          data={typeof treeData === 'object' ? treeData : { name: 'No Processes', attributes: {}, children: [] }}
-          orientation="vertical"
-          pathFunc="step"
-          translate={{ x: 400, y: 50 }}
-          separation={{ siblings: 2, nonSiblings: 2.5 }}
-          nodeSize={{ x: 200, y: 200 }}
-          renderCustomNodeElement={renderCustomNode}
-          pathClassFunc={() => 'process-path'}
-        />
-      )}
+        <div className="legend-item">
+          <span className="legend-icon completed"></span> Completed Process (has next step)
+        </div>
+      </div>
+      
+      <div className="process-graph-canvas" ref={canvasRef}>
+        {processes.length === 0 && (
+          <div className="empty-message">No process data available</div>
+        )}
+        
+        {processes.map(processData => {
+          const isSelected = 
+            state?.id === processData.startState.id || 
+            state?.id === processData.endState?.id;
+            
+          return (
+            <div 
+              key={processData.id}
+              className={getNodeClass(processData.processType, processData.status, isSelected)}
+              style={{
+                left: `${processData.position.x}px`,
+                top: `${processData.position.y}px`
+              }}
+              onClick={() => handleNodeClick(processData)}
+              data-id={processData.id}
+              data-parent-id={processData.parentId || ''}
+            >
+              <div className="process-node-header">
+                {processData.processType.replace(/_/g, ' ')}
+                <span className="process-status">
+                  ({processData.status === 'open' ? 'active' : 'complete'})
+                </span>
+                <button 
+                  className="delete-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(processData.startState.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="process-node-label">
+                {processData.startState.name || `Process ${processData.startState.id}`}
+              </div>
+              
+              <div className="process-node-info">
+                <div>
+                  <span className="info-label">Started:</span> {new Date(processData.startState.timestamp).toLocaleDateString()}
+                </div>
+                
+                {processData.endState && (
+                  <div>
+                    <span className="info-label">Completed:</span> {new Date(processData.endState.timestamp).toLocaleDateString()}
+                  </div>
+                )}
+                
+                <div>
+                  <span className="info-label">Density:</span> {(processData.startState.parameters?.cell_density ?? 0).toLocaleString()} cells/ml
+                </div>
+
+                {processData.measurements.length > 0 && (
+                  <div className="measurement-indicator">
+                    <span className="info-label">{processData.measurements.length} Measurement{processData.measurements.length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Edge for connecting to parent */}
+              {processData.parentId && <div className="process-edge"></div>}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 } 
