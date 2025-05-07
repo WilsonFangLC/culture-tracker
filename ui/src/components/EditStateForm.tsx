@@ -79,38 +79,39 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         </div>
 
         {/* Cell Density */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Cell Density (cells/ml)
-          </label>
-          <input
-            type="number"
-            min="0"
-            className="mt-1 w-full p-2 border rounded"
-            value={parameters.cell_density ?? ''}
-            onChange={(e) => {
-              const value = e.target.value === '' ? null : parseFloat(e.target.value);
-              setParameters({ ...parameters, cell_density: value });
-            }}
-          />
-        </div>
+        <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Initial Cell Density (cells/ml)
+            </label>
+            <input
+              type="number"
+              value={parameters.cell_density || ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                setParameters({ ...parameters, cell_density: value });
+              }}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
 
-        {/* Viability */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Viability (%)
-          </label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            className="mt-1 w-full p-2 border rounded"
-            value={parameters.viability ?? ''}
-            onChange={(e) => {
-              const value = e.target.value === '' ? null : parseFloat(e.target.value);
-              setParameters({ ...parameters, viability: value });
-            }}
-          />
+          {/* Viability */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Viability (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              className="mt-1 w-full p-2 border rounded"
+              value={parameters.viability ?? ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                setParameters({ ...parameters, viability: value });
+              }}
+            />
+          </div>
         </div>
 
         {/* Growth Rate */}

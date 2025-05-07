@@ -48,7 +48,7 @@ export default function GrowthMeasurementForm({ passageId, onSubmit, isSubmittin
         />
       </div>
        <div>
-        <label htmlFor="cell_density" className="block text-sm font-medium text-gray-700">Cell Density (cells/mL)</label>
+        <label htmlFor="cell_density" className="block text-sm font-medium text-gray-700">Initial Cell Density (cells/mL)</label>
         <input
           type="number"
           name="cell_density"

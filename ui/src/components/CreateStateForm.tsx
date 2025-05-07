@@ -806,7 +806,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* New Passage Start Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">New Passage Start Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
@@ -1218,14 +1218,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* New Passage Start Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">New Passage Start Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
                 step="1000"
                 className="mt-1 w-full p-2 border rounded"
                 value={formData.cell_density} 
-                onChange={(e) => setFormData(prev => ({ ...prev, cell_density: Number(e.target.value) }))}
+                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">Initial cell density after thawing</p>
@@ -1515,7 +1515,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
         {/* Cell Density */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Cell Density</label>
+          <label className="block text-sm font-medium text-gray-700">Initial Cell Density</label>
           <input type="number" value={formData.cell_density} onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
         </div>
         {/* Viability */}
@@ -1829,7 +1829,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   ) : (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        {state.operation_type === 'passage' ? 'New Passage Start Cell Density (cells/ml)' : 'Cell Density (cells/ml)'}
+                        {state.operation_type === 'passage' ? 'New Passage Initial Cell Density (cells/ml)' : 'Initial Cell Density (cells/ml)'}
                       </label>
                       <input
                         type="number"

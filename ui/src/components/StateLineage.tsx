@@ -230,7 +230,6 @@ export default function StateLineage({
               <div key={generation} className="flex flex-wrap gap-4">
                 {states.map((s) => {
                   const siblings = getSiblings(s);
-                  // const isSplitTransition = siblings.length > 1; // Commented out: Unused variable
                   
                   return (
                     <div
@@ -243,7 +242,7 @@ export default function StateLineage({
                         <span className="font-medium">{s.name || `State ${s.id}`}</span>
                       </div>
                       <div className="text-sm text-gray-500">
-                        {dayjs.utc(s.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
+                        {dayjs.utc(s.timestamp).local().format('DD/MM/YYYY, HH:mm')}
                       </div>
                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                         <div>ID: {s.id}</div>
@@ -253,7 +252,13 @@ export default function StateLineage({
                         <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C</div>
                         <div><span className="font-medium">Volume:</span> {s.parameters?.volume_ml ?? 'N/A'}ml</div>
                         <div><span className="font-medium">Location:</span> {s.parameters?.location ?? 'N/A'}</div>
-                        <div>Cell Density: {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
+                        <div><span className="font-medium">Initial Density:</span> {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
+                        
+                        {/* Show end density if available (from transition parameters) */}
+                        {s.parameters?.transition_parameters?.end_density && (
+                          <div><span className="font-medium">End Density:</span> {s.parameters.transition_parameters.end_density} cells/ml</div>
+                        )}
+                        
                         {s.parameters?.growth_rate !== undefined && s.parameters?.growth_rate !== null && (
                           <div><span className="font-medium">Growth Rate:</span> {s.parameters.growth_rate} (per hour)</div>
                         )}

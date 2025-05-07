@@ -797,6 +797,18 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
             state?.id === processData.startState.id || 
             state?.id === processData.endState?.id;
             
+          // Find the end density for completed nodes
+          let endDensity: number | null = null;
+          if (processData.status === 'completed' && processData.endState) {
+            // If the node is a parent, find its child's parent_end_density
+            const childNode = processes.find(p => 
+              p.startState.parent_id === processData.startState.id
+            );
+            if (childNode) {
+              endDensity = childNode.startState.parameters?.transition_parameters?.parent_end_density || null;
+            }
+          }
+            
           return (
             <div 
               key={processData.id}
@@ -847,18 +859,36 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
               
               <div className="process-node-info">
                 <div>
-                  <span className="info-label">Started:</span> {new Date(processData.startState.timestamp).toLocaleDateString()}
+                  <span className="info-label">Started:</span> {new Date(processData.startState.timestamp).toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
                 </div>
                 
                 {processData.endState && (
                   <div>
-                    <span className="info-label">Completed:</span> {new Date(processData.endState.timestamp).toLocaleDateString()}
+                    <span className="info-label">Completed:</span> {new Date(processData.endState.timestamp).toLocaleString(undefined, {
+                      year: 'numeric',
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </div>
                 )}
                 
                 <div>
-                  <span className="info-label">Density:</span> {(processData.startState.parameters?.cell_density ?? 0).toLocaleString()} cells/ml
+                  <span className="info-label">Initial Density:</span> {(processData.startState.parameters?.cell_density ?? 0).toLocaleString()} cells/ml
                 </div>
+
+                {endDensity !== null && (
+                  <div>
+                    <span className="info-label">End Density:</span> {endDensity.toLocaleString()} cells/ml
+                  </div>
+                )}
 
                 {processData.measurements.length > 0 && (
                   <div className="measurement-indicator">
