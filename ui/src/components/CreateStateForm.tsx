@@ -60,25 +60,34 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
   const [manualTimestamp, setManualTimestamp] = useState<string>(defaultDateTimeLocal);
 
   // Define formData state with initialParentId if provided
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    parent_id: number | undefined;
+    cell_density: number;
+    timestamp: string;  // Add timestamp to the type definition
+    temperature_c?: number;
+    volume_ml?: number;
+    location?: string;
+    viability?: number;
+    storage_location?: string;
+    growth_rate?: number;
+    doubling_time?: number;
+    density_limit?: number;
+    additional_notes?: string;
+    cell_type?: string;
+    parent_end_density?: number;
+    number_of_vials?: number;
+    total_cells?: number;
+    number_of_passages?: number;
+    end_density?: number;
+  }>({
     name: "", // Default: empty, placeholder will guide
     parent_id: initialParentId, // Use initialParentId if provided
-    temperature_c: -80, // Default: -80 (freezer temperature)
-    volume_ml: 10, // Default: 10
-    location: 'Incubator 1', // Default: Incubator 1
     cell_density: 1e5, // Default: 100,000
-    viability: 100, // Default: 100%
-    storage_location: '', // Default: empty
-    growth_rate: Math.log(2) / 1, // Default: Calculated from 1h doubling time
-    doubling_time: 1, // Default: 1 hour
-    density_limit: 1e6, // Default: 1,000,000
-    additional_notes: '', // Default: empty
-    cell_type: '', // New field for cell type
-    parent_end_density: 0, // New field for parent end density with default value
-    number_of_vials: 1, // New field for number of frozen vials
-    total_cells: 0, // New field for total cells per vial
-    number_of_passages: 1, // New field for number of new passages in thaw
-    end_density: 0, // New field for end cell density at harvest
+    timestamp: new Date().toISOString().slice(0, 16), // Default to current date/time
+    
+    // Optional parameters defaulting to undefined
+    // All optional fields are left out of the initial state
   });
 
   // Get the parent state's parameters - ensure it updates when parent_id changes
@@ -291,48 +300,123 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.timestamp) {
+      alert('Please select a date and time');
+      return;
+    }
 
-    // Add simple validation for parent state based on name
-    if (formData.parent_id) {
-      const selectedParent = states.find(s => s.id === formData.parent_id);
-      
-      // Check if parent state name contains "Harvest"
-      if (selectedParent?.name?.toLowerCase().includes('harvest')) {
-        alert('Cannot create a child state from a harvested culture. Please select a different parent state.');
-        return;
+    // If operation is harvest but parent is missing
+    if (operationType === 'harvest' && !formData.parent_id) {
+      alert('Harvest operation requires a parent state');
+      return;
+    }
+
+    // If parent state doesn't exist anymore
+    if (formData.parent_id && !states.find(s => s.id === formData.parent_id)) {
+      alert('Selected parent state no longer exists');
+      return;
+    }
+
+    // If measurement, validate measured parameter
+    if (operationType === 'measurement' && (!measuredParameter || measuredValue === '')) {
+      alert('Please select a parameter to measure and provide a value');
+      return;
+    }
+
+    // Create base payload for the main state submission
+    const statePayload = {
+      name: formData.name,
+      timestamp: formData.timestamp,
+      parent_id: formData.parent_id || undefined,
+      additional_notes: formData.additional_notes,
+    };
+
+    // Create parameters object, only including properties with defined values
+    const parameters: Record<string, any> = {};
+    
+    // Only add parameters that have been set (not undefined)
+    if (formData.temperature_c !== undefined) parameters.temperature_c = formData.temperature_c;
+    if (formData.volume_ml !== undefined) parameters.volume_ml = formData.volume_ml;
+    if (formData.location !== undefined) parameters.location = formData.location;
+    if (formData.cell_density !== undefined) parameters.cell_density = formData.cell_density;
+    if (formData.viability !== undefined) parameters.viability = formData.viability;
+    if (formData.storage_location !== undefined) parameters.storage_location = formData.storage_location;
+    if (formData.growth_rate !== undefined) parameters.growth_rate = formData.growth_rate;
+    if (formData.doubling_time !== undefined) parameters.doubling_time = formData.doubling_time;
+    if (formData.density_limit !== undefined) parameters.density_limit = formData.density_limit;
+    if (formData.cell_type !== undefined) parameters.cell_type = formData.cell_type;
+    
+    // Special case for measurement operation
+    if (operationType === 'measurement' && measuredParameter) {
+      parameters[measuredParameter] = Number(measuredValue) || measuredValue;
+    }
+
+    // Create transition parameters object to be included in parameters
+    const transitionParams: Record<string, any> = { 
+      operation_type: operationType,
+    };
+    
+    // Only add operation-specific parameters if they're defined
+    if (operationType === 'start_new_culture' && formData.cell_type !== undefined) {
+      transitionParams.cell_type = formData.cell_type;
+    }
+    
+    if (operationType === 'passage') {
+      if (formData.parent_end_density !== undefined) {
+        transitionParams.parent_end_density = formData.parent_end_density;
+      }
+      if (parentState?.parameters?.transition_parameters?.cell_type) {
+        transitionParams.cell_type = parentState.parameters.transition_parameters.cell_type;
+      }
+    }
+    
+    if (operationType === 'freeze') {
+      if (formData.parent_end_density !== undefined) {
+        transitionParams.parent_end_density = formData.parent_end_density;
+      }
+      if (formData.number_of_vials !== undefined) {
+        transitionParams.number_of_vials = formData.number_of_vials;
+      }
+      if (formData.total_cells !== undefined) {
+        transitionParams.total_cells = formData.total_cells;
+      }
+      if (parentState?.parameters?.transition_parameters?.cell_type) {
+        transitionParams.cell_type = parentState.parameters.transition_parameters.cell_type;
+      }
+    }
+    
+    if (operationType === 'thaw') {
+      if (formData.number_of_passages !== undefined) {
+        transitionParams.number_of_passages = formData.number_of_passages;
+      }
+      if (parentState?.parameters?.transition_parameters?.cell_type) {
+        transitionParams.cell_type = parentState.parameters.transition_parameters.cell_type;
+      }
+    }
+    
+    if (operationType === 'harvest') {
+      if (formData.end_density !== undefined) {
+        transitionParams.end_density = formData.end_density;
+      }
+      if (parentState?.parameters?.transition_parameters?.cell_type) {
+        transitionParams.cell_type = parentState.parameters.transition_parameters.cell_type;
       }
     }
 
-    // Validate parent selection for passage operation
-    if (operationType === 'passage' && !formData.parent_id) {
-      alert('A parent state must be selected for passage operations.');
-      return;
-    }
-    
-    // Validate parent selection for freeze operation
-    if (operationType === 'freeze' && !formData.parent_id) {
-      alert('A parent state must be selected for freeze operations.');
-      return;
-    }
-    
-    // Validate parent selection for thaw operation
-    if (operationType === 'thaw' && !formData.parent_id) {
-      alert('A frozen vial must be selected for thaw operations.');
-      return;
-    }
-    
-    // Validate parent selection for harvest operation
-    if (operationType === 'harvest' && !formData.parent_id) {
-      alert('A parent state must be selected for harvest operations.');
-      return;
-    }
-    
+    // Add transition parameters to parameters
+    parameters.transition_parameters = transitionParams;
+
     // For start_new_culture, parent_id should be undefined
     if (operationType === 'start_new_culture') {
-      // No need to validate parent, as it should be undefined
-      // Setting it explicitly to undefined to ensure consistency
-      formData.parent_id = undefined;
+      // Find all cell states that have this parent ID
+      if (formData.parent_id) {
+        console.warn('start_new_culture operation should not have a parent state. Removing parent_id.');
+      }
+      // Always set parent_id to undefined for start_new_culture
+      statePayload.parent_id = undefined;
     }
 
     // --- Time Validation ---
@@ -375,52 +459,38 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       ? `Harvest of ${parentState?.name || 'Unknown'}`
       : formData.name;
 
-    // Always set the operation_type for new states to track properly going forward
-    const basePayload = {
-      name: finalName,
-      timestamp: newTimestamp.toISOString(), // Use validated manual timestamp
-      parent_id: formData.parent_id,
-      additional_notes: notes,
-      // Remove transition_parameters from the base payload
-    };
+    // Update statePayload with finalName and timestamp
+    statePayload.name = finalName;
+    statePayload.timestamp = newTimestamp.toISOString(); // Use validated manual timestamp
+    statePayload.additional_notes = notes;
 
-    // Create transition parameters object to be included in parameters
-    const transitionParams = { 
-      operation_type: operationType,
-      ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
-      ...(operationType === 'passage' ? { 
-        parent_end_density: formData.parent_end_density,
-        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
-      } : {}),
-      ...(operationType === 'freeze' ? {
-        parent_end_density: formData.parent_end_density,
-        number_of_vials: formData.number_of_vials,
-        total_cells: formData.total_cells,
-        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
-      } : {}),
-      ...(operationType === 'thaw' ? {
-        number_of_passages: formData.number_of_passages,
-        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
-      } : {}),
-      ...(operationType === 'harvest' ? {
-        end_density: formData.end_density,
-        cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
-      } : {})
-    };
-
+    // For split operation, handle multiple states
     if (transitionType === 'split') {
-      if (splitStates.length === 0) {
-         alert('Please add at least one state for a split transition.');
-         return;
-      }
+      // Create a new base payload for split states
+      const splitBasePayload = {
+        ...statePayload
+      };
       
-      // Validate parent_end_density is provided
-      if (!formData.parent_end_density) {
-        alert('Parent end cell density is required for split operations.');
+      // If no split states, show error
+      if (splitStates.length === 0) {
+        alert('Please add at least one split state.');
         return;
       }
+
+      // Unique names across all splits
+      const splitNames = splitStates.map(s => s.name);
+      if (new Set(splitNames).size !== splitNames.length) {
+        alert('Each split state must have a unique name.');
+        return;
+      }
+
+      // Notes for splits are shared
+      const stateNotes = formData.additional_notes || '';
       
-      // Create states for each split
+      // Handle split transition type
+      let splitTransitionType: 'single' | 'split' | 'measurement' = 'split';
+      
+      // Create array of states to submit
       const statesToSubmit = splitStates.map(state => {
         // Get the corresponding transition type for this split's operation
         const splitTransitionType = operationToTransitionType[state.operation_type];
@@ -464,7 +534,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         }
         
         return {
-          ...basePayload, // Use base payload
+          ...splitBasePayload, // Use split base payload
           name: stateName, // Use name with harvest prefix if needed
           parameters: { // Use split state parameters
             temperature_c: state.temperature_c,
@@ -488,90 +558,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       onSubmit(statesToSubmit)
 
     } else if (transitionType === 'measurement') {
-      if (!formData.parent_id) {
-        alert('A parent state must be selected for a measurement transition.');
-        return;
-      }
-      if (!parentState) {
-         alert('Selected parent state not found.'); // Should ideally not happen
-         return;
-      }
-       if (measuredValue === '') {
-         alert('Please enter the measured value.');
-         return;
-       }
+      // For measurement, add the measurement value to parameters
+      console.log('[CreateStateForm] Submitting measurement:',
+        { ...statePayload, parameters, transition_type: 'measurement' }
+      );
 
-      // Create new parameters based on parent, overriding the measured one
-      const newParameters = { ...parentParameters };
-      
-      // Basic type handling for measured value
-      let finalMeasuredValue: string | number = measuredValue;
-      if (typeof newParameters[measuredParameter] === 'number') {
-        finalMeasuredValue = parseFloat(String(measuredValue));
-        if (isNaN(finalMeasuredValue)) {
-          alert(`Invalid number format for ${measuredParameter}.`);
-          return;
+      // Submit as measurement transition type
+      onSubmit([
+        {
+          ...statePayload,
+          parameters,
+          transition_type: 'measurement'
         }
-      } else {
-         finalMeasuredValue = String(measuredValue); // Ensure it's a string otherwise
-      }
-
-      newParameters[measuredParameter] = finalMeasuredValue;
-      
-      // Add transition parameters to the parameters object
-      newParameters.transition_parameters = transitionParams;
-      
-      // Ensure cell_type is included in the main parameters for consistency
-      if (parentState?.parameters?.transition_parameters?.cell_type) {
-        newParameters.cell_type = parentState.parameters.transition_parameters.cell_type;
-      }
-
-      // Calculate measured doubling time if we have initial and end density data
-      if (parentState && parentState.parameters?.cell_density && 
-          transitionParams.parent_end_density) {
-        const initialDensity = parentState.parameters.cell_density;
-        const finalDensity = transitionParams.parent_end_density;
-        const startTime = parentState.timestamp;
-        const endTime = newTimestamp.toISOString(); // Use validated manual timestamp
-        
-        const measuredDoublingTime = calculateMeasuredDoublingTime(
-          initialDensity, finalDensity, startTime, endTime
-        );
-        
-        if (measuredDoublingTime !== null) {
-          newParameters.measured_doubling_time = measuredDoublingTime;
-          console.log(`Calculated measured doubling time: ${measuredDoublingTime.toFixed(2)} hours`);
-        }
-      }
-
-      onSubmit([{
-        ...basePayload,
-        parameters: newParameters as CellStateCreate['parameters'], // Assert type after modification
-        transition_type: 'measurement',
-        additional_notes: formData.additional_notes,
-      }]);
-
+      ]);
     } else { // Single transition
-      // Calculate measured doubling time if we have a parent with initial density and this state has an end density
-      let measuredDoublingTime = null;
-      if (parentState && parentState.parameters?.cell_density && 
-          transitionParams.parent_end_density) {
-        const initialDensity = parentState.parameters.cell_density;
-        const finalDensity = transitionParams.parent_end_density;
-        const startTime = parentState.timestamp;
-        const endTime = newTimestamp.toISOString();
-        
-        measuredDoublingTime = calculateMeasuredDoublingTime(
-          initialDensity, finalDensity, startTime, endTime
-        );
-        
-        if (measuredDoublingTime !== null) {
-          console.log(`Calculated measured doubling time: ${measuredDoublingTime.toFixed(2)} hours`);
-        }
-      }
+      // Note: Measured doubling time will be calculated and added to the parent state in the States component
       
       onSubmit([{
-        ...basePayload,
+        ...statePayload,
         parameters: {
           temperature_c: formData.temperature_c,
           volume_ml: formData.volume_ml,
@@ -582,8 +586,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           growth_rate: formData.growth_rate,
           doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
-          // Add measured doubling time if calculated
-          ...(measuredDoublingTime !== null ? { measured_doubling_time: measuredDoublingTime } : {}),
           // Include cell_type in main parameters for display purposes
           ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
           // Add transition parameters inside the parameters object

@@ -6,6 +6,7 @@ import StateLineage from '../components/StateLineage'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import { calculateMeasuredDoublingTime } from '../utils/calculations'
+import { useQueryClient } from '@tanstack/react-query'
 
 dayjs.extend(utc)
 
@@ -16,7 +17,8 @@ function formatPrediction(value: number | null): string {
 }
 
 export default function States() {
-  const { data: statesData, isLoading: statesLoading, error: statesError } = useStates()
+  const queryClient = useQueryClient()
+  const { data: statesData, isLoading: statesLoading, error: statesError, refetch: refetchStates } = useStates()
   const [selectedState, setSelectedState] = useState<CellState | null>(null)
   const [showCreateState, setShowCreateState] = useState(false)
 
@@ -227,13 +229,22 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            // Make sure parameters exist
-            if (!stateData.parameters) {
-              stateData.parameters = {};
-            }
+            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${measuredDoublingTime.toFixed(2)} hours`);
             
-            stateData.parameters.measured_doubling_time = measuredDoublingTime;
-            console.log(`Calculated measured doubling time for new state: ${measuredDoublingTime.toFixed(2)} hours`);
+            // Update the parent state with measured doubling time
+            updateState.mutate({
+              id: parentState.id,
+              parameters: {
+                ...parentState.parameters,
+                measured_doubling_time: measuredDoublingTime
+              }
+            }, {
+              onSuccess: () => {
+                // Refresh the states list to show the updated measured doubling time
+                console.log("Parent state updated with measured doubling time, invalidating states query");
+                queryClient.invalidateQueries({ queryKey: ['states'] })
+              }
+            });
           }
         }
       }
@@ -279,18 +290,32 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            parameters.measured_doubling_time = measuredDoublingTime;
-            console.log(`Calculated measured doubling time for state ${stateId}: ${measuredDoublingTime.toFixed(2)} hours`);
+            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${measuredDoublingTime.toFixed(2)} hours`);
+            
+            // Update the parent state with measured doubling time
+            await updateState.mutateAsync({ 
+              id: parentState.id, 
+              parameters: {
+                ...parentState.parameters,
+                measured_doubling_time: measuredDoublingTime
+              }
+            });
+            
+            // Refresh the states list to show the updated measured doubling time
+            console.log("Parent state updated with measured doubling time, invalidating states query");
+            queryClient.invalidateQueries({ queryKey: ['states'] });
           }
         }
       }
       
-      // Call the mutation with the correct structure
+      // Call the mutation with the correct structure for the primary state update
       await updateState.mutateAsync({ 
         id: stateId, 
         parameters, 
         additional_notes 
       });
+      // Invalidate states query after the primary update as well, in case it changed data relevant to the list
+      queryClient.invalidateQueries({ queryKey: ['states'] });
 
     } catch (error) {
       console.error('handleUpdateState error', error)
