@@ -260,10 +260,13 @@ export default function StateLineage({
                         )}
                         
                         {s.parameters?.growth_rate !== undefined && s.parameters?.growth_rate !== null && (
-                          <div><span className="font-medium">Growth Rate:</span> {s.parameters.growth_rate} (per hour)</div>
+                          <div><span className="font-medium">Hypothesized Growth Rate:</span> {s.parameters.growth_rate} (per hour)</div>
+                        )}
+                        {s.parameters?.measured_doubling_time !== undefined && s.parameters?.measured_doubling_time !== null && (
+                          <div><span className="font-medium">Measured Doubling Time:</span> {s.parameters.measured_doubling_time.toFixed(2)} (hours)</div>
                         )}
                         {s.parameters?.density_limit !== undefined && s.parameters?.density_limit !== null && (
-                          <div><span className="font-medium">Density Limit:</span> {s.parameters.density_limit} (cells/mL)</div>
+                          <div><span className="font-medium">Hypothesized Density Limit:</span> {s.parameters.density_limit} (cells/mL)</div>
                         )}
                         {(() => {
                           const predicted = calculatePredictedDensity(

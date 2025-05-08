@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { CellState, CellStateCreate } from '../api'
+import { calculateMeasuredDoublingTime } from '../utils/calculations'
 
 interface CreateStateFormProps {
   onSubmit: (data: Array<{
@@ -42,7 +43,7 @@ const operationToTransitionType: Record<OperationType, 'single' | 'split' | 'mea
   harvest: 'single'
 };
 
-export default function CreateStateForm({ onSubmit, onCancel, existingStates, initialParentId }: CreateStateFormProps) {
+export default function CreateStateForm({ onSubmit, onCancel, existingStates, initialParentId }: CreateStateFormProps): JSX.Element {
   const states = existingStates;
 
   // Add state for the selected operation type (domain-specific terminology)
@@ -60,31 +61,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
 
   // Define formData state with initialParentId if provided
   const [formData, setFormData] = useState({
-    name: '',
-    parent_id: initialParentId,
-    temperature_c: 37.0,
-    volume_ml: 10.0,
-    location: '',
-    cell_density: 0,
-    viability: 95,
-    storage_location: '',
-    hypothesized_growth_rate: 0,
-    hypothesized_doubling_time: 0,
-    hypothesized_density_limit: 0,
-    // Keep legacy parameters for backward compatibility
-    growth_rate: 0,
-    doubling_time: 0,
-    density_limit: 0,
-    cell_type: '',
-    number_of_vials: 0,
-    number_of_passages: 0, 
-    measured_value: '', 
-    transition_type: 'single' as 'single' | 'split' | 'measurement',
-    parent_end_density: 0,
-    total_cells: 0,
-    operation_type: null as OperationType | null,
-    additional_notes: '',
-    end_density: 0
+    name: "", // Default: empty, placeholder will guide
+    parent_id: initialParentId, // Use initialParentId if provided
+    temperature_c: -80, // Default: -80 (freezer temperature)
+    volume_ml: 10, // Default: 10
+    location: 'Incubator 1', // Default: Incubator 1
+    cell_density: 1e5, // Default: 100,000
+    viability: 100, // Default: 100%
+    storage_location: '', // Default: empty
+    growth_rate: Math.log(2) / 1, // Default: Calculated from 1h doubling time
+    doubling_time: 1, // Default: 1 hour
+    density_limit: 1e6, // Default: 1,000,000
+    additional_notes: '', // Default: empty
+    cell_type: '', // New field for cell type
+    parent_end_density: 0, // New field for parent end density with default value
+    number_of_vials: 1, // New field for number of frozen vials
+    total_cells: 0, // New field for total cells per vial
+    number_of_passages: 1, // New field for number of new passages in thaw
+    end_density: 0, // New field for end cell density at harvest
   });
 
   // Get the parent state's parameters - ensure it updates when parent_id changes
@@ -175,14 +169,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
   }>>([])
 
   // --- Calculation Logic --- 
-  const calculateLinkedParameter = useCallback((changedParam: 'hypothesized_growth_rate' | 'hypothesized_doubling_time', value: number) => {
-    if (changedParam === 'hypothesized_growth_rate') {
+  const calculateLinkedParameter = useCallback((changedParam: 'growth_rate' | 'doubling_time', value: number) => {
+    if (changedParam === 'growth_rate') {
       if (value > 0) {
         return Math.log(2) / value;
       } else {
         return 0; // Or handle as infinity/undefined if preferred
       }
-    } else { // changedParam === 'hypothesized_doubling_time'
+    } else { // changedParam === 'doubling_time'
       if (value > 0) {
         return Math.log(2) / value;
       } else {
@@ -202,12 +196,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
 
     let updates: Partial<typeof formData> = { [param]: numericValue };
 
-    if (param === 'hypothesized_growth_rate') {
-      const linkedDoublingTime = calculateLinkedParameter('hypothesized_growth_rate', numericValue);
-      updates['hypothesized_doubling_time'] = linkedDoublingTime;
-    } else if (param === 'hypothesized_doubling_time') {
-      const linkedGrowthRate = calculateLinkedParameter('hypothesized_doubling_time', numericValue);
-      updates['hypothesized_growth_rate'] = linkedGrowthRate;
+    if (param === 'growth_rate') {
+      const linkedDoublingTime = calculateLinkedParameter('growth_rate', numericValue);
+      updates['doubling_time'] = linkedDoublingTime;
+    } else if (param === 'doubling_time') {
+      const linkedGrowthRate = calculateLinkedParameter('doubling_time', numericValue);
+      updates['growth_rate'] = linkedGrowthRate;
     }
 
     setFormData(prev => ({ ...prev, ...updates }));
@@ -532,6 +526,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         newParameters.cell_type = parentState.parameters.transition_parameters.cell_type;
       }
 
+      // Calculate measured doubling time if we have initial and end density data
+      if (parentState && parentState.parameters?.cell_density && 
+          transitionParams.parent_end_density) {
+        const initialDensity = parentState.parameters.cell_density;
+        const finalDensity = transitionParams.parent_end_density;
+        const startTime = parentState.timestamp;
+        const endTime = newTimestamp.toISOString(); // Use validated manual timestamp
+        
+        const measuredDoublingTime = calculateMeasuredDoublingTime(
+          initialDensity, finalDensity, startTime, endTime
+        );
+        
+        if (measuredDoublingTime !== null) {
+          newParameters.measured_doubling_time = measuredDoublingTime;
+          console.log(`Calculated measured doubling time: ${measuredDoublingTime.toFixed(2)} hours`);
+        }
+      }
+
       onSubmit([{
         ...basePayload,
         parameters: newParameters as CellStateCreate['parameters'], // Assert type after modification
@@ -540,6 +552,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       }]);
 
     } else { // Single transition
+      // Calculate measured doubling time if we have a parent with initial density and this state has an end density
+      let measuredDoublingTime = null;
+      if (parentState && parentState.parameters?.cell_density && 
+          transitionParams.parent_end_density) {
+        const initialDensity = parentState.parameters.cell_density;
+        const finalDensity = transitionParams.parent_end_density;
+        const startTime = parentState.timestamp;
+        const endTime = newTimestamp.toISOString();
+        
+        measuredDoublingTime = calculateMeasuredDoublingTime(
+          initialDensity, finalDensity, startTime, endTime
+        );
+        
+        if (measuredDoublingTime !== null) {
+          console.log(`Calculated measured doubling time: ${measuredDoublingTime.toFixed(2)} hours`);
+        }
+      }
+      
       onSubmit([{
         ...basePayload,
         parameters: {
@@ -549,9 +579,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           cell_density: formData.cell_density,
           viability: formData.viability,
           storage_location: formData.storage_location,
-          hypothesized_growth_rate: formData.hypothesized_growth_rate,
-          hypothesized_doubling_time: formData.hypothesized_doubling_time,
-          hypothesized_density_limit: formData.hypothesized_density_limit,
+          growth_rate: formData.growth_rate,
+          doubling_time: formData.doubling_time,
+          density_limit: formData.density_limit,
+          // Add measured doubling time if calculated
+          ...(measuredDoublingTime !== null ? { measured_doubling_time: measuredDoublingTime } : {}),
           // Include cell_type in main parameters for display purposes
           ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
           // Add transition parameters inside the parameters object
@@ -726,27 +758,27 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   />
                 </div>
                 
-                {/* Hypothesized Growth Rate */}
-                <div>
+                {/* Growth Rate */}
+                <div className="col-span-1">
                   <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_growth_rate}
-                    onChange={(e) => handleParameterChange('hypothesized_growth_rate', e.target.value)}
+                    value={formData.growth_rate}
+                    onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
                   />
                 </div>
                 
-                {/* Hypothesized Doubling Time */}
+                {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (hours)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_doubling_time}
-                    onChange={(e) => handleParameterChange('hypothesized_doubling_time', e.target.value)}
+                    value={formData.doubling_time}
+                    onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
                   />
@@ -755,12 +787,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_density_limit}
-                    onChange={(e) => handleParameterChange('hypothesized_density_limit', e.target.value)}
+                    value={formData.density_limit}
+                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5e6 (cells/ml)"
                   />
@@ -909,13 +941,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 </div>
                 
                 {/* Growth Rate */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_growth_rate}
-                    onChange={(e) => handleParameterChange('hypothesized_growth_rate', e.target.value)}
+                    value={formData.growth_rate}
+                    onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
                   />
@@ -923,12 +955,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Doubling Time (hours)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_doubling_time}
-                    onChange={(e) => handleParameterChange('hypothesized_doubling_time', e.target.value)}
+                    value={formData.doubling_time}
+                    onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
                   />
@@ -937,12 +969,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_density_limit}
-                    onChange={(e) => handleParameterChange('hypothesized_density_limit', e.target.value)}
+                    value={formData.density_limit}
+                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5e6 (cells/ml)"
                   />
@@ -1126,13 +1158,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 </div>
                 
                 {/* Growth Rate */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_growth_rate}
-                    onChange={(e) => handleParameterChange('hypothesized_growth_rate', e.target.value)}
+                    value={formData.growth_rate}
+                    onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
                   />
@@ -1140,12 +1172,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Doubling Time (hours)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_doubling_time}
-                    onChange={(e) => handleParameterChange('hypothesized_doubling_time', e.target.value)}
+                    value={formData.doubling_time}
+                    onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
                   />
@@ -1154,12 +1186,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_density_limit}
-                    onChange={(e) => handleParameterChange('hypothesized_density_limit', e.target.value)}
+                    value={formData.density_limit}
+                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5e6 (cells/ml)"
                   />
@@ -1321,13 +1353,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 </div>
                 
                 {/* Growth Rate */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_growth_rate}
-                    onChange={(e) => handleParameterChange('hypothesized_growth_rate', e.target.value)}
+                    value={formData.growth_rate}
+                    onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
                   />
@@ -1335,12 +1367,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Doubling Time (hours)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_doubling_time}
-                    onChange={(e) => handleParameterChange('hypothesized_doubling_time', e.target.value)}
+                    value={formData.doubling_time}
+                    onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
                   />
@@ -1349,12 +1381,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.hypothesized_density_limit}
-                    onChange={(e) => handleParameterChange('hypothesized_density_limit', e.target.value)}
+                    value={formData.density_limit}
+                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5e6 (cells/ml)"
                   />
@@ -1507,24 +1539,24 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
         {/* Growth Rate */}
         <div className="col-span-1">
-          <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+          <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
           <input
             type="number"
             step="any"
-            value={formData.hypothesized_growth_rate}
-            onChange={(e) => handleParameterChange('hypothesized_growth_rate', e.target.value)}
+            value={formData.growth_rate}
+            onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
             className="mt-1 w-full p-2 border rounded"
             placeholder="e.g., 0.03 (per hour)"
           />
         </div>
         {/* Doubling Time */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Doubling Time (optional)</label>
+          <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
           <input
             type="number"
             step="any"
-            value={formData.hypothesized_doubling_time}
-            onChange={(e) => handleParameterChange('hypothesized_doubling_time', e.target.value)}
+            value={formData.doubling_time}
+            onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
             className="mt-1 w-full p-2 border rounded"
             placeholder="e.g., 23.1 (hours)"
           />
@@ -1532,12 +1564,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
         {/* Density Limit */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+          <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
           <input
             type="number"
             step="any"
-            value={formData.hypothesized_density_limit}
-            onChange={(e) => handleParameterChange('hypothesized_density_limit', e.target.value)}
+            value={formData.density_limit}
+            onChange={(e) => handleParameterChange('density_limit', e.target.value)}
             className="mt-1 w-full p-2 border rounded"
             placeholder="e.g., 1.5e6 (cells/ml)"
           />
@@ -1978,7 +2010,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   
                   {/* Growth Rate */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Growth Rate (per hour)</label>
+                    <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
                     <input
                       type="number"
                       step="any"
@@ -1991,7 +2023,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   
                   {/* Doubling Time - Add this calculation later */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Doubling Time (hours)</label>
+                    <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (hours)</label>
                     <input
                       type="number"
                       step="any"
@@ -2005,7 +2037,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   
                   {/* Density Limit */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Density Limit (cells/mL)</label>
+                    <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
                     <input
                       type="number"
                       step="any"

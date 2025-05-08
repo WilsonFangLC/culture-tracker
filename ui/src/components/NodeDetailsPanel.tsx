@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { CellState } from '../api';
 import { ALL_PARAMETER_METADATA, OPERATION_PARAMETER_MAPPING } from '../utils/parameters';
 
@@ -6,8 +6,6 @@ interface NodeDetailsPanelProps {
   isOpen: boolean;
   node: CellState | null;
   onClose: () => void;
-  states: CellState[]; // We still need states to check for children
-  onStateUpdated?: () => void;
 }
 
 // Helper function to determine if a parameter is applicable to a state based on operation type
@@ -44,32 +42,8 @@ const formatValue = (value: any): string => {
   return value.toString();
 };
 
-// Map legacy parameter names to new parameter names
-const legacyToNewParamMap: Record<string, string> = {
-  'growth_rate': 'hypothesized_growth_rate',
-  'doubling_time': 'hypothesized_doubling_time',
-  'density_limit': 'hypothesized_density_limit',
-};
-
-const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ 
-  isOpen, 
-  node, 
-  onClose, 
-  states
-}) => {
+const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClose }) => {
   if (!node) return null;
-  
-  // Find all child states (we need this to check if any child states exist)
-  const childStates = states.filter(s => s.parent_id === node.id);
-  
-  // Find the first non-measurement child state (if any)
-  const hasNonMeasurementChild = childStates.some(s => 
-    s.parameters?.transition_parameters?.operation_type !== 'measurement'
-  );
-  
-  // Check if this node has any measured parameters
-  const hasMeasuredParams = node.parameters && 
-    Object.keys(node.parameters).some(key => key.startsWith('measured_'));
   
   // Extract all parameters from the node, combining regular and transition parameters
   const flatParams: Record<string, any> = { ...node.parameters };
@@ -82,44 +56,18 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
     });
   }
   
-  // Map legacy parameters to new parameters if they exist and new ones don't
-  Object.entries(legacyToNewParamMap).forEach(([legacyKey, newKey]) => {
-    if (legacyKey in flatParams && !(newKey in flatParams)) {
-      flatParams[newKey] = flatParams[legacyKey];
-    }
-  });
-  
   // Get operation type
   const operationType = flatParams.operation_type;
   
   // Get all possible parameter keys
   const allParamKeys = Object.keys(ALL_PARAMETER_METADATA);
   
-  // Create parameter groups for organized display
-  const basicInfoParams = ['id', 'name', 'timestamp', 'parent_id', 'operation_type', 'additional_notes'];
-  
-  // Group global parameters by type
-  const globalParamsHypothesized = allParamKeys.filter(key => 
+  // Split parameters into global and operation-specific
+  const globalParams = allParamKeys.filter(key => 
     ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
-    isParameterApplicable(key, operationType) && 
-    key.startsWith('hypothesized_')
+    isParameterApplicable(key, operationType)
   );
   
-  const globalParamsMeasured = allParamKeys.filter(key => 
-    ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
-    isParameterApplicable(key, operationType) && 
-    key.startsWith('measured_')
-  );
-  
-  const globalParamsOther = allParamKeys.filter(key => 
-    ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
-    isParameterApplicable(key, operationType) && 
-    !key.startsWith('hypothesized_') && 
-    !key.startsWith('measured_') &&
-    !key.endsWith('(Legacy)')
-  );
-  
-  // Operation-specific parameters
   const operationSpecificParams = allParamKeys.filter(key => 
     !ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
     isParameterApplicable(key, operationType)
@@ -161,16 +109,18 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
           )}
         </div>
         
-        {/* Main parameters (non-hypothesized, non-measured) */}
-        {globalParamsOther.length > 0 && (
+        {globalParams.length > 0 && (
           <div className="parameter-section">
             <h4>Global Parameters</h4>
-            {globalParamsOther.map(paramKey => {
+            {globalParams.map(paramKey => {
               const value = flatParams[paramKey];
+              const isApplicable = isParameterApplicable(paramKey, operationType);
               const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
               
               let valueClass = "parameter-value";
-              if (value === undefined || value === null || value === '') {
+              if (!isApplicable) {
+                valueClass += " not-applicable";
+              } else if (value === undefined || value === null || value === '') {
                 valueClass += " not-provided";
               }
               
@@ -178,7 +128,9 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
                 <div key={paramKey} className="parameter-item">
                   <div className="parameter-label">{displayName}:</div>
                   <div className={valueClass}>
-                    {(value === undefined || value === null || value === '') ? '-' : formatValue(value)}
+                    {!isApplicable ? 'N/A' : 
+                      (value === undefined || value === null || value === '') ? '-' : 
+                      formatValue(value)}
                   </div>
                 </div>
               );
@@ -186,79 +138,40 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
           </div>
         )}
         
-        {/* Hypothesized parameters */}
-        {globalParamsHypothesized.length > 0 && (
+        {/* Measured Doubling Time Section */}
+        {flatParams.measured_doubling_time !== undefined && 
+         flatParams.measured_doubling_time !== null && (
           <div className="parameter-section">
-            <h4>Hypothesized Growth Parameters</h4>
-            {globalParamsHypothesized.map(paramKey => {
-              const value = flatParams[paramKey];
-              // For legacy values, try the legacy key first, then the new key
-              const legacyKey = Object.entries(legacyToNewParamMap).find(([_, newKey]) => newKey === paramKey)?.[0];
-              const effectiveValue = value ?? (legacyKey ? flatParams[legacyKey] : undefined);
-              
-              const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
-              
-              let valueClass = "parameter-value";
-              if (effectiveValue === undefined || effectiveValue === null || effectiveValue === '') {
-                valueClass += " not-provided";
-              }
-              
-              return (
-                <div key={paramKey} className="parameter-item">
-                  <div className="parameter-label">{displayName}:</div>
-                  <div className={valueClass}>
-                    {(effectiveValue === undefined || effectiveValue === null || effectiveValue === '') ? '-' : formatValue(effectiveValue)}
-                  </div>
+            <h4>Measured Growth Data</h4>
+            <div className="parameter-item">
+              <div className="parameter-label">Measured Doubling Time:</div>
+              <div className="parameter-value highlight-measured">
+                {formatValue(flatParams.measured_doubling_time)} hours
+              </div>
+              {flatParams.doubling_time && (
+                <div className="parameter-comparison">
+                  (Hypothesized: {formatValue(flatParams.doubling_time)} hours)
                 </div>
-              );
-            })}
+              )}
+            </div>
+            <div className="parameter-note">
+              <small>Calculated from actual growth data between initial and final cell densities</small>
+            </div>
           </div>
         )}
         
-        {/* Measured parameters section */}
-        <div className="parameter-section">
-          <h4>Measured Growth Parameters</h4>
-          
-          {hasMeasuredParams ? (
-            // If node has measured parameters, display them
-            globalParamsMeasured.map(paramKey => {
-              const value = flatParams[paramKey];
-              const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
-              
-              let valueClass = "parameter-value";
-              if (value === undefined || value === null || value === '') {
-                valueClass += " not-provided";
-              }
-              
-              return (
-                <div key={paramKey} className="parameter-item">
-                  <div className="parameter-label">{displayName}:</div>
-                  <div className={valueClass}>
-                    {(value === undefined || value === null || value === '') ? '-' : formatValue(value)}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            // If no measured parameters, show appropriate message
-            <div className="text-sm text-gray-500 my-2">
-              {hasNonMeasurementChild ? 
-                'Measured parameters will be calculated soon based on the observed growth.' : 
-                'Measured growth parameters will be automatically calculated when a non-measurement child state is created.'}
-            </div>
-          )}
-        </div>
-        
-        {/* Operation-specific parameters */}
         {operationSpecificParams.length > 0 && (
           <div className="parameter-section">
             <h4>Operation-Specific Parameters</h4>
             {operationSpecificParams.map(paramKey => {
               const value = flatParams[paramKey];
+              const isApplicable = isParameterApplicable(paramKey, operationType);
               const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
               
               let valueClass = "parameter-value";
-              if (value === undefined || value === null || value === '') {
+              if (!isApplicable) {
+                valueClass += " not-applicable";
+              } else if (value === undefined || value === null || value === '') {
                 valueClass += " not-provided";
               }
               
@@ -266,7 +179,9 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
                 <div key={paramKey} className="parameter-item">
                   <div className="parameter-label">{displayName}:</div>
                   <div className={valueClass}>
-                    {(value === undefined || value === null || value === '') ? '-' : formatValue(value)}
+                    {!isApplicable ? 'N/A' : 
+                      (value === undefined || value === null || value === '') ? '-' : 
+                      formatValue(value)}
                   </div>
                 </div>
               );

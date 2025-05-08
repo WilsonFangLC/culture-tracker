@@ -907,27 +907,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                   </div>
                 )}
 
-                {/* Display hypothesized parameters */}
-                {(processData.startState.parameters?.hypothesized_growth_rate !== undefined || 
-                  processData.startState.parameters?.growth_rate !== undefined) && (
-                  <div>
-                    <span className="info-label">Hyp. Growth Rate:</span> {(
-                      processData.startState.parameters?.hypothesized_growth_rate ?? 
-                      processData.startState.parameters?.growth_rate ?? 
-                      0
-                    ).toLocaleString()}
-                  </div>
-                )}
-
-                {/* Display measured parameters if available */}
-                {processData.startState.parameters?.measured_growth_rate !== undefined && (
-                  <div>
-                    <span className="info-label">Meas. Growth Rate:</span> {(
-                      processData.startState.parameters?.measured_growth_rate ?? 0
-                    ).toLocaleString()}
-                  </div>
-                )}
-
                 {processData.measurements.length > 0 && (
                   <div className="measurement-indicator">
                     <span className="info-label">{processData.measurements.length} Measurement{processData.measurements.length !== 1 ? 's' : ''}</span>
@@ -944,13 +923,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         isOpen={detailsPanelOpen}
         node={selectedNode}
         onClose={handleCloseDetailsPanel}
-        states={states}
-        onStateUpdated={() => {
-          // Force a refresh of the states data by calling onSelectState again with the same state
-          if (selectedNode) {
-            onSelectState(selectedNode);
-          }
-        }}
       />
       
       {/* State creation modal */}

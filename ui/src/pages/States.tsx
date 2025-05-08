@@ -5,6 +5,7 @@ import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import { calculateMeasuredDoublingTime } from '../utils/calculations'
 
 dayjs.extend(utc)
 
@@ -203,6 +204,40 @@ export default function States() {
       }
 
       const stateData = data[index]
+      
+      // Process state data before creation
+      if (stateData.parent_id) {
+        const parentState = states.find(s => s.id === stateData.parent_id);
+        
+        // Calculate measured doubling time if we have end density information
+        if (parentState && 
+            parentState.parameters?.cell_density && 
+            stateData.parameters?.transition_parameters?.parent_end_density) {
+          
+          const initialDensity = parentState.parameters.cell_density;
+          const finalDensity = stateData.parameters.transition_parameters.parent_end_density;
+          const startTime = parentState.timestamp;
+          // Use the timestamp from the state being created
+          const endTime = stateData.timestamp;
+          
+          // Calculate the measured doubling time
+          const measuredDoublingTime = calculateMeasuredDoublingTime(
+            initialDensity, finalDensity, startTime, endTime
+          );
+          
+          // Set the measured doubling time if calculation succeeded
+          if (measuredDoublingTime !== null) {
+            // Make sure parameters exist
+            if (!stateData.parameters) {
+              stateData.parameters = {};
+            }
+            
+            stateData.parameters.measured_doubling_time = measuredDoublingTime;
+            console.log(`Calculated measured doubling time for new state: ${measuredDoublingTime.toFixed(2)} hours`);
+          }
+        }
+      }
+
       createState.mutate(stateData, {
         onSuccess: (/* newState */) => { // Commented out unused variable
           // Create next state
@@ -222,6 +257,33 @@ export default function States() {
     try {
       // Destructure parameters and additional_notes from the incoming form data
       const { parameters, additional_notes } = formData;
+      
+      // Find the state and its parent to calculate measured doubling time
+      const stateToUpdate = states.find(s => s.id === stateId);
+      if (stateToUpdate && stateToUpdate.parent_id) {
+        const parentState = states.find(s => s.id === stateToUpdate.parent_id);
+        
+        // If parent has cell density and this state has parent_end_density in its transition_parameters
+        if (parentState && 
+            parentState.parameters?.cell_density && 
+            parameters.transition_parameters?.parent_end_density) {
+          
+          const initialDensity = parentState.parameters.cell_density;
+          const finalDensity = parameters.transition_parameters.parent_end_density;
+          const startTime = parentState.timestamp;
+          const endTime = stateToUpdate.timestamp;
+          
+          const measuredDoublingTime = calculateMeasuredDoublingTime(
+            initialDensity, finalDensity, startTime, endTime
+          );
+          
+          // Set the measured doubling time if calculation succeeded
+          if (measuredDoublingTime !== null) {
+            parameters.measured_doubling_time = measuredDoublingTime;
+            console.log(`Calculated measured doubling time for state ${stateId}: ${measuredDoublingTime.toFixed(2)} hours`);
+          }
+        }
+      }
       
       // Call the mutation with the correct structure
       await updateState.mutateAsync({ 
@@ -422,19 +484,25 @@ export default function States() {
                         {/* Growth Rate / Doubling Time Display */}
                         {isParameterApplicable('growth_rate') && state.parameters.growth_rate !== undefined && (
                           <div>
-                            <span className="font-medium">Growth Rate:</span> {renderParameterValue('growth_rate', state.parameters.growth_rate)} (per hour)
+                            <span className="font-medium">Hypothesized Growth Rate:</span> {renderParameterValue('growth_rate', state.parameters.growth_rate)} (per hour)
                           </div>
                         )}
                         
                         {isParameterApplicable('doubling_time') && state.parameters.doubling_time !== undefined && (
                           <div>
-                            <span className="font-medium">Doubling Time:</span> {renderParameterValue('doubling_time', state.parameters.doubling_time)} (hours)
+                            <span className="font-medium">Hypothesized Doubling Time:</span> {renderParameterValue('doubling_time', state.parameters.doubling_time)} (hours)
+                          </div>
+                        )}
+                        
+                        {isParameterApplicable('measured_doubling_time') && state.parameters.measured_doubling_time !== undefined && (
+                          <div>
+                            <span className="font-medium">Measured Doubling Time:</span> {renderParameterValue('measured_doubling_time', state.parameters.measured_doubling_time)} (hours)
                           </div>
                         )}
                         
                         {isParameterApplicable('density_limit') && state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
                           <div>
-                            <span className="font-medium">Density Limit:</span> {renderParameterValue('density_limit', state.parameters.density_limit)} (cells/mL)
+                            <span className="font-medium">Hypothesized Density Limit:</span> {renderParameterValue('density_limit', state.parameters.density_limit)} (cells/mL)
                           </div>
                         )}
                         
@@ -504,7 +572,10 @@ export default function States() {
               Predicting from State {stateForModal.id} ({stateForModal.name || 'Unnamed'}) <br/>
               Initial Time: {dayjs.utc(stateForModal.timestamp).local().format('DD/MM/YYYY, HH:mm')} <br/>
               Initial Density: {formatPrediction(stateForModal.parameters?.cell_density)} cells/mL <br/>
-              Growth Rate: {stateForModal.parameters?.growth_rate?.toFixed(4) ?? 'N/A'} /hr (or Doubling Time: {stateForModal.parameters?.doubling_time?.toFixed(2) ?? 'N/A'} hr)
+              Hypothesized Growth Rate: {stateForModal.parameters?.growth_rate?.toFixed(4) ?? 'N/A'} /hr (or Hypothesized Doubling Time: {stateForModal.parameters?.doubling_time?.toFixed(2) ?? 'N/A'} hr)
+              {stateForModal.parameters?.measured_doubling_time && (
+                <><br/>Measured Doubling Time: {stateForModal.parameters.measured_doubling_time.toFixed(2)} hr</>
+              )}
             </div>
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700">

@@ -61,4 +61,69 @@ export const calculatePredictedDensity = (
     console.error("Error calculating predicted density:", error);
     return null; // Return null on any calculation error (e.g., invalid date)
   }
+};
+
+/**
+ * Calculates the measured doubling time based on actual growth data.
+ * Uses the exponential growth model: N = N₀ * e^(r*t)
+ * Doubling time = ln(2)/r
+ * 
+ * @param initialDensity The initial cell density
+ * @param finalDensity The final cell density
+ * @param startTime The timestamp when the initial density was recorded
+ * @param endTime The timestamp when the final density was recorded
+ * @returns The calculated doubling time in hours, or null if calculation is not possible
+ */
+export const calculateMeasuredDoublingTime = (
+  initialDensity: number | null | undefined,
+  finalDensity: number | null | undefined,
+  startTime: string | Date | null | undefined,
+  endTime: string | Date | null | undefined
+): number | null => {
+  // Validate essential inputs
+  if (
+    initialDensity == null ||
+    finalDensity == null ||
+    startTime == null ||
+    endTime == null ||
+    initialDensity <= 0 || // Initial density must be positive
+    finalDensity <= 0 // Final density must be positive
+  ) {
+    return null; // Cannot calculate
+  }
+
+  try {
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+
+    // Calculate time elapsed in hours
+    const timeElapsedHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+    if (timeElapsedHours <= 0) {
+      console.log('Measured Doubling Time Calc: End time is not after start time.');
+      return null; // Cannot calculate if end time is before or equal to start time
+    }
+
+    // For non-growing cultures (final density <= initial density)
+    if (finalDensity <= initialDensity) {
+      console.log('Measured Doubling Time Calc: No growth or negative growth detected.');
+      return null; // No doubling time for non-growing cultures
+    }
+
+    // Calculate growth rate from exponential growth model
+    // N = N₀ * e^(r*t) => log(N/N₀) = r*t => r = log(N/N₀)/t
+    const growthRate = Math.log(finalDensity / initialDensity) / timeElapsedHours;
+
+    // Calculate doubling time
+    // doubling_time = ln(2)/r
+    const doublingTime = Math.log(2) / growthRate;
+
+    console.log(`Measured Doubling Time Calc: initialDensity=${initialDensity}, finalDensity=${finalDensity}, timeElapsedHours=${timeElapsedHours.toFixed(2)}, growthRate=${growthRate.toFixed(6)}, doublingTime=${doublingTime.toFixed(2)}`);
+
+    return doublingTime;
+
+  } catch (error) {
+    console.error("Error calculating measured doubling time:", error);
+    return null; // Return null on any calculation error
+  }
 }; 
