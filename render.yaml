@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: culture-tracker
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production 
+    routes:
+      - type: rewrite
+        source: "/.*"
+        destination: "/index.html" 

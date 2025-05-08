@@ -1,9 +1,16 @@
 {
+  "scripts": {
+    "dev": "vite",
+    "build": "npm install --prefix ui && npm run build --prefix ui",
+    "start": "node server.js"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^7.0.2",
     "@types/react": "^19.1.2",
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.5",
     "reactflow": "^11.11.4"
   }
 }
