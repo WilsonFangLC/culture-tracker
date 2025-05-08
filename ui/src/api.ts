@@ -58,7 +58,7 @@ export const useStates = () => {
   return useQuery({
     queryKey: ['states'],
     queryFn: async () => {
-      const { data } = await api.get<CellState[]>('/states/')
+      const { data } = await api.get<CellState[]>('/api/states/')
       return data
     },
   })
@@ -68,7 +68,7 @@ export const useState = (stateId: number) => {
   return useQuery({
     queryKey: ['state', stateId],
     queryFn: async () => {
-      const { data } = await api.get<CellState>(`/states/${stateId}/`)
+      const { data } = await api.get<CellState>(`/api/states/${stateId}/`)
       return data
     },
   })
@@ -79,7 +79,7 @@ export const useCreateState = () => {
   return useMutation({
     mutationFn: async (state: CellStateCreate) => {
       console.log("[useCreateState] Sending payload:", state);
-      const { data } = await api.post<CellState>('/states/', state);
+      const { data } = await api.post<CellState>('/api/states/', state);
       return data
     },
     onSuccess: () => {
@@ -101,7 +101,7 @@ export const useUpdateState = () => {
       if (additional_notes !== undefined) payload.additional_notes = additional_notes;
 
       console.log(`[useUpdateState] mutationFn called for state ${id} with payload:`, payload)
-      const { data } = await api.patch<CellState>(`/states/${id}/`, payload);
+      const { data } = await api.patch<CellState>(`/api/states/${id}/`, payload);
       console.log(`[useUpdateState] api.patch response for state ${id}:`, data)
       return data
     },

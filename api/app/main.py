@@ -65,7 +65,7 @@ def get_session():
 async def root():
     return {"message": "Cell Culture Tracker API"}
 
-@app.get("/states/", response_model=List[CellStateRead])
+@app.get("/api/states/", response_model=List[CellStateRead])
 def get_states(session: Session = Depends(get_session)):
     try:
         db_states = session.exec(select(CellState)).all()
@@ -80,7 +80,7 @@ def get_states(session: Session = Depends(get_session)):
         logger.error(f"Error fetching states: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/states/{state_id}", response_model=CellState)
+@app.get("/api/states/{state_id}", response_model=CellState)
 def get_state(state_id: int, session: Session = Depends(get_session)):
     state = session.get(CellState, state_id)
     if not state:
@@ -90,7 +90,7 @@ def get_state(state_id: int, session: Session = Depends(get_session)):
         state.timestamp = state.timestamp.replace(tzinfo=timezone.utc)
     return state
 
-@app.post("/states/", response_model=CellStateRead)
+@app.post("/api/states/", response_model=CellStateRead)
 def create_state(state: CellStateCreate, session: Session = Depends(get_session)):
     try:
         logger.info(f"[create_state] Received state data. Timestamp from schema: {repr(state.timestamp)}")
@@ -144,7 +144,7 @@ def create_state(state: CellStateCreate, session: Session = Depends(get_session)
         logger.error(f"Error creating state: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.patch("/states/{state_id}", response_model=CellStateRead)
+@app.patch("/api/states/{state_id}", response_model=CellStateRead)
 def update_state(
     state_id: int,
     state_update: CellStateUpdate, # Use the new update schema
