@@ -15,9 +15,17 @@ export default defineConfig(({ mode }) => {
           ws: true,
         },
       },
+      historyApiFallback: true,
     },
     define: {
       'process.env': env
-    }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        },
+      },
+    },
   }
 }) 
