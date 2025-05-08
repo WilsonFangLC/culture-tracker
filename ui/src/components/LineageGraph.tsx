@@ -15,7 +15,6 @@ interface CustomNodeDatum extends TreeNodeDatum {
   stateName: string
   timestamp: string
   transitionType?: string
-  created_by: string
   additional_notes?: string
   attributes: {
     status: string
@@ -34,7 +33,6 @@ const defaultNodeDatum: CustomNodeDatum = {
   stateName: 'No State',
   timestamp: 'N/A',
   transitionType: undefined,
-  created_by: 'N/A',
   additional_notes: undefined,
   attributes: {
     status: 'N/A',
@@ -68,7 +66,6 @@ export default function LineageGraph({ state, states, onSelectState, onDeleteSta
       stateName: currentState.name || `State ${currentState.id}`,
       timestamp: new Date(currentState.timestamp).toLocaleString(),
       transitionType: currentState.transition_type,
-      created_by: currentState.created_by,
       additional_notes: currentState.additional_notes,
       attributes: {
         status: `Status: ${parameters?.status || 'N/A'}`,
