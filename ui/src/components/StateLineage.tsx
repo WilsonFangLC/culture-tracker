@@ -27,7 +27,7 @@ export default function StateLineage({
   isUpdating,
   updateError 
 }: StateLineageProps) {
-  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('graph')
+  const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('process')
   const [editingState, setEditingState] = useState<CellState | null>(null)
   const createStateMutation = useCreateState();
 
@@ -168,14 +168,6 @@ export default function StateLineage({
           </button>
           <button
             className={`px-3 py-1 rounded ${
-              viewMode === 'graph' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
-            }`}
-            onClick={() => setViewMode('graph')}
-          >
-            Graph View
-          </button>
-          <button
-            className={`px-3 py-1 rounded ${
               viewMode === 'process' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'
             }`}
             onClick={() => setViewMode('process')}
@@ -209,11 +201,13 @@ export default function StateLineage({
           )}
         </div>
       ) : viewMode === 'graph' ? (
-        <LineageGraph
+        // Fallback to process view if graph view is selected (since it's hidden now)
+        <ProcessGraph
           state={state}
           states={states}
           onSelectState={onSelectState}
           onDeleteState={handleDeleteState}
+          onCreateState={handleCreateState}
         />
       ) : viewMode === 'process' ? (
         <ProcessGraph
