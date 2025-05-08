@@ -466,81 +466,10 @@ export default function States() {
                       )}
                       
                       <div className="mt-2 text-sm space-y-1">
-                        {/* Show essential parameters based on operation type */}
-                        {isParameterApplicable('temperature_c') && (
+                        {/* Only show cell type */}
+                        {isParameterApplicable('cell_type') && (
                           <div>
-                            <span className="font-medium">Temp:</span> {renderParameterValue('temperature_c', state.parameters.temperature_c)}°C
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('volume_ml') && (
-                          <div>
-                            <span className="font-medium">Volume:</span> {renderParameterValue('volume_ml', state.parameters.volume_ml)}ml
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('location') && (
-                          <div>
-                            <span className="font-medium">Location:</span> {renderParameterValue('location', state.parameters.location)}
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('cell_density') && (
-                          <div>
-                            <span className="font-medium">Cell Density:</span> {renderParameterValue('cell_density', state.parameters.cell_density)}
-                          </div>
-                        )}
-                        
-                        {/* Show operation-specific parameters */}
-                        {isParameterApplicable('parent_end_density') && (
-                          <div>
-                            <span className="font-medium">Parent End Density:</span> {renderParameterValue('parent_end_density', 
-                              state.parameters.transition_parameters?.parent_end_density)}
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('end_density') && (
-                          <div>
-                            <span className="font-medium">End Density:</span> {renderParameterValue('end_density', 
-                              state.parameters.transition_parameters?.end_density)}
-                          </div>
-                        )}
-                        
-                        {/* Growth Rate / Doubling Time Display */}
-                        {isParameterApplicable('growth_rate') && state.parameters.growth_rate !== undefined && (
-                          <div>
-                            <span className="font-medium">Hypothesized Growth Rate:</span> {renderParameterValue('growth_rate', state.parameters.growth_rate)} (per hour)
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('doubling_time') && state.parameters.doubling_time !== undefined && (
-                          <div>
-                            <span className="font-medium">Hypothesized Doubling Time:</span> {renderParameterValue('doubling_time', state.parameters.doubling_time)} (hours)
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('measured_doubling_time') && state.parameters.measured_doubling_time !== undefined && (
-                          <div>
-                            <span className="font-medium">Measured Doubling Time:</span> {renderParameterValue('measured_doubling_time', state.parameters.measured_doubling_time)} (hours)
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('density_limit') && state.parameters.density_limit !== undefined && state.parameters.density_limit !== null && (
-                          <div>
-                            <span className="font-medium">Hypothesized Density Limit:</span> {renderParameterValue('density_limit', state.parameters.density_limit)} (cells/mL)
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('number_of_vials') && state.parameters.transition_parameters?.number_of_vials && (
-                          <div>
-                            <span className="font-medium">Vials:</span> {renderParameterValue('number_of_vials', 
-                              state.parameters.transition_parameters.number_of_vials)}
-                          </div>
-                        )}
-                        
-                        {isParameterApplicable('storage_location') && state.parameters.storage_location && (
-                          <div>
-                            <span className="font-medium">Storage:</span> {renderParameterValue('storage_location', state.parameters.storage_location)}
+                            <span className="font-medium">Cell Type:</span> {renderParameterValue('cell_type', state.parameters.cell_type)}
                           </div>
                         )}
                       </div>

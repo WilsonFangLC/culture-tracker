@@ -1632,6 +1632,26 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
       )}
 
+      {/* Operation Type Selection - MOVED UP ABOVE PARENT SELECTION */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Operation Type
+        </label>
+        <select
+          className="mt-1 w-full p-2 border rounded"
+          value={operationType}
+          onChange={(e) => handleOperationTypeChange(e.target.value as OperationType)}
+        >
+          <option value="start_new_culture">Start New Culture</option>
+          <option value="passage">Passage</option>
+          <option value="freeze">Freeze</option>
+          <option value="thaw">Thaw from Existing Vial</option>
+          <option value="harvest">Harvest (throw away)</option>
+          <option value="measurement">Measurement</option>
+          <option value="split">Split Culture</option>
+        </select>
+      </div>
+
       {/* Parent State Selection - Hidden for Start New Culture */}
       {operationType !== 'start_new_culture' && (
         <div>
@@ -1674,26 +1694,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           onChange={(e) => setManualTimestamp(e.target.value)}
           required
         />
-      </div>
-
-      {/* Operation Type Selection - REPLACED TRANSITION TYPE */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Operation Type
-        </label>
-        <select
-          className="mt-1 w-full p-2 border rounded"
-          value={operationType}
-          onChange={(e) => handleOperationTypeChange(e.target.value as OperationType)}
-        >
-          <option value="start_new_culture">Start New Culture</option>
-          <option value="passage">Passage</option>
-          <option value="freeze">Freeze</option>
-          <option value="thaw">Thaw from Existing Vial</option>
-          <option value="harvest">Harvest (throw away)</option>
-          <option value="measurement">Measurement</option>
-          <option value="split">Split Culture</option>
-        </select>
       </div>
 
       {/* Measurement Inputs - Conditionally Rendered */}
