@@ -1,12 +1,18 @@
 services:
   - type: web
-    name: culture-tracker
+    name: culture-tracker-api
     env: node
     buildCommand: npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production 
+        
+  - type: web
+    name: culture-tracker-frontend
+    env: static
+    buildCommand: npm install --prefix ui && npm run build --prefix ui
+    staticPublishPath: ui/dist
     routes:
       - type: rewrite
         source: "/.*"
