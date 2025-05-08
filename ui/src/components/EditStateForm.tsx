@@ -82,16 +82,18 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700">
-              Initial Cell Density (cells/ml)
+              Initial Cell Density (million cells/ml)
             </label>
             <input
               type="number"
-              value={parameters.cell_density || ''}
+              name="cell_density"
+              value={parameters.cell_density ? parameters.cell_density / 1000000 : ''}
               onChange={(e) => {
                 const value = e.target.value === '' ? null : parseFloat(e.target.value);
-                setParameters({ ...parameters, cell_density: value });
+                setParameters({ ...parameters, cell_density: value ? value * 1000000 : null });
               }}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full p-2 border rounded"
+              placeholder="e.g., 0.1 for 100,000 cells/ml"
             />
           </div>
 

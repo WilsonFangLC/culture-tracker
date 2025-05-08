@@ -246,11 +246,11 @@ export default function StateLineage({
                         <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C</div>
                         <div><span className="font-medium">Volume:</span> {s.parameters?.volume_ml ?? 'N/A'}ml</div>
                         <div><span className="font-medium">Location:</span> {s.parameters?.location ?? 'N/A'}</div>
-                        <div><span className="font-medium">Initial Density:</span> {s.parameters?.cell_density ?? 'N/A'} cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
+                        <div><span className="font-medium">Initial Density:</span> {s.parameters?.cell_density ? (s.parameters.cell_density / 1000000).toLocaleString() : 'N/A'} million cells/ml | Viability: {s.parameters?.viability ?? 'N/A'}%</div>
                         
                         {/* Show end density if available (from transition parameters) */}
                         {s.parameters?.transition_parameters?.end_density && (
-                          <div><span className="font-medium">End Density:</span> {s.parameters.transition_parameters.end_density} cells/ml</div>
+                          <div><span className="font-medium">End Density:</span> {(s.parameters.transition_parameters.end_density / 1000000).toLocaleString()} million cells/ml</div>
                         )}
                         
                         {s.parameters?.growth_rate !== undefined && s.parameters?.growth_rate !== null && (
@@ -260,7 +260,7 @@ export default function StateLineage({
                           <div><span className="font-medium">Measured Doubling Time:</span> {s.parameters.measured_doubling_time.toFixed(2)} (hours)</div>
                         )}
                         {s.parameters?.density_limit !== undefined && s.parameters?.density_limit !== null && (
-                          <div><span className="font-medium">Hypothesized Density Limit:</span> {s.parameters.density_limit} (cells/mL)</div>
+                          <div><span className="font-medium">Hypothesized Density Limit:</span> {(s.parameters.density_limit / 1000000).toLocaleString()} (million cells/ml)</div>
                         )}
                         {(() => {
                           const predicted = calculatePredictedDensity(

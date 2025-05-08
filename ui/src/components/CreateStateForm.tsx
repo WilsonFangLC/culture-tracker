@@ -688,14 +688,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* Initial Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Initial Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">Initial Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.cell_density} 
-                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })}
+                value={formData.cell_density / 1000000} 
+                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) * 1000000 })}
                 required
               />
             </div>
@@ -789,14 +789,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit}
-                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
+                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
                     className="mt-1 w-full p-2 border rounded"
-                    placeholder="e.g., 1.5e6 (cells/ml)"
+                    placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
                 
@@ -842,7 +842,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     {parentState.parameters?.transition_parameters?.cell_type && (
                       <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
-                    <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
+                    <p><span className="font-medium">Current Density:</span> {(parentParameters.cell_density / 1000000)?.toLocaleString() || 'N/A'} million cells/ml</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 italic mb-4">
@@ -853,14 +853,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* Parent End Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Parent End Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">Parent End Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.parent_end_density} 
-                onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) }))}
+                value={formData.parent_end_density ? formData.parent_end_density / 1000000 : undefined} 
+                onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) * 1000000 }))}
                 required
                 disabled={!hasParent}
               />
@@ -869,14 +869,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* New Passage Start Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.cell_density} 
-                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })}
+                value={formData.cell_density / 1000000} 
+                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) * 1000000 })}
                 required
               />
             </div>
@@ -971,14 +971,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit}
-                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
+                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
                     className="mt-1 w-full p-2 border rounded"
-                    placeholder="e.g., 1.5e6 (cells/ml)"
+                    placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
                 
@@ -1023,7 +1023,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     {parentState.parameters?.transition_parameters?.cell_type && (
                       <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
-                    <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
+                    <p><span className="font-medium">Current Density:</span> {(parentParameters.cell_density / 1000000)?.toLocaleString() || 'N/A'} million cells/ml</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 italic mb-4">
@@ -1048,14 +1048,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* Parent End Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Parent End Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">Parent End Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.parent_end_density} 
-                onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) }))}
+                value={formData.parent_end_density ? formData.parent_end_density / 1000000 : undefined} 
+                onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) * 1000000 }))}
                 required
                 disabled={!hasParent}
               />
@@ -1188,14 +1188,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit}
-                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
+                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
                     className="mt-1 w-full p-2 border rounded"
-                    placeholder="e.g., 1.5e6 (cells/ml)"
+                    placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
               </div>
@@ -1281,14 +1281,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* New Passage Start Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">New Passage Initial Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.cell_density} 
-                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) })}
+                value={formData.cell_density / 1000000} 
+                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) * 1000000 })}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">Initial cell density after thawing</p>
@@ -1383,14 +1383,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit}
-                    onChange={(e) => handleParameterChange('density_limit', e.target.value)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
+                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
                     className="mt-1 w-full p-2 border rounded"
-                    placeholder="e.g., 1.5e6 (cells/ml)"
+                    placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
               </div>
@@ -1424,7 +1424,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     {parentState.parameters?.transition_parameters?.cell_type && (
                       <p><span className="font-medium">Cell Type:</span> {parentState.parameters.transition_parameters.cell_type}</p>
                     )}
-                    <p><span className="font-medium">Current Density:</span> {parentParameters.cell_density?.toLocaleString() || 'N/A'} cells/ml</p>
+                    <p><span className="font-medium">Current Density:</span> {(parentParameters.cell_density / 1000000)?.toLocaleString() || 'N/A'} million cells/ml</p>
                   </div>
                 </div>
                 <div className="bg-amber-50 p-3 rounded border mb-4">
@@ -1440,14 +1440,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* End Cell Density */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">End Cell Density (cells/ml)</label>
+              <label className="block text-sm font-medium text-gray-700">End Cell Density (million cells/ml)</label>
               <input 
                 type="number" 
                 min="0" 
-                step="1000"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.end_density || parentParameters.cell_density || 0} 
-                onChange={(e) => setFormData(prev => ({ ...prev, end_density: Number(e.target.value) }))}
+                value={formData.end_density ? formData.end_density / 1000000 : (parentParameters.cell_density ? parentParameters.cell_density / 1000000 : 0)} 
+                onChange={(e) => setFormData(prev => ({ ...prev, end_density: Number(e.target.value) * 1000000 }))}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">Final cell density at the time of harvest</p>
@@ -1566,14 +1566,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
         {/* Density Limit */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+          <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
           <input
             type="number"
             step="any"
-            value={formData.density_limit}
-            onChange={(e) => handleParameterChange('density_limit', e.target.value)}
+            value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
+            onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
             className="mt-1 w-full p-2 border rounded"
-            placeholder="e.g., 1.5e6 (cells/ml)"
+            placeholder="e.g., 1.5 (million cells/ml)"
           />
         </div>
         {/* Cell Density */}
@@ -1647,8 +1647,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           <option value="freeze">Freeze</option>
           <option value="thaw">Thaw from Existing Vial</option>
           <option value="harvest">Harvest (throw away)</option>
-          <option value="measurement">Measurement</option>
-          <option value="split">Split Culture</option>
+          <option value="measurement">Measurement (beta)</option>
+          <option 
+            value="split" 
+            style={{fontWeight: 'bold', color: '#2563eb', backgroundColor: '#eff6ff'}}
+          >
+            Split Culture (creates multiple states)
+          </option>
         </select>
       </div>
 
@@ -1656,7 +1661,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       {operationType !== 'start_new_culture' && (
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Parent State (Optional)
+            Parent State
           </label>
           <select
             className="mt-1 w-full p-2 border rounded"
@@ -1685,7 +1690,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       {/* Manual Timestamp Input */}
       <div>
         <label className="block text-sm font-medium text-gray-700">
-          State Time (Experimental Time)
+          Time
         </label>
         <input
           type="datetime-local"
@@ -1747,15 +1752,15 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           {/* Parent End Density - Required for split operations */}
           <div className="mb-4 p-4 border rounded-lg bg-blue-50">
             <label className="block text-sm font-medium text-gray-700">
-              Parent End Cell Density (cells/ml)
+              Parent End Cell Density (million cells/ml)
             </label>
             <input
               type="number"
               min="0"
-              step="1000"
+              step="0.001"
               className="mt-1 w-full p-2 border rounded"
-              value={formData.parent_end_density}
-              onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) }))}
+              value={formData.parent_end_density ? formData.parent_end_density / 1000000 : undefined}
+              onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) * 1000000 }))}
               required
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -1821,14 +1826,15 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   {state.operation_type === 'harvest' ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        End Cell Density (cells/ml)
+                        End Cell Density (million cells/ml)
                       </label>
                       <input
                         type="number"
                         min="0"
+                        step="0.001"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.cell_density} 
-                        onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                        value={state.cell_density / 1000000} 
+                        onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value) * 1000000)}
                       />
                       <p className="mt-1 text-xs text-gray-500">Final cell density at the time of harvest</p>
                     </div>
@@ -1898,13 +1904,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   ) : (
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        {state.operation_type === 'passage' ? 'New Passage Initial Cell Density (cells/ml)' : 'Initial Cell Density (cells/ml)'}
+                        {state.operation_type === 'passage' ? 'New Passage Initial Cell Density (million cells/ml)' : 'Initial Cell Density (million cells/ml)'}
                       </label>
                       <input
                         type="number"
                         min="0"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.cell_density}
+                        value={state.cell_density / 1000000}
                         onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
                       />
                     </div>
@@ -2039,14 +2045,14 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   
                   {/* Density Limit */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (cells/mL)</label>
+                    <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
                     <input
                       type="number"
                       step="any"
                       value={state.density_limit || 0}
                       onChange={(e) => updateSplitState(index, 'density_limit', parseFloat(e.target.value))}
                       className="mt-1 w-full p-2 border rounded"
-                      placeholder="e.g., 1.5e6 (cells/ml)"
+                      placeholder="e.g., 1.5 (million cells/ml)"
                     />
                   </div>
                   

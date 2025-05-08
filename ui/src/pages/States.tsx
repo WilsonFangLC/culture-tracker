@@ -13,7 +13,9 @@ dayjs.extend(utc)
 // Helper function to format prediction results
 function formatPrediction(value: number | null): string {
   if (value === null || !isFinite(value)) return 'N/A';
-  return value.toExponential(2);
+  // Divide by 1,000,000 to convert to million cells/ml
+  const valueInMillions = typeof value === 'number' ? value / 1000000 : value;
+  return valueInMillions.toExponential(2);
 }
 
 export default function States() {
@@ -525,7 +527,7 @@ export default function States() {
             <div className="mt-2 text-sm text-gray-600">
               Predicting from State {stateForModal.id} ({stateForModal.name || 'Unnamed'}) <br/>
               Initial Time: {dayjs.utc(stateForModal.timestamp).local().format('DD/MM/YYYY, HH:mm')} <br/>
-              Initial Density: {formatPrediction(stateForModal.parameters?.cell_density)} cells/mL <br/>
+              Initial Density: {formatPrediction(stateForModal.parameters?.cell_density)} million cells/ml <br/>
               Hypothesized Growth Rate: {stateForModal.parameters?.growth_rate?.toFixed(4) ?? 'N/A'} /hr (or Hypothesized Doubling Time: {stateForModal.parameters?.doubling_time?.toFixed(2) ?? 'N/A'} hr)
               {stateForModal.parameters?.measured_doubling_time && (
                 <><br/>Measured Doubling Time: {stateForModal.parameters.measured_doubling_time.toFixed(2)} hr</>
@@ -552,7 +554,7 @@ export default function States() {
             </div>
             {predictionResult !== null && (
               <div className={`mt-4 p-3 rounded ${predictionResult.startsWith('Error:') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                {predictionResult.startsWith('Error:') ? predictionResult : `Predicted Density: ${predictionResult} cells/mL`}
+                {predictionResult.startsWith('Error:') ? predictionResult : `Predicted Density: ${predictionResult} million cells/ml`}
               </div>
             )}
              <div className="mt-4 text-right">
