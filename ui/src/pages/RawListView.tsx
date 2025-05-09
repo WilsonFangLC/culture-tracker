@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CellState, useStates, getExportCsvUrl } from '../api';
+import { CellState, useStates } from '../api';
 import { useParameters } from '../components/ParameterUtils';
 
 const RawListView: React.FC = () => {
@@ -121,6 +121,36 @@ const RawListView: React.FC = () => {
     }
   };
   
+  // Function to handle CSV export
+  const handleExportCSV = async () => {
+    try {
+      // Fetch the CSV data from the backend
+      const response = await fetch('/api/export/csv');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const blob = await response.blob();
+
+      // Create a link to download the blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Suggest a filename for the download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.setAttribute('download', `cell_states_export_${timestamp}.csv`);
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up by removing the link and revoking the URL
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Failed to export CSV:", error);
+      alert("Failed to export CSV. Check the console for details.");
+    }
+  };
+  
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading data: {(error as Error).message}</div>;
   
@@ -129,14 +159,12 @@ const RawListView: React.FC = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Raw List View</h1>
         <div className="flex gap-2">
-          <a 
-            href={getExportCsvUrl()} 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <button
+            onClick={handleExportCSV}
             className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
           >
             Export CSV
-          </a>
+          </button>
         </div>
       </div>
       
