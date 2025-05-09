@@ -12,7 +12,7 @@ export interface ParameterMetadata {
 export const OPERATION_PARAMETER_MAPPING: Record<OperationType, string[]> = {
   start_new_culture: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type'],
   passage: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type'],
-  freeze: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
+  freeze: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
   thaw: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type'],
   measurement: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type'],
   split: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type'],
@@ -33,7 +33,6 @@ export const ALL_PARAMETER_METADATA: Record<string, ParameterMetadata> = {
   "doubling_time": { displayName: "Hypothesized Doubling Time", applicableToAllNodes: true },
   "density_limit": { displayName: "Hypothesized Density Limit", applicableToAllNodes: true },
   "measured_doubling_time": { displayName: "Measured Doubling Time", applicableToAllNodes: true },
-  "storage_location": { displayName: "Storage Location", applicableToAllNodes: false, operationSpecific: ['freeze'] },
   
   // Operation-specific parameters
   "cell_type": { displayName: "Cell Type", applicableToAllNodes: true, operationSpecific: ['start_new_culture'] },

@@ -5,19 +5,11 @@ import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-import { calculateMeasuredDoublingTime } from '../utils/calculations'
+import { calculateMeasuredDoublingTime, formatToSignificantFigures, formatCellDensity } from '../utils/calculations'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParameters } from '../components/ParameterUtils'
 
 dayjs.extend(utc)
-
-// Helper function to format prediction results
-function formatPrediction(value: number | null): string {
-  if (value === null || !isFinite(value)) return 'N/A';
-  // Divide by 1,000,000 to convert to million cells/ml
-  const valueInMillions = typeof value === 'number' ? value / 1000000 : value;
-  return valueInMillions.toExponential(2);
-}
 
 export default function States() {
   const queryClient = useQueryClient()
@@ -177,14 +169,14 @@ export default function States() {
     const deltaTimeHours = deltaTimeMs / (1000 * 60 * 60); 
 
     if (growthRate === 0) {
-       setPredictionResult(formatPrediction(n0)); // Density doesn't change
+       setPredictionResult(formatCellDensity(n0)); // Density doesn't change
        return;
     }
 
     // Calculate predicted density: N(t) = N0 * exp(r * dt)
     const predictedDensity = n0 * Math.exp(growthRate * deltaTimeHours);
 
-    setPredictionResult(formatPrediction(predictedDensity));
+    setPredictionResult(formatCellDensity(predictedDensity));
   };
   // --- End Prediction Handlers ---
 
@@ -232,7 +224,7 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${measuredDoublingTime.toFixed(2)} hours`);
+            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${formatToSignificantFigures(measuredDoublingTime)} hours`);
             
             // Update the parent state with measured doubling time
             updateState.mutate({
@@ -293,7 +285,7 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${measuredDoublingTime.toFixed(2)} hours`);
+            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${formatToSignificantFigures(measuredDoublingTime)} hours`);
             
             // Update the parent state with measured doubling time
             await updateState.mutateAsync({ 
@@ -407,13 +399,14 @@ export default function States() {
                     // Format different types of values appropriately
                     if (typeof value === 'number') {
                       if (paramKey === 'growth_rate') {
-                        return value.toFixed(4);
-                      } else if (paramKey === 'doubling_time') {
-                        return value.toFixed(2);
-                      } else if (paramKey === 'density_limit' || paramKey === 'cell_density') {
-                        return formatPrediction(value);
+                        return formatToSignificantFigures(value);
+                      } else if (paramKey === 'doubling_time' || paramKey === 'measured_doubling_time') {
+                        return formatToSignificantFigures(value);
+                      } else if (paramKey === 'density_limit' || paramKey === 'cell_density' || 
+                                paramKey === 'parent_end_density' || paramKey === 'end_density') {
+                        return formatCellDensity(value);
                       }
-                      return value.toString();
+                      return formatToSignificantFigures(value);
                     }
                     
                     return String(value);
@@ -506,10 +499,10 @@ export default function States() {
             <div className="mt-2 text-sm text-gray-600">
               Predicting from State {stateForModal.id} ({stateForModal.name || 'Unnamed'}) <br/>
               Initial Time: {dayjs.utc(stateForModal.timestamp).local().format('DD/MM/YYYY, HH:mm')} <br/>
-              Initial Density: {formatPrediction(stateForModal.parameters?.cell_density)} million cells/ml <br/>
-              Hypothesized Growth Rate: {stateForModal.parameters?.growth_rate?.toFixed(4) ?? 'N/A'} /hr (or Hypothesized Doubling Time: {stateForModal.parameters?.doubling_time?.toFixed(2) ?? 'N/A'} hr)
+              Initial Density: {formatCellDensity(stateForModal.parameters?.cell_density)} million cells/ml <br/>
+              Hypothesized Growth Rate: {formatToSignificantFigures(stateForModal.parameters?.growth_rate, 'N/A')} /hr (or Hypothesized Doubling Time: {formatToSignificantFigures(stateForModal.parameters?.doubling_time, 'N/A')} hr)
               {stateForModal.parameters?.measured_doubling_time && (
-                <><br/>Measured Doubling Time: {stateForModal.parameters.measured_doubling_time.toFixed(2)} hr</>
+                <><br/>Measured Doubling Time: {formatToSignificantFigures(stateForModal.parameters.measured_doubling_time)} hr</>
               )}
             </div>
             <div className="mt-4">

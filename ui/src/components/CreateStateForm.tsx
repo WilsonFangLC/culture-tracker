@@ -71,8 +71,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     temperature_c?: number;
     volume_ml?: number;
     location?: string;
-    viability?: number;
-    storage_location?: string;
     growth_rate?: number;
     doubling_time?: number;
     density_limit?: number;
@@ -140,7 +138,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       location: 'Freezer',
       cell_density: 1e6,
       parent_end_viability: 90,
-      storage_location: 'Box 1, Position A1',
     },
     thaw: {
       temperature_c: 37,
@@ -172,8 +169,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     volume_ml: number;
     location: string;
     cell_density: number;
-    viability: number;
-    storage_location: string;
+    start_viability?: number; // Replace viability with start_viability
+    parent_end_viability?: number; // Add parent_end_viability
     growth_rate: number;
     density_limit: number;
     operation_type: OperationType;
@@ -348,8 +345,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     if (formData.volume_ml !== undefined) parameters.volume_ml = formData.volume_ml;
     if (formData.location !== undefined) parameters.location = formData.location;
     if (formData.cell_density !== undefined) parameters.cell_density = formData.cell_density;
-    if (formData.viability !== undefined) parameters.viability = formData.viability;
-    if (formData.storage_location !== undefined) parameters.storage_location = formData.storage_location;
+    if (formData.start_viability !== undefined) parameters.start_viability = formData.start_viability;
+    if (formData.parent_end_viability !== undefined) parameters.parent_end_viability = formData.parent_end_viability;
     if (formData.growth_rate !== undefined) parameters.growth_rate = formData.growth_rate;
     if (formData.doubling_time !== undefined) parameters.doubling_time = formData.doubling_time;
     if (formData.density_limit !== undefined) parameters.density_limit = formData.density_limit;
@@ -547,8 +544,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             volume_ml: state.volume_ml,
             location: state.location,
             cell_density: state.cell_density,
-            viability: state.viability,
-            storage_location: state.storage_location,
+            start_viability: state.start_viability,
+            parent_end_viability: state.parent_end_viability,
             growth_rate: state.growth_rate,
             density_limit: state.density_limit,
             // Add cell_type to main parameters for consistency
@@ -587,8 +584,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           volume_ml: formData.volume_ml,
           location: formData.location,
           cell_density: formData.cell_density,
-          viability: formData.viability,
-          storage_location: formData.storage_location,
+          start_viability: formData.start_viability,
+          parent_end_viability: formData.parent_end_viability,
           growth_rate: formData.growth_rate,
           doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
@@ -613,8 +610,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       volume_ml: passageDefaults.volume_ml || 20,
       location: passageDefaults.location || 'incubator',
       cell_density: passageDefaults.cell_density || 5e4,
-      viability: passageDefaults.viability || 95,
-      storage_location: passageDefaults.storage_location || '',
+      start_viability: passageDefaults.start_viability || 95, // Update to start_viability
       growth_rate: passageDefaults.growth_rate || 0,
       density_limit: passageDefaults.density_limit || 0,
       doubling_time: passageDefaults.doubling_time || 0,
@@ -805,17 +801,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
-                
-                {/* Storage Location (Optional) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('storage_location')}</label>
-                  <input 
-                    type="text" 
-                    value={formData.storage_location} 
-                    onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} 
-                    className="mt-1 w-full p-2 border rounded" 
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -987,17 +972,6 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
-                
-                {/* Storage Location (Optional) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('storage_location')}</label>
-                  <input 
-                    type="text" 
-                    value={formData.storage_location} 
-                    onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} 
-                    className="mt-1 w-full p-2 border rounded" 
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -1126,16 +1100,16 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             
             {/* Storage Location */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Storage Location</label>
+              <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('location')}</label>
               <input 
                 type="text" 
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.storage_location} 
-                onChange={(e) => setFormData(prev => ({ ...prev, storage_location: e.target.value }))}
+                value={formData.location} 
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                 placeholder="e.g., Freezer 2, Box A, Position A1"
                 required
               />
-              <p className="mt-1 text-xs text-gray-500">Specific storage location of vials</p>
+              <p className="mt-1 text-xs text-gray-500">Storage location of these vials (required for freeze operations)</p>
             </div>
             
             {/* Show/Hide Optional Parameters */}
@@ -1246,8 +1220,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     {parentState.parameters?.transition_parameters?.total_cells && (
                       <p><span className="font-medium">Total Cells:</span> {Number(parentState.parameters.transition_parameters.total_cells).toLocaleString()} cells</p>
                     )}
-                    {parentState.parameters?.storage_location && (
-                      <p><span className="font-medium">Storage Location:</span> {parentState.parameters.storage_location}</p>
+                    {parentState.parameters?.location && (
+                      <p><span className="font-medium">Location:</span> {parentState.parameters.location}</p>
                     )}
                   </div>
                 </div>
@@ -1501,7 +1475,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('location')}</label>
                   <input 
                     type="text" 
                     value={formData.location} 
@@ -1589,13 +1563,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         </div>
         {/* Viability */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
-          <input type="number" min="0" max="100" value={formData.viability} onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
-        </div>
-        {/* Storage Location (Optional) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Storage Location (Optional)</label>
-          <input type="text" value={formData.storage_location} onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })} className="mt-1 w-full p-2 border rounded" />
+          <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('start_viability')}</label>
+          <input type="number" min="0" max="100" value={formData.start_viability} onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} className="mt-1 w-full p-2 border rounded" />
         </div>
       </>
     );

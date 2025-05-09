@@ -126,4 +126,51 @@ export const calculateMeasuredDoublingTime = (
     console.error("Error calculating measured doubling time:", error);
     return null; // Return null on any calculation error
   }
+};
+
+/**
+ * Formats a number to 3 significant figures. This provides consistent formatting
+ * across the application.
+ * 
+ * @param value The number to format
+ * @param defaultValue Value to return if the input is null, undefined, or not a number
+ * @returns A string representation of the number with 3 significant figures
+ */
+export const formatToSignificantFigures = (
+  value: number | null | undefined,
+  defaultValue: string = 'N/A'
+): string => {
+  if (value === null || value === undefined || !isFinite(value)) {
+    return defaultValue;
+  }
+  
+  // Handle 0 separately
+  if (value === 0) {
+    return '0';
+  }
+  
+  // Format to 3 significant figures
+  return value.toPrecision(3);
+};
+
+/**
+ * Formats cell density values by converting to millions and using 3 significant figures.
+ * 
+ * @param value Cell density in absolute number
+ * @param defaultValue Value to return if the input is null, undefined, or not a number
+ * @returns Formatted string with cell density in millions
+ */
+export const formatCellDensity = (
+  value: number | null | undefined,
+  defaultValue: string = 'N/A'
+): string => {
+  if (value === null || value === undefined || !isFinite(value)) {
+    return defaultValue;
+  }
+  
+  // Convert to millions
+  const valueInMillions = value / 1000000;
+  
+  // Format to 3 significant figures
+  return formatToSignificantFigures(valueInMillions);
 }; 
