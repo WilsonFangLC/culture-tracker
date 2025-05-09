@@ -20,9 +20,9 @@ import {
 //   useCreatePassage, // Missing
 //   useDeletePassage, // Missing
 // } from '../api'
-import PassageForm from '../components/PassageForm'
-import PassageDetails from '../components/PassageDetails'
-import LineageTree from '../components/LineageTree'
+// import PassageForm from '../components/PassageForm'
+// import PassageDetails from '../components/PassageDetails'
+// import LineageTree from '../components/LineageTree'
 // import { Passage, PassageCreate } from '../api' // Missing
 import React from 'react'
 

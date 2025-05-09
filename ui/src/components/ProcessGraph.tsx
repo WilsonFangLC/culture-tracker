@@ -95,7 +95,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   // Determine if a state is a measurement
   const isMeasurement = (state: CellState): boolean => {
-    return state.transition_type === 'measurement';
+    return state.parameters?.transition_parameters?.operation_type === 'measurement';
   };
   
   // Find end state for a process
