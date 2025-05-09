@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ParameterDefinitions } from './utils/parameters'
 
 const api = axios.create({
   // Use environment variable for base URL, fallback to localhost for development
@@ -131,4 +132,17 @@ export const deleteCellState = async (stateId: number) => {
 // Function to get CSV export URL
 export const getExportCsvUrl = () => {
   return `${api.defaults.baseURL}/api/export/csv`;
-}; 
+};
+
+// Hook to fetch parameter definitions from API
+export const useParameterDefinitions = () => {
+  return useQuery({
+    queryKey: ['parameterDefinitions'],
+    queryFn: async () => {
+      const { data } = await api.get<ParameterDefinitions>('/api/parameters/definitions')
+      return data
+    },
+    // Cache for longer since parameter definitions rarely change
+    staleTime: 1000 * 60 * 60, // 1 hour
+  })
+} 

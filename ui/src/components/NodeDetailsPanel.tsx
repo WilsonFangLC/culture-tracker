@@ -1,24 +1,12 @@
 import React from 'react';
 import { CellState } from '../api';
-import { ALL_PARAMETER_METADATA, OPERATION_PARAMETER_MAPPING } from '../utils/parameters';
+import { useParameters } from './ParameterUtils';
 
 interface NodeDetailsPanelProps {
   isOpen: boolean;
   node: CellState | null;
   onClose: () => void;
 }
-
-// Helper function to determine if a parameter is applicable to a state based on operation type
-const isParameterApplicable = (paramKey: string, operationType: string | undefined | null): boolean => {
-  // If there's no operation type, assume all common parameters are applicable
-  if (!operationType) {
-    return ALL_PARAMETER_METADATA[paramKey]?.applicableToAllNodes || false;
-  }
-  
-  // Check if the parameter is applicable to this operation type
-  const applicableParams = OPERATION_PARAMETER_MAPPING[operationType as keyof typeof OPERATION_PARAMETER_MAPPING] || [];
-  return applicableParams.includes(paramKey);
-};
 
 const formatValue = (value: any): string => {
   if (value === null || value === undefined) return '';
@@ -43,6 +31,8 @@ const formatValue = (value: any): string => {
 };
 
 const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClose }) => {
+  const { parameterMetadata, isParameterApplicable } = useParameters();
+  
   if (!node) return null;
   
   // Extract all parameters from the node, combining regular and transition parameters
@@ -59,17 +49,17 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
   // Get operation type
   const operationType = flatParams.operation_type;
   
-  // Get all possible parameter keys
-  const allParamKeys = Object.keys(ALL_PARAMETER_METADATA);
+  // Get all possible parameter keys from context
+  const allParamKeys = Object.keys(parameterMetadata);
   
   // Split parameters into global and operation-specific
   const globalParams = allParamKeys.filter(key => 
-    ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
+    parameterMetadata[key]?.applicableToAllNodes && 
     isParameterApplicable(key, operationType)
   );
   
   const operationSpecificParams = allParamKeys.filter(key => 
-    !ALL_PARAMETER_METADATA[key]?.applicableToAllNodes && 
+    !parameterMetadata[key]?.applicableToAllNodes && 
     isParameterApplicable(key, operationType)
   );
   
@@ -115,7 +105,7 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
             {globalParams.map(paramKey => {
               const value = flatParams[paramKey];
               const isApplicable = isParameterApplicable(paramKey, operationType);
-              const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
+              const displayName = parameterMetadata[paramKey]?.displayName || paramKey;
               
               let valueClass = "parameter-value";
               if (!isApplicable) {
@@ -166,7 +156,7 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
             {operationSpecificParams.map(paramKey => {
               const value = flatParams[paramKey];
               const isApplicable = isParameterApplicable(paramKey, operationType);
-              const displayName = ALL_PARAMETER_METADATA[paramKey]?.displayName || paramKey;
+              const displayName = parameterMetadata[paramKey]?.displayName || paramKey;
               
               let valueClass = "parameter-value";
               if (!isApplicable) {

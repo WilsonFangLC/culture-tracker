@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CellState, CellStateCreate } from '../api';
 import './ProcessGraph.css'; // We'll create this later
 import CreateStateForm from './CreateStateForm';
 import { createPortal } from 'react-dom';
 import NodeDetailsPanel from './NodeDetailsPanel';
+import { useParameters } from './ParameterUtils';
 
 // Add debounce utility
 const debounce = (fn: Function, ms = 300) => {
@@ -55,6 +56,7 @@ interface EdgeData {
 }
 
 export default function ProcessGraph({ state, states, onSelectState, onDeleteState, onCreateState }: ProcessGraphProps) {
+  const { getParameterDisplayName } = useParameters();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState<EdgeData[]>([]);
@@ -898,12 +900,12 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                 )}
                 
                 <div>
-                  <span className="info-label">Initial Density:</span> {(processData.startState.parameters?.cell_density ?? 0).toLocaleString()} cells/ml
+                  <span className="info-label">{getParameterDisplayName('cell_density')}:</span> {(processData.startState.parameters?.cell_density ?? 0).toLocaleString()} cells/ml
                 </div>
 
                 {endDensity !== null && (
                   <div>
-                    <span className="info-label">End Density:</span> {endDensity.toLocaleString()} cells/ml
+                    <span className="info-label">{getParameterDisplayName('end_density')}:</span> {endDensity.toLocaleString()} cells/ml
                   </div>
                 )}
 

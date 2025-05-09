@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { CellState, CellStateCreate } from '../api'
 import { calculateMeasuredDoublingTime } from '../utils/calculations'
+import { useParameters } from './ParameterUtils'
 
 interface CreateStateFormProps {
   onSubmit: (data: Array<{
@@ -45,6 +46,8 @@ const operationToTransitionType: Record<OperationType, 'single' | 'split' | 'mea
 
 export default function CreateStateForm({ onSubmit, onCancel, existingStates, initialParentId }: CreateStateFormProps): JSX.Element {
   const states = existingStates;
+  // Get parameter utilities
+  const { getParameterDisplayName } = useParameters();
 
   // Add state for the selected operation type (domain-specific terminology)
   const [operationType, setOperationType] = useState<OperationType>('passage');
@@ -716,7 +719,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <div className="space-y-3 pl-2 border-l-2 border-gray-200">
                 {/* Temperature */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('temperature_c')}</label>
                   <input 
                     type="number" 
                     value={formData.temperature_c} 
@@ -727,7 +730,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Volume */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Volume (ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('volume_ml')}</label>
                   <input 
                     type="number" 
                     value={formData.volume_ml} 
@@ -738,7 +741,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('location')}</label>
                   <input 
                     type="text" 
                     value={formData.location} 
@@ -749,7 +752,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
@@ -762,7 +765,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Growth Rate */}
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('growth_rate')}</label>
                   <input
                     type="number"
                     step="any"
@@ -898,7 +901,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <div className="space-y-3 pl-2 border-l-2 border-gray-200">
                 {/* Temperature */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('temperature_c')}</label>
                   <input 
                     type="number" 
                     value={formData.temperature_c} 
@@ -909,7 +912,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Volume */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Volume (ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('volume_ml')}</label>
                   <input 
                     type="number" 
                     value={formData.volume_ml} 
@@ -920,7 +923,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('location')}</label>
                   <input 
                     type="text" 
                     value={formData.location} 
@@ -931,7 +934,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
@@ -944,7 +947,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Growth Rate */}
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('growth_rate')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1148,7 +1151,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <div className="space-y-3 pl-2 border-l-2 border-gray-200">
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
@@ -1161,7 +1164,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Growth Rate */}
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('growth_rate')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1310,7 +1313,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <div className="space-y-3 pl-2 border-l-2 border-gray-200">
                 {/* Temperature */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Temperature (°C)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('temperature_c')}</label>
                   <input 
                     type="number" 
                     value={formData.temperature_c} 
@@ -1321,7 +1324,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Volume */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Volume (ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('volume_ml')}</label>
                   <input 
                     type="number" 
                     value={formData.volume_ml} 
@@ -1332,7 +1335,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Location */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Location</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('location')}</label>
                   <input 
                     type="text" 
                     value={formData.location} 
@@ -1343,7 +1346,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
@@ -1356,7 +1359,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Growth Rate */}
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Growth Rate (per hour)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('growth_rate')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1482,7 +1485,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Viability (%)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
