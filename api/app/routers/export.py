@@ -3,6 +3,7 @@ import csv
 import json
 from datetime import datetime
 from typing import List, Iterator, Dict, Any, Set, Union, Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -24,6 +25,8 @@ from ..utils.parameters import (
     ALL_POSSIBLE_PARAMETERS,
     is_parameter_applicable
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -284,6 +287,8 @@ async def export_cell_states_csv(
     # Remove the user dependency for now
     # user: UserRead = Depends(current_active_user), 
 ):
+    print("--- DEBUG: Entered export_cell_states_csv function ---", flush=True)
+    logger.info("--- LOGGER: Entered export_cell_states_csv function ---")
     """
     Fetches all cell state data and returns it as a streaming CSV file with all parameters expanded.
     Includes columns for all possible parameters, even if not present in any current state.
