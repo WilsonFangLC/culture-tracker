@@ -847,18 +847,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                   ({processData.status === 'open' ? 'active' : 'complete'})
                 </span>
                 <div className="node-actions">
-                  {onCreateState && (
-                    <button 
-                      className="add-child-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenCreateForm(processData.startState);
-                      }}
-                      title="Add Child State"
-                    >
-                      +
-                    </button>
-                  )}
                   <button 
                     className="delete-button"
                     onClick={(e) => {
@@ -875,6 +863,19 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
               <div className="process-node-label">
                 {processData.startState.name || `Process ${processData.startState.id}`}
               </div>
+              
+              {onCreateState && (
+                <button 
+                  className="add-child-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenCreateForm(processData.startState);
+                  }}
+                  title="Add Child State"
+                >
+                  +
+                </button>
+              )}
               
               <div className="process-node-info">
                 <div>

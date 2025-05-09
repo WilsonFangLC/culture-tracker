@@ -2,7 +2,7 @@ import { CellState, deleteCellState, useCreateState, CellStateCreate } from '../
 import LineageGraph from './LineageGraph'
 import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
-import { calculatePredictedDensity } from '../utils/calculations'
+import { calculatePredictedDensity, formatToSignificantFigures } from '../utils/calculations'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import ProcessGraph from './ProcessGraph'
@@ -240,8 +240,12 @@ export default function StateLineage({
                       </div>
                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                         <div>ID: {s.id}</div>
-                        {s.transition_type && (
-                           <div className="capitalize font-medium text-blue-700">Type: {s.transition_type}</div>
+                        {s.parameters?.transition_parameters?.operation_type && (
+                           <div className="capitalize font-medium text-blue-700">Type: {s.parameters.transition_parameters.operation_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</div>
+                        )}
+                        {/* Show cell type if available (either from main parameters or transition parameters) */}
+                        {(s.parameters?.cell_type || s.parameters?.transition_parameters?.cell_type) && (
+                          <div><span className="font-medium">Cell Type:</span> {s.parameters?.cell_type || s.parameters?.transition_parameters?.cell_type}</div>
                         )}
                         <div><span className="font-medium">Temp:</span> {s.parameters?.temperature_c ?? 'N/A'}°C</div>
                         <div><span className="font-medium">Volume:</span> {s.parameters?.volume_ml ?? 'N/A'}ml</div>
@@ -254,10 +258,10 @@ export default function StateLineage({
                         )}
                         
                         {s.parameters?.growth_rate !== undefined && s.parameters?.growth_rate !== null && (
-                          <div><span className="font-medium">Hypothesized Growth Rate:</span> {s.parameters.growth_rate} (per hour)</div>
+                          <div><span className="font-medium">Hypothesized Growth Rate:</span> {formatToSignificantFigures(s.parameters.growth_rate)} (per hour)</div>
                         )}
                         {s.parameters?.measured_doubling_time !== undefined && s.parameters?.measured_doubling_time !== null && (
-                          <div><span className="font-medium">Measured Doubling Time:</span> {s.parameters.measured_doubling_time.toFixed(2)} (hours)</div>
+                          <div><span className="font-medium">Measured Doubling Time:</span> {formatToSignificantFigures(s.parameters.measured_doubling_time)} (hours)</div>
                         )}
                         {s.parameters?.density_limit !== undefined && s.parameters?.density_limit !== null && (
                           <div><span className="font-medium">Hypothesized Density Limit:</span> {(s.parameters.density_limit / 1000000).toLocaleString()} (million cells/ml)</div>

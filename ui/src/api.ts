@@ -40,7 +40,7 @@ export interface CellState {
   }
   notes?: string
   children?: CellState[]
-  transition_type?: string | null
+  _type?: string | null
   additional_notes?: string
 }
 

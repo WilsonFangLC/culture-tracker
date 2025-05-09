@@ -440,10 +440,11 @@ export default function States() {
                       )}
                       
                       <div className="mt-2 text-sm space-y-1">
-                        {/* Only show cell type */}
-                        {isParameterApplicable('cell_type', operationType) && (
+                        {/* Show cell type, checking both direct and transition parameters */}
+                        {(isParameterApplicable('cell_type', operationType)) && (
                           <div>
-                            <span className="font-medium">{getParameterDisplayName('cell_type')}:</span> {renderParameterValue('cell_type', state.parameters.cell_type)}
+                            <span className="font-medium">{getParameterDisplayName('cell_type')}:</span> 
+                            {renderParameterValue('cell_type', state.parameters?.cell_type || state.parameters?.transition_parameters?.cell_type)}
                           </div>
                         )}
                       </div>

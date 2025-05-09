@@ -1,6 +1,7 @@
 import React from 'react';
 import { CellState } from '../api';
 import { useParameters } from './ParameterUtils';
+import { formatToSignificantFigures } from '../utils/calculations';
 
 interface NodeDetailsPanelProps {
   isOpen: boolean;
@@ -8,10 +9,15 @@ interface NodeDetailsPanelProps {
   onClose: () => void;
 }
 
-const formatValue = (value: any): string => {
+const formatValue = (value: any, paramKey?: string): string => {
   if (value === null || value === undefined) return '';
   
   if (typeof value === 'number') {
+    // Format doubling times with 3 significant figures
+    if (paramKey === 'doubling_time' || paramKey === 'measured_doubling_time') {
+      return formatToSignificantFigures(value);
+    }
+    
     // Format numbers with commas for thousands
     if (value > 1000) {
       return value.toLocaleString();
@@ -120,7 +126,7 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
                   <div className={valueClass}>
                     {!isApplicable ? 'N/A' : 
                       (value === undefined || value === null || value === '') ? '-' : 
-                      formatValue(value)}
+                      formatValue(value, paramKey)}
                   </div>
                 </div>
               );
@@ -136,11 +142,11 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
             <div className="parameter-item">
               <div className="parameter-label">Measured Doubling Time:</div>
               <div className="parameter-value highlight-measured">
-                {formatValue(flatParams.measured_doubling_time)} hours
+                {formatValue(flatParams.measured_doubling_time, 'measured_doubling_time')} hours
               </div>
               {flatParams.doubling_time && (
                 <div className="parameter-comparison">
-                  (Hypothesized: {formatValue(flatParams.doubling_time)} hours)
+                  (Hypothesized: {formatValue(flatParams.doubling_time, 'doubling_time')} hours)
                 </div>
               )}
             </div>
@@ -171,7 +177,7 @@ const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({ isOpen, node, onClo
                   <div className={valueClass}>
                     {!isApplicable ? 'N/A' : 
                       (value === undefined || value === null || value === '') ? '-' : 
-                      formatValue(value)}
+                      formatValue(value, paramKey)}
                   </div>
                 </div>
               );
