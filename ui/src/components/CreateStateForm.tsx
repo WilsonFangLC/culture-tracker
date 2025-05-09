@@ -178,6 +178,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     doubling_time?: number;
     number_of_vials?: number;
     total_cells?: number;
+    storage_location?: string;
+    viability?: number;
   }>>([])
 
   // --- Calculation Logic --- 

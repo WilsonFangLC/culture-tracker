@@ -1,6 +1,7 @@
 import React from 'react';
 // import { Passage } from '../api'; // Commented out: Passage not exported from api.ts
-import PassageDetails from './PassageDetails';
+// Removing the import to non-existent component
+// import PassageDetails from './PassageDetails';
 
 interface PassageListProps {
   // passages: Passage[]; // Commented out
@@ -55,7 +56,14 @@ const PassageList: React.FC<PassageListProps> = ({
       </div>
       <div className="w-2/3">
         {selectedPassage ? (
-          <PassageDetails passage={selectedPassage} />
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-2">Passage Details</h3>
+            <p>ID: {selectedPassage.id}</p>
+            <p>Generation: {selectedPassage.generation}</p>
+            <p>Start: {new Date(selectedPassage.start_time).toLocaleDateString()}</p>
+            <p>Harvest: {new Date(selectedPassage.harvest_time).toLocaleDateString()}</p>
+            {/* Add more details as needed */}
+          </div>
         ) : (
           <div className="p-4 text-center text-gray-500">
             Select a passage to see details
