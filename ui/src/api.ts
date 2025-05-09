@@ -130,11 +130,6 @@ export const deleteCellState = async (stateId: number) => {
   }
 };
 
-// Function to get CSV export URL
-export const getExportCsvUrl = () => {
-  return `${api.defaults.baseURL}/api/export/csv`;
-};
-
 // Hook to fetch parameter definitions from API
 export const useParameterDefinitions = () => {
   return useQuery({

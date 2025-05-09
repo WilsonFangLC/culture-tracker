@@ -45,12 +45,28 @@ export default function States() {
   // Function to handle CSV export
   const handleExportCSV = async () => {
     try {
+      console.log("Starting CSV export request...");
+      
+      // Use full URL to bypass any routing issues
+      const apiUrl = `${import.meta.env.VITE_API_BASE || ''}/api/export/csv`;
+      console.log(`Requesting CSV from: ${apiUrl}`);
+      
       // Fetch the CSV data from the backend
-      const response = await fetch('/api/export/csv');
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/csv,*/*'
+        }
+      });
+      
+      console.log(`CSV response status: ${response.status}`);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const blob = await response.blob();
+      console.log(`Got CSV data blob of size: ${blob.size} bytes`);
 
       // Create a link to download the blob
       const url = window.URL.createObjectURL(blob);

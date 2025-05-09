@@ -66,8 +66,21 @@ async def direct_export_csv(session: Session = Depends(get_session)):
     """Direct export endpoint as a fallback."""
     print("DIRECT_EXPORT_CSV called - using fallback route", flush=True)
     logger.error("DIRECT_EXPORT_CSV called - using fallback route")
-    # Forward to the actual export function from the router
-    return await export_router.export_cell_states_csv(session=session)
+    
+    try:
+        # Forward to the actual export function from the router
+        result = await export_router.export_cell_states_csv(session=session)
+        print(f"DIRECT_EXPORT_CSV success - returning StreamingResponse with type: {result.media_type}", flush=True)
+        return result
+    except Exception as e:
+        error_msg = f"DIRECT_EXPORT_CSV failed with error: {str(e)}"
+        print(error_msg, flush=True)
+        logger.error(error_msg)
+        # Return a simplified error response that browsers can display
+        return {
+            "error": "Failed to generate CSV export",
+            "detail": str(e)
+        }
 
 # Dependency to get database session
 def get_session():
