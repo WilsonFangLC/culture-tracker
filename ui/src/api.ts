@@ -42,6 +42,7 @@ export interface CellState {
   children?: CellState[]
   _type?: string | null
   additional_notes?: string
+  transition_type?: string
 }
 
 export interface CellStateCreate {
