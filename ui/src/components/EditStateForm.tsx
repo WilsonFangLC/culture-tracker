@@ -102,21 +102,42 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
           </div>
 
           {/* Viability */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              {getParameterDisplayName('viability')}
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              className="mt-1 w-full p-2 border rounded"
-              value={parameters.viability ?? ''}
-              onChange={(e) => {
-                const value = e.target.value === '' ? null : parseFloat(e.target.value);
-                setParameters({ ...parameters, viability: value });
-              }}
-            />
+          <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+            {/* Start Viability */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {getParameterDisplayName('start_viability')}
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                className="mt-1 w-full p-2 border rounded"
+                value={parameters.start_viability ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                  setParameters({ ...parameters, start_viability: value });
+                }}
+              />
+            </div>
+
+            {/* Parent End Viability */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {getParameterDisplayName('parent_end_viability')}
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                className="mt-1 w-full p-2 border rounded"
+                value={parameters.parent_end_viability ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                  setParameters({ ...parameters, parent_end_viability: value });
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -186,7 +207,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
       <DynamicParameters 
         parameters={Object.entries(parameters)
           .filter(([key]) => !['temperature_c', 'volume_ml', 'location', 'cell_density', 
-                              'viability', 'growth_rate', 'doubling_time'].includes(key))
+                              'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time'].includes(key))
           .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})}
         onChange={(newCustomParams) => {
           // Merge the custom parameters with the common ones

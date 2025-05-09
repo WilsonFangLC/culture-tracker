@@ -83,6 +83,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     total_cells?: number;
     number_of_passages?: number;
     end_density?: number;
+    start_viability?: number;
+    parent_end_viability?: number;
   }>({
     name: "", // Default: empty, placeholder will guide
     parent_id: initialParentId, // Use initialParentId if provided
@@ -122,21 +124,22 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 1e5,
-      viability: 100,
+      start_viability: 100,
     },
     passage: {
       temperature_c: 37,
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 5e4,
-      viability: 95,
+      start_viability: 95,
+      parent_end_viability: 90,
     },
     freeze: {
       temperature_c: -80,
       volume_ml: 1,
       location: 'Freezer',
       cell_density: 1e6,
-      viability: 90,
+      parent_end_viability: 90,
       storage_location: 'Box 1, Position A1',
     },
     thaw: {
@@ -144,7 +147,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 3e5,
-      viability: 85,
+      start_viability: 85,
     },
     harvest: {
       temperature_c: 37,
@@ -152,7 +155,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       location: 'Incubator 1',
       end_density: 0, // Will be updated from parent's cell density once selected
       name: 'Final Harvest', // Default name for harvest operation
-      viability: 90,
+      parent_end_viability: 90,
     },
     measurement: {}, // Measurement uses parent values
     split: {}        // Split has its own custom UI
@@ -752,13 +755,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('start_viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.viability} 
-                    onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} 
+                    value={formData.start_viability} 
+                    onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -934,13 +937,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('start_viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.viability} 
-                    onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} 
+                    value={formData.start_viability} 
+                    onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -1151,13 +1154,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <div className="space-y-3 pl-2 border-l-2 border-gray-200">
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('parent_end_viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.viability} 
-                    onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} 
+                    value={formData.parent_end_viability} 
+                    onChange={(e) => setFormData({ ...formData, parent_end_viability: Number(e.target.value) })} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -1346,13 +1349,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('start_viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.viability} 
-                    onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} 
+                    value={formData.start_viability} 
+                    onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -1485,13 +1488,13 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Viability */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('viability')}</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('parent_end_viability')}</label>
                   <input 
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.viability} 
-                    onChange={(e) => setFormData({ ...formData, viability: Number(e.target.value) })} 
+                    value={formData.parent_end_viability} 
+                    onChange={(e) => setFormData({ ...formData, parent_end_viability: Number(e.target.value) })} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>

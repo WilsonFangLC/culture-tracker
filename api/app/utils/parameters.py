@@ -5,13 +5,13 @@ OperationType = str  # 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'me
 
 # Define which parameters apply to which operation types
 OPERATION_PARAMETER_MAPPING: Dict[str, List[str]] = {
-    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type'],
-    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type'],
-    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
-    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type'],
-    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type'],
-    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type'],
-    'harvest': ['temperature_c', 'volume_ml', 'location', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'end_density', 'cell_type', 'example_parameter', 'operation_type'],
+    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type'],
+    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type'],
+    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
+    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type'],
+    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type'],
+    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type'],
+    'harvest': ['temperature_c', 'volume_ml', 'location', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'end_density', 'cell_type', 'example_parameter', 'operation_type'],
 }
 
 # Define all possible parameters with metadata
@@ -22,7 +22,8 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
     "volume_ml": {"displayName": "Volume (ml)", "applicableToAllNodes": True},
     "location": {"displayName": "Location", "applicableToAllNodes": True},
     "cell_density": {"displayName": "Initial Cell Density", "applicableToAllNodes": True},
-    "viability": {"displayName": "Viability (%)", "applicableToAllNodes": True},
+    "start_viability": {"displayName": "Start Viability (%)", "applicableToAllNodes": False, "operationSpecific": ['start_new_culture', 'passage', 'thaw']},
+    "parent_end_viability": {"displayName": "Parent End Viability (%)", "applicableToAllNodes": False, "operationSpecific": ['passage', 'harvest', 'freeze', 'split']},
     "growth_rate": {"displayName": "Hypothesized Growth Rate", "applicableToAllNodes": True},
     "doubling_time": {"displayName": "Hypothesized Doubling Time", "applicableToAllNodes": True},
     "density_limit": {"displayName": "Hypothesized Density Limit", "applicableToAllNodes": True},

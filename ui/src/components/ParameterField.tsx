@@ -45,7 +45,8 @@ const ParameterField: React.FC<ParameterFieldProps> = ({
     'temperature_c', 
     'volume_ml', 
     'cell_density', 
-    'viability', 
+    'start_viability',
+    'parent_end_viability',
     'growth_rate', 
     'doubling_time', 
     'density_limit', 
@@ -63,7 +64,7 @@ const ParameterField: React.FC<ParameterFieldProps> = ({
   }
   
   // Special handling for specific parameters
-  if (paramKey === 'viability') {
+  if (paramKey === 'start_viability' || paramKey === 'parent_end_viability') {
     // Viability is a percentage
     return (
       <div>
