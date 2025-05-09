@@ -12,7 +12,8 @@ Parameters in Cell Culture Tracker are centrally defined but used throughout the
 
 Start by updating the core parameter definition files:
 
-#### Frontend (`ui/src/utils/parameters.ts`):
+#### Frontend (`ui/src/utils/parameters.ts`)
+
 ```typescript
 // Step 1: Add parameter to relevant operation types in OPERATION_PARAMETER_MAPPING
 export const OPERATION_PARAMETER_MAPPING: Record<OperationType, string[]> = {
@@ -31,7 +32,8 @@ export const ALL_PARAMETER_METADATA: Record<string, ParameterMetadata> = {
 };
 ```
 
-#### Backend (`api/app/utils/parameters.py`):
+#### Backend (`api/app/utils/parameters.py`)
+
 ```python
 # Update the same structures in the backend file
 OPERATION_PARAMETER_MAPPING: Dict[str, List[str]] = {
@@ -51,47 +53,57 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
 
 ### 2. Update Form Components
 
-#### `ui/src/components/CreateStateForm.tsx`:
+#### `ui/src/components/CreateStateForm.tsx`
+
 - Add the parameter to `formData` state type definition
 - Add default values to `operationDefaults` for relevant operations
 - Add form fields for the parameter in each relevant operation type's form section
 - Update the `handleSubmit` function to include the parameter in submissions
 
-#### `ui/src/components/EditStateForm.tsx`:
+#### `ui/src/components/EditStateForm.tsx`
+
 - Add form fields for the parameter
 - Include the parameter in the filter list for `DynamicParameters` if needed
 
-#### `ui/src/components/ParameterField.tsx`:
+#### `ui/src/components/ParameterField.tsx`
+
 - If the parameter is numeric, add it to the `numericParams` array
 - Add special rendering logic if needed (e.g., for percentages, densities)
 
 ### 3. Update Display Components
 
-#### `ui/src/pages/States.tsx`:
+#### `ui/src/pages/States.tsx`
+
 - Update state list or details views that display the parameter
 
-#### `ui/src/components/NodeDetailsPanel.tsx`:
+#### `ui/src/components/NodeDetailsPanel.tsx`
+
 - Update parameter display in node details panel
 
-#### `ui/src/components/ProcessGraph.tsx`:
+#### `ui/src/components/ProcessGraph.tsx`
+
 - Update graph visualization if it displays this parameter
 
-#### `ui/src/pages/RawListView.tsx`:
+#### `ui/src/pages/RawListView.tsx`
+
 - Update raw data display to include the parameter
 
 ### 4. Update Export Functionality
 
-#### `api/app/routers/export.py`:
+#### `api/app/routers/export.py`
+
 - Update CSV export column definitions
 - Update any formatters or display name mappings
 
 ### 5. Update Backend Components
 
-#### API Endpoint Handlers:
+#### API Endpoint Handlers
+
 - Update request/response models in relevant endpoints
 - Update validation logic for the parameter
 
-#### Database Migrations:
+#### Database Migrations
+
 - If parameter requires schema changes, create migration scripts
 
 ### 6. Update Testing
@@ -102,14 +114,17 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
 
 ### 7. Special Handling for Parameter Types
 
-#### For Measurement Parameters:
+#### For Measurement Parameters
+
 - If applicable, add to `measurableParameters` array in CreateStateForm.tsx
 
-#### For Split Operation Parameters:
+#### For Split Operation Parameters
+
 - Update split state type definitions
 - Add fields to split state forms
 
-#### For Calculated Parameters:
+#### For Calculated Parameters
+
 - Update calculation logic in relevant utility files
 
 ## Testing Your Changes
@@ -129,4 +144,4 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
 
 ---
 
-Following this guide ensures that parameter changes are implemented consistently throughout the application, reducing bugs and maintaining a coherent user experience. 
+Following this guide ensures that parameter changes are implemented consistently throughout the application, reducing bugs and maintaining a coherent user experience.

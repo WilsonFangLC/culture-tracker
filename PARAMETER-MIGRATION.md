@@ -5,6 +5,7 @@ This document provides guidance for continuing the migration to the new paramete
 ## Background
 
 The parameter system has been refactored to have a single source of truth for parameter definitions:
+
 - Backend: `api/app/utils/parameters.py`
 - Frontend: `ui/src/utils/parameters.ts`
 
@@ -12,16 +13,18 @@ This makes it easier to add, modify, or remove parameters without changing multi
 
 ## Migration Status
 
-### Completed:
+### Completed
+
 - ✅ Created centralized parameter definitions
-- ✅ Added API endpoint for parameter definitions 
+- ✅ Added API endpoint for parameter definitions
 - ✅ Implemented parameter context provider
 - ✅ Created reusable parameter components
 - ✅ Updated NodeDetailsPanel to use parameter context
 - ✅ Updated RawListView to use parameter context
 - ✅ Added CLI tool for parameter management
 
-### In Progress:
+### In Progress
+
 - ⏳ Migrate CreateStateForm to use parameter components
 - ⏳ Update States.tsx to import parameter definitions
 - ⏳ Add comprehensive tests
@@ -83,4 +86,4 @@ cd api/app
 
 3. **Runtime Configuration**:
    - Consider using the API endpoint for dynamic parameters
-   - Fetch parameter definitions from backend when possible 
+   - Fetch parameter definitions from backend when possible
