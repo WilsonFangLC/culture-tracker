@@ -1,3 +1,8 @@
+/**
+ * DEPRECATED: This component is no longer maintained.
+ * This form was part of the Passages feature which has been disabled.
+ * Keeping for reference purposes only.
+ */
 import React, { useState } from 'react'
 // import { PassageCreate, usePassages } from '../api' // Commented out: Missing API exports
 

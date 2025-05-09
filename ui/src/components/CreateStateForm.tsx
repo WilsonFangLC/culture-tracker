@@ -778,7 +778,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('doubling_time')}</label>
                   <input
                     type="number"
                     step="any"
@@ -792,7 +792,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('density_limit')}</label>
                   <input
                     type="number"
                     step="any"
@@ -805,7 +805,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Storage Location (Optional) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Storage Location (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('storage_location')}</label>
                   <input 
                     type="text" 
                     value={formData.storage_location} 
@@ -960,7 +960,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('doubling_time')}</label>
                   <input
                     type="number"
                     step="any"
@@ -974,7 +974,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('density_limit')}</label>
                   <input
                     type="number"
                     step="any"
@@ -987,7 +987,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Storage Location (Optional) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Storage Location (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('storage_location')}</label>
                   <input 
                     type="text" 
                     value={formData.storage_location} 
@@ -1177,7 +1177,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('doubling_time')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1191,7 +1191,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('density_limit')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1372,7 +1372,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Doubling Time */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Doubling Time (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('doubling_time')}</label>
                   <input
                     type="number"
                     step="any"
@@ -1386,7 +1386,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 
                 {/* Density Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Hypothesized Density Limit (million cells/ml)</label>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('density_limit')}</label>
                   <input
                     type="number"
                     step="any"

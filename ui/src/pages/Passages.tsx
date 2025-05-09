@@ -1,5 +1,8 @@
-// Commenting out entire file as it heavily relies on missing API exports (Passage, usePassages, etc.)
-// Build will fail until these are implemented or the component is removed.
+/**
+ * DEPRECATED: This feature is no longer maintained.
+ * The Passages functionality was planned but development was discontinued.
+ * Keeping for reference purposes only.
+ */
 
 import { useState } from 'react'
 import {
@@ -26,7 +29,7 @@ import React from 'react'
 export default function Passages() {
     return (
         <div className="p-4">
-            Passages feature is temporarily disabled due to build errors.
+            Passages feature is deprecated and no longer maintained.
         </div>
     );
 } 

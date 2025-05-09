@@ -1,3 +1,8 @@
+/**
+ * DEPRECATED: This component is no longer maintained.
+ * This form was part of the Passages feature which has been disabled.
+ * Keeping for reference purposes only.
+ */
 import { useState } from 'react'
 // import { GrowthMeasurement } from '../api' // Commented out: GrowthMeasurement not exported from api.ts
 

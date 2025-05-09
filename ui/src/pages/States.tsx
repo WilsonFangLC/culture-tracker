@@ -7,6 +7,7 @@ import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import { calculateMeasuredDoublingTime } from '../utils/calculations'
 import { useQueryClient } from '@tanstack/react-query'
+import { useParameters } from '../components/ParameterUtils'
 
 dayjs.extend(utc)
 
@@ -391,34 +392,12 @@ export default function States() {
                   // Determine operation type
                   const operationType = state.parameters?.transition_parameters?.operation_type;
                   
-                  // Function to determine if parameter is applicable to this operation type
-                  const isParameterApplicable = (param: string) => {
-                    // Define operation-specific parameter mappings (should ideally be imported from a shared config)
-                    const parameterMap: Record<string, string[]> = {
-                      'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'cell_type'],
-                      'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density'],
-                      'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'storage_location', 'parent_end_density', 'number_of_vials', 'total_cells'],
-                      'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'number_of_passages'],
-                      'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_value'],
-                      'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'viability', 'growth_rate', 'doubling_time', 'density_limit', 'parent_end_density'],
-                      'harvest': ['temperature_c', 'volume_ml', 'location', 'viability', 'end_density'],
-                    };
-                    
-                    // Common parameters that apply to all states
-                    const commonParams = ['temperature_c', 'volume_ml', 'location'];
-                    
-                    // If no operation type or parameter is common, consider it applicable
-                    if (!operationType || commonParams.includes(param)) {
-                      return true;
-                    }
-                    
-                    // Check if parameter is applicable to this operation type
-                    return parameterMap[operationType]?.includes(param) || false;
-                  };
+                  // Use parameter utilities from context
+                  const { isParameterApplicable, getParameterDisplayName } = useParameters();
                   
                   // Function to render a parameter value with proper NA handling
                   const renderParameterValue = (paramKey: string, value: any) => {
-                    if (!isParameterApplicable(paramKey)) {
+                    if (!isParameterApplicable(paramKey, operationType)) {
                       return <span className="text-gray-400 italic">N/A</span>;
                     }
                     if (value === undefined || value === null) {
@@ -469,9 +448,9 @@ export default function States() {
                       
                       <div className="mt-2 text-sm space-y-1">
                         {/* Only show cell type */}
-                        {isParameterApplicable('cell_type') && (
+                        {isParameterApplicable('cell_type', operationType) && (
                           <div>
-                            <span className="font-medium">Cell Type:</span> {renderParameterValue('cell_type', state.parameters.cell_type)}
+                            <span className="font-medium">{getParameterDisplayName('cell_type')}:</span> {renderParameterValue('cell_type', state.parameters.cell_type)}
                           </div>
                         )}
                       </div>

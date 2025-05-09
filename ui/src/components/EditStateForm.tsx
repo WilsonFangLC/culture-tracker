@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CellState } from '../api'
 import DynamicParameters from './DynamicParameters'
+import { useParameters } from './ParameterUtils'
 
 interface EditStateFormProps {
   state: CellState;
@@ -15,6 +16,9 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
   // Initialize with all parameters from the state
   const [parameters, setParameters] = useState<Record<string, any>>({ ...state.parameters });
   const [additionalNotes, setAdditionalNotes] = useState(state.additional_notes || '');
+  
+  // Get parameter utilities
+  const { getParameterDisplayName } = useParameters();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +40,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         {/* Temperature */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Temperature (°C)
+            {getParameterDisplayName('temperature_c')}
           </label>
           <input
             type="number"
@@ -52,7 +56,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         {/* Volume */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Volume (ml)
+            {getParameterDisplayName('volume_ml')}
           </label>
           <input
             type="number"
@@ -68,7 +72,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         {/* Location */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Location
+            {getParameterDisplayName('location')}
           </label>
           <input
             type="text"
@@ -82,7 +86,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700">
-              Initial Cell Density (million cells/ml)
+              {getParameterDisplayName('cell_density')} (million cells/ml)
             </label>
             <input
               type="number"
@@ -100,7 +104,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
           {/* Viability */}
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Viability (%)
+              {getParameterDisplayName('viability')}
             </label>
             <input
               type="number"
@@ -119,7 +123,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         {/* Growth Rate */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Hypothesized Growth Rate (per hour)
+            {getParameterDisplayName('growth_rate')}
           </label>
           <input
             type="number"
@@ -150,7 +154,7 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
         {/* Doubling Time */}
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            Hypothesized Doubling Time (hours)
+            {getParameterDisplayName('doubling_time')}
           </label>
           <input
             type="number"

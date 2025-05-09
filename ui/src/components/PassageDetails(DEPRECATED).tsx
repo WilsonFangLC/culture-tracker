@@ -1,6 +1,11 @@
+/**
+ * DEPRECATED: This component is no longer maintained.
+ * This component was part of the Passages feature which has been disabled.
+ * Keeping for reference purposes only.
+ */
 // import { useCreateGrowthMeasurement, usePassage, usePassages } from '../api' // Commented out: Missing API exports
 // import { Passage, GrowthMeasurement } from '../api' // Commented out: Missing API exports
-import GrowthMeasurementForm from './GrowthMeasurementForm'
+// import GrowthMeasurementForm from './GrowthMeasurementForm'
 import React, { useState } from 'react'
 
 interface PassageDetailsProps {
