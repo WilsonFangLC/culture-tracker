@@ -287,8 +287,9 @@ async def export_cell_states_csv(
     # Remove the user dependency for now
     # user: UserRead = Depends(current_active_user), 
 ):
-    print("--- DEBUG: Entered export_cell_states_csv function ---", flush=True)
-    logger.info("--- LOGGER: Entered export_cell_states_csv function ---")
+    print("=== EXPORT CSV: Function entered ===", flush=True)
+    logger.error("=== EXPORT CSV: Function entered (ERROR LEVEL) ===")
+    logger.info("=== EXPORT CSV: Function entered (INFO LEVEL) ===")
     """
     Fetches all cell state data and returns it as a streaming CSV file with all parameters expanded.
     Includes columns for all possible parameters, even if not present in any current state.
@@ -298,14 +299,19 @@ async def export_cell_states_csv(
     # A better approach for very large datasets might involve true streaming
     # from the DB or pagination within the generator.
     try:
+        print("=== EXPORT CSV: Attempting to fetch states ===", flush=True)
         # Using a very large limit to fetch "all" states.
         # Consider potential memory issues if the dataset is huge.
         all_states = get_cell_states(session=session, limit=1000000) 
+        print(f"=== EXPORT CSV: Fetched {len(all_states)} states ===", flush=True)
     except Exception as e:
         # Log the exception e
-        raise HTTPException(status_code=500, detail="Could not fetch cell states from database.")
+        print(f"=== EXPORT CSV ERROR: {str(e)} ===", flush=True)
+        logger.error(f"=== EXPORT CSV ERROR: {str(e)} ===")
+        raise HTTPException(status_code=500, detail=f"Could not fetch cell states from database: {str(e)}")
 
     if not all_states:
+      print("=== EXPORT CSV: No states found, returning empty CSV ===", flush=True)
       # Return an empty CSV if no data exists, but still with all possible column headers
       def empty_generator():
           output = io.StringIO()
@@ -364,6 +370,7 @@ async def export_cell_states_csv(
           headers=headers
       )
 
+    print("=== EXPORT CSV: Creating full CSV with data ===", flush=True)
     filename = f"cell_culture_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
 

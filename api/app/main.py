@@ -60,6 +60,15 @@ async def startup_event():
         logger.error(f"Error during startup: {str(e)}")
         raise
 
+# Add a direct CSV export endpoint as a fallback
+@app.get("/api/export/csv")
+async def direct_export_csv(session: Session = Depends(get_session)):
+    """Direct export endpoint as a fallback."""
+    print("DIRECT_EXPORT_CSV called - using fallback route", flush=True)
+    logger.error("DIRECT_EXPORT_CSV called - using fallback route")
+    # Forward to the actual export function from the router
+    return await export_router.export_cell_states_csv(session=session)
+
 # Dependency to get database session
 def get_session():
     with Session(engine) as session:
