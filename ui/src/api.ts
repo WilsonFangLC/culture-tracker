@@ -90,6 +90,36 @@ export const useCreateState = () => {
   })
 }
 
+// Enhanced version of useCreateState that prevents duplicate submissions
+export const useSafeCreateState = () => {
+  const createStateMutation = useCreateState();
+  let isSubmittingFlag = false;
+  
+  const safeCreate = async (state: CellStateCreate) => {
+    if (isSubmittingFlag || createStateMutation.isPending) {
+      console.log("[useSafeCreateState] Ignoring duplicate submission while request is in progress");
+      return null;
+    }
+    
+    isSubmittingFlag = true;
+    try {
+      const result = await createStateMutation.mutateAsync(state);
+      // Add a small delay before allowing another submission to prevent rapid double-clicks
+      setTimeout(() => { isSubmittingFlag = false; }, 1000);
+      return result;
+    } catch (error) {
+      isSubmittingFlag = false;
+      throw error;
+    }
+  };
+  
+  return {
+    ...createStateMutation,
+    safeCreate,
+    isSubmitting: () => isSubmittingFlag
+  };
+};
+
 export const useUpdateState = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -102,14 +132,25 @@ export const useUpdateState = () => {
       if (parameters) payload.parameters = parameters;
       if (additional_notes !== undefined) payload.additional_notes = additional_notes;
 
-      console.log(`[useUpdateState] mutationFn called for state ${id} with payload:`, payload)
-      const { data } = await api.patch<CellState>(`/api/states/${id}/`, payload);
-      console.log(`[useUpdateState] api.patch response for state ${id}:`, data)
-      return data
+      console.log(`[useUpdateState] mutationFn called for state ${id} with payload:`, JSON.stringify(payload, null, 2));
+      
+      try {
+        const { data } = await api.patch<CellState>(`/api/states/${id}/`, payload);
+        console.log(`[useUpdateState] api.patch response for state ${id}:`, JSON.stringify(data, null, 2));
+        return data;
+      } catch (error: any) {
+        console.error(`[useUpdateState] Error updating state ${id}:`, error);
+        console.error(`[useUpdateState] Error response:`, error.response?.data);
+        throw error;
+      }
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['states'] })
-      queryClient.invalidateQueries({ queryKey: ['state', data.id] })
+      console.log(`[useUpdateState] onSuccess called with data:`, JSON.stringify(data, null, 2));
+      queryClient.invalidateQueries({ queryKey: ['states'] });
+      queryClient.invalidateQueries({ queryKey: ['state', data.id] });
+    },
+    onError: (error) => {
+      console.error(`[useUpdateState] onError called:`, error);
     },
   })
 }
@@ -117,7 +158,7 @@ export const useUpdateState = () => {
 // Function to delete a cell state
 export const deleteCellState = async (stateId: number) => {
   try {
-    const response = await api.delete(`/api/cell_states/${stateId}`); // Use the correct endpoint with /api prefix
+    const response = await api.delete(`/api/cell_states/${stateId}`); // Reverted back to original endpoint that supports DELETE
     // Check for 204 No Content status
     if (response.status !== 204) {
       throw new Error(`API responded with status ${response.status}`);

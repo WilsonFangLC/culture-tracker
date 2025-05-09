@@ -122,29 +122,29 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 1e5,
-      start_viability: 100,
+      start_viability: undefined,
     },
     passage: {
       temperature_c: 37,
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 5e4,
-      start_viability: 95,
-      parent_end_viability: 90,
+      start_viability: undefined,
+      parent_end_viability: undefined,
     },
     freeze: {
       temperature_c: -80,
       volume_ml: 1,
       location: 'Freezer',
       cell_density: 1e6,
-      parent_end_viability: 90,
+      parent_end_viability: undefined,
     },
     thaw: {
       temperature_c: 37,
       volume_ml: 10,
       location: 'Incubator 1',
       cell_density: 3e5,
-      start_viability: 85,
+      start_viability: undefined,
     },
     harvest: {
       temperature_c: 37,
@@ -152,7 +152,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       location: 'Incubator 1',
       end_density: 0, // Will be updated from parent's cell density once selected
       name: 'Final Harvest', // Default name for harvest operation
-      parent_end_viability: 90,
+      parent_end_viability: undefined,
     },
     measurement: {}, // Measurement uses parent values
     split: {}        // Split has its own custom UI
@@ -612,7 +612,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       volume_ml: passageDefaults.volume_ml || 20,
       location: passageDefaults.location || 'incubator',
       cell_density: passageDefaults.cell_density || 5e4,
-      start_viability: passageDefaults.start_viability || 95, // Update to start_viability
+      start_viability: undefined, // No default start_viability
+      parent_end_viability: undefined, // No default parent_end_viability
       growth_rate: passageDefaults.growth_rate || 0,
       density_limit: passageDefaults.density_limit || 0,
       doubling_time: passageDefaults.doubling_time || 0,

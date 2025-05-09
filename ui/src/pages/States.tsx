@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStates, useCreateState, useUpdateState } from '../api'
+import { useStates, useSafeCreateState, useUpdateState } from '../api'
 import { CellState, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
@@ -16,13 +16,16 @@ export default function States() {
   const { data: statesData, isLoading: statesLoading, error: statesError, refetch: refetchStates } = useStates()
   const [selectedState, setSelectedState] = useState<CellState | null>(null)
   const [showCreateState, setShowCreateState] = useState(false)
+  
+  // Move parameter utilities to the top level
+  const { isParameterApplicable, getParameterDisplayName } = useParameters();
 
   // State for prediction modal
   const [predictingStateId, setPredictingStateId] = useState<number | null>(null);
   const [predictionTimeInput, setPredictionTimeInput] = useState<string>('');
   const [predictionResult, setPredictionResult] = useState<string | null>(null);
 
-  const createState = useCreateState()
+  const createState = useSafeCreateState()
   const updateState = useUpdateState()
 
   // Ensure states are always arrays
@@ -256,19 +259,22 @@ export default function States() {
                 queryClient.invalidateQueries({ queryKey: ['states'] })
               }
             });
+          } else {
+            console.warn(`Could not calculate measured doubling time for parent state ${parentState.id}.`);
+            console.log(`Calculation inputs: initialDensity=${initialDensity}, finalDensity=${finalDensity}, startTime=${startTime}, endTime=${endTime}`);
           }
         }
       }
 
-      createState.mutate(stateData, {
-        onSuccess: (/* newState */) => { // Commented out unused variable
+      createState.safeCreate(stateData).then(
+        () => {
           // Create next state
           createNextState(index + 1)
         },
-        onError: (error) => {
+        (error) => {
           console.error('handleCreateState error', error)
         }
-      })
+      );
     }
 
     // Start creating states
@@ -289,6 +295,12 @@ export default function States() {
         if (parentState && 
             parentState.parameters?.cell_density && 
             parameters.transition_parameters?.parent_end_density) {
+          
+          console.log(`Attempting to calculate doubling time for parent state ${parentState.id}:`);
+          console.log(`Parent cell_density: ${parentState.parameters.cell_density} (${typeof parentState.parameters.cell_density})`);
+          console.log(`transition_parameters.parent_end_density: ${parameters.transition_parameters.parent_end_density} (${typeof parameters.transition_parameters.parent_end_density})`);
+          console.log(`Parent timestamp: ${parentState.timestamp} (${typeof parentState.timestamp})`);
+          console.log(`Child timestamp: ${stateToUpdate.timestamp} (${typeof stateToUpdate.timestamp})`);
           
           const initialDensity = parentState.parameters.cell_density;
           const finalDensity = parameters.transition_parameters.parent_end_density;
@@ -315,6 +327,9 @@ export default function States() {
             // Refresh the states list to show the updated measured doubling time
             console.log("Parent state updated with measured doubling time, invalidating states query");
             queryClient.invalidateQueries({ queryKey: ['states'] });
+          } else {
+            console.warn(`Could not calculate measured doubling time for parent state ${parentState.id}.`);
+            console.log(`Calculation inputs: initialDensity=${initialDensity}, finalDensity=${finalDensity}, startTime=${startTime}, endTime=${endTime}`);
           }
         }
       }
@@ -400,8 +415,8 @@ export default function States() {
                   // Determine operation type
                   const operationType = state.parameters?.transition_parameters?.operation_type;
                   
-                  // Use parameter utilities from context
-                  const { isParameterApplicable, getParameterDisplayName } = useParameters();
+                  // Use parameter utilities from context (already defined at top level)
+                  // const { isParameterApplicable, getParameterDisplayName } = useParameters();
                   
                   // Function to render a parameter value with proper NA handling
                   const renderParameterValue = (paramKey: string, value: any) => {
