@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { CellState, CellStateCreate } from '../api'
 import { calculateMeasuredDoublingTime } from '../utils/calculations'
 import { useParameters } from './ParameterUtils'
@@ -200,20 +200,25 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
   }, []);
 
   const handleParameterChange = (param: keyof typeof formData, value: string | number) => {
+    // Allow empty values
+    if (value === '') {
+      setFormData(prev => ({ ...prev, [param]: undefined }));
+      return;
+    }
+
     const numericValue = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(numericValue)) {
-      // Handle non-numeric input gracefully (e.g., keep the state as is, or set to 0/empty string)
-      // For simplicity, let's just update with the raw value for now, validation can handle it
+      // Handle non-numeric input gracefully
       setFormData(prev => ({ ...prev, [param]: value })); 
       return; 
     }
 
     let updates: Partial<typeof formData> = { [param]: numericValue };
 
-    if (param === 'growth_rate') {
+    if (param === 'growth_rate' && numericValue > 0) {
       const linkedDoublingTime = calculateLinkedParameter('growth_rate', numericValue);
       updates['doubling_time'] = linkedDoublingTime;
-    } else if (param === 'doubling_time') {
+    } else if (param === 'doubling_time' && numericValue > 0) {
       const linkedGrowthRate = calculateLinkedParameter('doubling_time', numericValue);
       updates['growth_rate'] = linkedGrowthRate;
     }
@@ -630,12 +635,87 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     setSplitStates(splitStates.filter((_, i) => i !== index))
   }
 
+  // Add a utility function to prevent wheel events on number inputs
+  const disableNumberInputScrolling = (event: Event) => {
+    // Prevent the input value from changing when scrolling
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  // Apply the wheel event handler to all number inputs when component mounts
+  useEffect(() => {
+    // Select all number inputs in the component
+    const numberInputs = document.querySelectorAll('input[type="number"]');
+    
+    // Add the wheel event listener to each input
+    numberInputs.forEach(input => {
+      input.addEventListener('wheel', disableNumberInputScrolling, { passive: false });
+    });
+    
+    // Clean up when component unmounts
+    return () => {
+      numberInputs.forEach(input => {
+        input.removeEventListener('wheel', disableNumberInputScrolling);
+      });
+    };
+  }, []);
+
+  // Improve numerical input handling to allow empty state and precise values
+  const handleNumericInput = (
+    field: keyof typeof formData, 
+    value: string, 
+    multiplier: number = 1
+  ) => {
+    // Allow empty string for better UX (user can delete content)
+    if (value === '') {
+      setFormData(prev => ({ ...prev, [field]: undefined }));
+      return;
+    }
+    
+    // Convert to number without forcing rounding
+    const numValue = parseFloat(value);
+    
+    // Only update if it's a valid number
+    if (!isNaN(numValue)) {
+      setFormData(prev => ({ ...prev, [field]: numValue * multiplier }));
+    }
+  };
+
+  // Modify updateSplitState to better handle numeric values
   const updateSplitState = (index: number, field: string, value: any) => {
-    const newSplitStates = [...splitStates]
-    newSplitStates[index] = { ...newSplitStates[index], [field]: value }
+    const newSplitStates = [...splitStates];
+    
+    // Special handling for numeric fields
+    if (typeof value === 'string' && 
+        (field === 'cell_density' || field === 'temperature_c' || 
+         field === 'volume_ml' || field === 'growth_rate' || 
+         field === 'doubling_time' || field === 'density_limit' ||
+         field === 'number_of_vials' || field === 'total_cells' ||
+         field === 'viability')) {
+       
+      // Allow empty values for better UX
+      if (value === '') {
+        newSplitStates[index] = { ...newSplitStates[index], [field]: undefined };
+      } else {
+        // Parse as float for all numeric fields to allow decimals
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          if (field === 'cell_density') {
+            // For cell_density, multiply by 1,000,000 if not already in the millions
+            const finalValue = value.includes('000000') ? numValue : numValue * 1000000;
+            newSplitStates[index] = { ...newSplitStates[index], [field]: finalValue };
+          } else {
+            newSplitStates[index] = { ...newSplitStates[index], [field]: numValue };
+          }
+        }
+      }
+    } else {
+      // For non-numeric fields, just update the value
+      newSplitStates[index] = { ...newSplitStates[index], [field]: value };
+    }
     
     // Handle linked parameters (growth rate and doubling time)
-    if (field === 'growth_rate' || field === 'doubling_time') {
+    if ((field === 'growth_rate' || field === 'doubling_time') && value !== '') {
       const numericValue = typeof value === 'string' ? parseFloat(value) : value;
       
       if (!isNaN(numericValue) && numericValue > 0) {
@@ -662,7 +742,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       };
     }
     
-    setSplitStates(newSplitStates)
+    setSplitStates(newSplitStates);
   }
 
   // State to track whether optional parameters are shown
@@ -699,10 +779,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <input 
                 type="number" 
                 min="0" 
-                step="0.001"
+                step="any"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.cell_density / 1000000} 
-                onChange={(e) => setFormData({ ...formData, cell_density: Number(e.target.value) * 1000000 })}
+                value={formData.cell_density ? formData.cell_density / 1000000 : ''}
+                onChange={(e) => handleNumericInput('cell_density', e.target.value, 1000000)}
                 required
               />
             </div>
@@ -726,8 +806,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('temperature_c')}</label>
                   <input 
                     type="number" 
-                    value={formData.temperature_c} 
-                    onChange={(e) => setFormData({ ...formData, temperature_c: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.temperature_c !== undefined ? formData.temperature_c : ''} 
+                    onChange={(e) => handleNumericInput('temperature_c', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -737,8 +818,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('volume_ml')}</label>
                   <input 
                     type="number" 
-                    value={formData.volume_ml} 
-                    onChange={(e) => setFormData({ ...formData, volume_ml: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.volume_ml !== undefined ? formData.volume_ml : ''} 
+                    onChange={(e) => handleNumericInput('volume_ml', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -761,8 +843,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.start_viability} 
-                    onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.start_viability !== undefined ? formData.start_viability : ''} 
+                    onChange={(e) => handleNumericInput('start_viability', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -773,7 +856,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.growth_rate}
+                    value={formData.growth_rate !== undefined ? formData.growth_rate : ''}
                     onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
@@ -786,7 +869,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.doubling_time}
+                    value={formData.doubling_time !== undefined ? formData.doubling_time : ''}
                     onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
@@ -800,8 +883,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
-                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : ''}
+                    onChange={(e) => handleNumericInput('density_limit', e.target.value, 1000000)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
@@ -853,10 +936,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <input 
                 type="number" 
                 min="0" 
-                step="0.001"
+                step="any"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.parent_end_density ? formData.parent_end_density / 1000000 : undefined} 
-                onChange={(e) => setFormData(prev => ({ ...prev, parent_end_density: Number(e.target.value) * 1000000 }))}
+                value={formData.parent_end_density ? formData.parent_end_density / 1000000 : ''} 
+                onChange={(e) => handleNumericInput('parent_end_density', e.target.value, 1000000)}
                 required
                 disabled={!hasParent}
               />
@@ -897,8 +980,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('temperature_c')}</label>
                   <input 
                     type="number" 
-                    value={formData.temperature_c} 
-                    onChange={(e) => setFormData({ ...formData, temperature_c: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.temperature_c !== undefined ? formData.temperature_c : ''} 
+                    onChange={(e) => handleNumericInput('temperature_c', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -908,8 +992,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('volume_ml')}</label>
                   <input 
                     type="number" 
-                    value={formData.volume_ml} 
-                    onChange={(e) => setFormData({ ...formData, volume_ml: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.volume_ml !== undefined ? formData.volume_ml : ''} 
+                    onChange={(e) => handleNumericInput('volume_ml', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -932,8 +1017,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.start_viability} 
-                    onChange={(e) => setFormData({ ...formData, start_viability: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.start_viability !== undefined ? formData.start_viability : ''} 
+                    onChange={(e) => handleNumericInput('start_viability', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -944,7 +1030,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.growth_rate}
+                    value={formData.growth_rate !== undefined ? formData.growth_rate : ''}
                     onChange={(e) => handleParameterChange('growth_rate', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 0.03 (per hour)"
@@ -957,7 +1043,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.doubling_time}
+                    value={formData.doubling_time !== undefined ? formData.doubling_time : ''}
                     onChange={(e) => handleParameterChange('doubling_time', e.target.value)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 23.1 (hours)"
@@ -971,8 +1057,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   <input
                     type="number"
                     step="any"
-                    value={formData.density_limit ? formData.density_limit / 1000000 : undefined}
-                    onChange={(e) => handleParameterChange('density_limit', Number(e.target.value) * 1000000)}
+                    value={formData.density_limit ? formData.density_limit / 1000000 : ''}
+                    onChange={(e) => handleNumericInput('density_limit', e.target.value, 1000000)}
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
@@ -1025,8 +1111,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 min="1" 
                 step="1"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.number_of_vials} 
-                onChange={(e) => setFormData(prev => ({ ...prev, number_of_vials: Number(e.target.value) }))}
+                value={formData.number_of_vials || ''} 
+                onChange={(e) => handleNumericInput('number_of_vials', e.target.value)}
                 required
               />
             </div>
@@ -1066,10 +1152,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <input 
                 type="number" 
                 min="0" 
-                step="1000000"
+                step="any"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.total_cells} 
-                onChange={(e) => setFormData(prev => ({ ...prev, total_cells: Number(e.target.value) }))}
+                value={formData.total_cells || ''} 
+                onChange={(e) => handleNumericInput('total_cells', e.target.value)}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">Total number of cells in each vial</p>
@@ -1138,8 +1224,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     type="number" 
                     min="0" 
                     max="100" 
-                    value={formData.parent_end_viability} 
-                    onChange={(e) => setFormData({ ...formData, parent_end_viability: Number(e.target.value) })} 
+                    step="any"
+                    value={formData.parent_end_viability !== undefined ? formData.parent_end_viability : ''} 
+                    onChange={(e) => handleNumericInput('parent_end_viability', e.target.value)} 
                     className="mt-1 w-full p-2 border rounded" 
                   />
                 </div>
@@ -1244,8 +1331,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 min="1" 
                 step="1"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.number_of_passages} 
-                onChange={(e) => setFormData(prev => ({ ...prev, number_of_passages: Number(e.target.value) }))}
+                value={formData.number_of_passages || ''} 
+                onChange={(e) => handleNumericInput('number_of_passages', e.target.value)}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">How many new cultures are being started from this vial</p>
@@ -1429,10 +1516,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <input 
                 type="number" 
                 min="0" 
-                step="0.001"
+                step="any"
                 className="mt-1 w-full p-2 border rounded"
-                value={formData.end_density ? formData.end_density / 1000000 : (parentParameters.cell_density ? parentParameters.cell_density / 1000000 : 0)} 
-                onChange={(e) => setFormData(prev => ({ ...prev, end_density: Number(e.target.value) * 1000000 }))}
+                value={formData.end_density ? formData.end_density / 1000000 : ''} 
+                onChange={(e) => handleNumericInput('end_density', e.target.value, 1000000)}
                 required
               />
               <p className="mt-1 text-xs text-gray-500">Final cell density at the time of harvest</p>
@@ -1718,6 +1805,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               placeholder={`Enter new value for ${measuredParameter}`}
               required // Value is required for measurement
               disabled={!formData.parent_id} // Disable if no parent selected
+              step="any" // Add step="any" for numeric inputs
             />
           </div>
         </div>
@@ -1829,8 +1917,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                           min="1"
                           step="1"
                           className="mt-1 w-full p-2 border rounded"
-                          value={state.number_of_vials || 1} 
-                          onChange={(e) => updateSplitState(index, 'number_of_vials', parseInt(e.target.value))}
+                          value={state.number_of_vials || ''} 
+                          onChange={(e) => updateSplitState(index, 'number_of_vials', e.target.value)}
                         />
                       </div>
                       <div>
@@ -1840,9 +1928,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                         <input
                           type="number"
                           min="0"
+                          step="any"
                           className="mt-1 w-full p-2 border rounded"
-                          value={state.cell_density}
-                          onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                          value={state.total_cells || ''} 
+                          onChange={(e) => updateSplitState(index, 'total_cells', e.target.value)}
                         />
                       </div>
                       <div>
@@ -1851,9 +1940,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                         </label>
                         <input
                           type="number"
+                          step="any"
                           className="mt-1 w-full p-2 border rounded"
-                          value={state.volume_ml}
-                          onChange={(e) => updateSplitState(index, 'volume_ml', parseFloat(e.target.value))}
+                          value={state.volume_ml || ''}
+                          onChange={(e) => updateSplitState(index, 'volume_ml', e.target.value)}
                         />
                       </div>
                       <div>
@@ -1862,9 +1952,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                         </label>
                         <input
                           type="number"
+                          step="any"
                           className="mt-1 w-full p-2 border rounded"
-                          value={state.temperature_c}
-                          onChange={(e) => updateSplitState(index, 'temperature_c', parseFloat(e.target.value))}
+                          value={state.temperature_c || ''}
+                          onChange={(e) => updateSplitState(index, 'temperature_c', e.target.value)}
                         />
                       </div>
                       <div>
@@ -1889,9 +1980,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                       <input
                         type="number"
                         min="0"
+                        step="any"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.cell_density / 1000000}
-                        onChange={(e) => updateSplitState(index, 'cell_density', parseFloat(e.target.value))}
+                        value={state.cell_density ? state.cell_density / 1000000 : ''}
+                        onChange={(e) => updateSplitState(index, 'cell_density', e.target.value)}
                       />
                     </div>
                   )}
@@ -1949,8 +2041,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                       <input
                         type="number"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.temperature_c}
-                        onChange={(e) => updateSplitState(index, 'temperature_c', parseFloat(e.target.value))}
+                        value={state.temperature_c || ''}
+                        onChange={(e) => updateSplitState(index, 'temperature_c', e.target.value)}
                       />
                     </div>
                   )}
@@ -1962,8 +2054,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                       <input
                         type="number"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.volume_ml}
-                        onChange={(e) => updateSplitState(index, 'volume_ml', parseFloat(e.target.value))}
+                        value={state.volume_ml || ''}
+                        onChange={(e) => updateSplitState(index, 'volume_ml', e.target.value)}
                       />
                     </div>
                   )}
@@ -1990,8 +2082,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                         min="0"
                         max="100"
                         className="mt-1 w-full p-2 border rounded"
-                        value={state.viability}
-                        onChange={(e) => updateSplitState(index, 'viability', parseFloat(e.target.value))}
+                        value={state.viability || ''}
+                        onChange={(e) => updateSplitState(index, 'viability', e.target.value)}
                       />
                     </div>
                   )}
@@ -2002,8 +2094,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     <input
                       type="number"
                       step="any"
-                      value={state.growth_rate || 0}
-                      onChange={(e) => updateSplitState(index, 'growth_rate', parseFloat(e.target.value))}
+                      value={state.growth_rate || ''}
+                      onChange={(e) => updateSplitState(index, 'growth_rate', e.target.value)}
                       className="mt-1 w-full p-2 border rounded"
                       placeholder="e.g., 0.03 (per hour)"
                     />
@@ -2015,8 +2107,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     <input
                       type="number"
                       step="any"
-                      value={state.doubling_time || 0}
-                      onChange={(e) => updateSplitState(index, 'doubling_time', parseFloat(e.target.value))}
+                      value={state.doubling_time || ''}
+                      onChange={(e) => updateSplitState(index, 'doubling_time', e.target.value)}
                       className="mt-1 w-full p-2 border rounded"
                       placeholder="e.g., 23.1 (hours)"
                     />
@@ -2029,8 +2121,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     <input
                       type="number"
                       step="any"
-                      value={state.density_limit || 0}
-                      onChange={(e) => updateSplitState(index, 'density_limit', parseFloat(e.target.value))}
+                      value={state.density_limit ? state.density_limit / 1000000 : ''}
+                      onChange={(e) => updateSplitState(index, 'density_limit', e.target.value)}
                       className="mt-1 w-full p-2 border rounded"
                       placeholder="e.g., 1.5 (million cells/ml)"
                     />
