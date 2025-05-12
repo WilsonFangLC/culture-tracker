@@ -85,36 +85,58 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // Find operation type from transition parameters
   const getOperationType = (state: CellState): ProcessNodeType | null => {
     const operationType = state.parameters?.transition_parameters?.operation_type;
+    console.log(`[ProcessGraph] getOperationType for state ${state.id}: raw operation_type from params = ${operationType}, state.transition_type = ${state.transition_type}`);
     if (!operationType) return null;
     
     if (['passage', 'freeze', 'thaw', 'split', 'start_new_culture', 'harvest'].includes(operationType)) {
+      console.log(`[ProcessGraph] getOperationType for state ${state.id}: recognized as ${operationType}`);
       return operationType as ProcessNodeType;
     }
+    console.log(`[ProcessGraph] getOperationType for state ${state.id}: NOT recognized, returning null`);
     return null;
   };
 
   // Determine if a state is a measurement
   const isMeasurement = (state: CellState): boolean => {
-    return state.parameters?.transition_parameters?.operation_type === 'measurement';
+    const isItMeasurement = state.parameters?.transition_parameters?.operation_type === 'measurement';
+    // console.log(`[ProcessGraph] isMeasurement for state ${state.id}: ${isItMeasurement}`);
+    return isItMeasurement;
   };
   
   // Find end state for a process
   const findEndState = (startState: CellState): CellState | null => {
-    // Check if this state has any child that starts another process
+    // If the startState itself is a 'split' operation, it's a split origin.
+    if (startState.parameters?.transition_parameters?.operation_type === 'split') {
+      // console.log(`[ProcessGraph] findEndState for SPLIT node ${startState.id}: returning null as it's a split origin.`);
+      return null;
+    }
+
     const childProcess = states.find(s => 
+      s.parent_id === startState.id && 
+      getOperationType(s) !== null && // Use getOperationType to ensure it's a process-starting child
+      !isMeasurement(s) // Measurements are not end states for processes
+    );
+    // console.log(`[ProcessGraph] findEndState for startState ${startState.id}: childProcess = ${childProcess?.id}`);
+    if (childProcess) return childProcess;
+    return null;
+  };
+  
+  // Find all child states for a split operation
+  const findSplitChildren = (startState: CellState): CellState[] => {
+    if (startState.parameters?.transition_parameters?.operation_type !== 'split') {
+      return [];
+    }
+    
+    // For split operations, return all child states that have this state as parent
+    return states.filter(s => 
       s.parent_id === startState.id && 
       s.parameters?.transition_parameters?.operation_type &&
       s.parameters.transition_parameters.operation_type !== 'measurement'
     );
-    
-    if (childProcess) return childProcess;
-    
-    // If no child process found, the process is still open
-    return null;
   };
   
   // Group measurements with their related process
-  const associateMeasurementsWithProcesses = (processesByStartId: Record<number, {
+  const associateMeasurementsWithProcesses = (processesByStartId: Record<string, {
     startState: CellState;
     endState: CellState | null;
     measurements: CellState[];
@@ -128,13 +150,13 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       let foundProcessId = null;
       
       // Direct parent is a process start
-      if (processesByStartId[measurement.parent_id]) {
+      if (processesByStartId[`process-${measurement.parent_id}`]) {
         foundProcessId = measurement.parent_id;
       } else {
         // Otherwise, trace up the parent chain until we find a process start or root
         let currentState = measurement;
         while (currentState.parent_id) {
-          if (processesByStartId[currentState.parent_id]) {
+          if (processesByStartId[`process-${currentState.parent_id}`]) {
             foundProcessId = currentState.parent_id;
             break;
           }
@@ -145,135 +167,106 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       }
       
       if (foundProcessId) {
-        processesByStartId[foundProcessId].measurements.push(measurement);
+        processesByStartId[`process-${foundProcessId}`].measurements.push(measurement);
       }
     }
   };
 
   // Transform CellState data into process nodes
   const processes = useMemo(() => {
-    console.log('--- Building process nodes ---');
+    console.log('[ProcessGraph] --- Building process nodes --- Input states:', JSON.parse(JSON.stringify(states)));
 
-    // Find states that start processes
     const processStartStates = states.filter(s => {
       const operationType = getOperationType(s);
-      if (operationType === null) return false; // Must have an operation type
-      
-      // All states with operation types should be shown as process nodes
+      if (operationType === null) return false;
       return true;
     });
     
-    console.log(`Found ${processStartStates.length} states with operation types`);
-    console.log('Process start state IDs:', processStartStates.map(s => s.id));
+    console.log(`[ProcessGraph] Found ${processStartStates.length} processStartStates:`, processStartStates.map(s => ({id: s.id, name: s.name, opType: getOperationType(s), transType: s.transition_type, parent: s.parent_id }) ));
     
-    // Group by process, tracking start and end states
-    const processesByStartId: Record<number, {
+    const processesByStartId: Record<string, {
       startState: CellState;
       endState: CellState | null;
       measurements: CellState[];
-    }> = {};
-    
-    // Log any duplicate state IDs in the original array 
-    const stateIdCounts = new Map<number, number>();
-    states.forEach(s => {
-      stateIdCounts.set(s.id, (stateIdCounts.get(s.id) || 0) + 1);
-    });
-    
-    const duplicateStateIds = Array.from(stateIdCounts.entries())
-      .filter(([id, count]) => count > 1)
-      .map(([id]) => id);
-    
-    if (duplicateStateIds.length > 0) {
-      console.log('WARNING: Found duplicate state IDs in the original states array:', duplicateStateIds);
-    }
+    }> = {}; // Use string for key as process.id will be `process-${startState.id}`
     
     for (const startState of processStartStates) {
       const endState = findEndState(startState);
-      processesByStartId[startState.id] = {
+      processesByStartId[`process-${startState.id}`] = {
         startState,
         endState,
         measurements: []
       };
     }
     
-    // Check for any duplicate process definitions
-    console.log(`Created ${Object.keys(processesByStartId).length} process definitions`);
-    
-    // Associate measurements with their processes
     associateMeasurementsWithProcesses(processesByStartId);
     
-    // Process positions - calculate levels for each node (distance from root)
     const nodeLevels: Record<number, number> = {};
-    
     for (const startState of processStartStates) {
       let level = 0;
       let currentState = startState;
-      
       while (currentState.parent_id) {
         level++;
         const parent = states.find(s => s.id === currentState.parent_id);
         if (!parent) break;
         currentState = parent;
       }
-      
       nodeLevels[startState.id] = level;
     }
     
-    // Group nodes by levels for layout
     const nodesByLevel: Record<number, number[]> = {};
     for (const [stateId, level] of Object.entries(nodeLevels)) {
       if (!nodesByLevel[level]) nodesByLevel[level] = [];
       nodesByLevel[level].push(Number(stateId));
     }
     
-    // Create positions based on levels
     const xSpacing = 300;
     const ySpacing = 120;
     const positions: Record<number, { x: number, y: number }> = {};
-    
-    // Calculate positions by level
     for (const [level, stateIds] of Object.entries(nodesByLevel)) {
       const x = Number(level) * xSpacing + 50;
-      
       stateIds.forEach((stateId, index) => {
         const y = 50 + (index * ySpacing);
         positions[stateId] = { x, y };
       });
     }
     
-    // Create final process data
     const processDataList: ProcessData[] = [];
-    
-    for (const [startStateId, process] of Object.entries(processesByStartId)) {
-      const { startState, endState, measurements } = process;
+    for (const startState of processStartStates) { // Iterate over processStartStates to ensure correct context for parentId linking
       const processType = getOperationType(startState);
-      
-      if (!processType) continue;
-      
-      const position = positions[startState.id] || { x: 0, y: 0 };
-      let parentId: string | undefined = undefined;
-      
-      // Set parent ID for edges
-      if (startState.parent_id) {
-        let FarthestKnownParentProcessStartStateId: number | null = null;
-        let currentAncestorId: number | null = startState.parent_id;
-        const visitedAncestorIds = new Set<number>(); // To prevent infinite loops with cyclic data
+      if (!processType) continue; // Should not happen due to earlier filter, but good practice
 
-        while (currentAncestorId !== null && !visitedAncestorIds.has(currentAncestorId)) {
-          visitedAncestorIds.add(currentAncestorId);
-          const ancestorState = states.find(s => s.id === currentAncestorId);
-          if (!ancestorState) {
-            break; 
+      const endState = findEndState(startState);
+      const associatedMeasurements = processesByStartId[`process-${startState.id}`]?.measurements || [];
+
+      const position = positions[startState.id] || { x: 0, y: 0 };
+      let parentProcessDataId: string | undefined = undefined;
+
+      if (startState.parent_id) {
+        // Find the ProcessData ID of the parent state.
+        // The parent state must also be a processStartState to be a node in the graph.
+        const parentAsProcessStart = processStartStates.find(p => p.id === startState.parent_id);
+        if (parentAsProcessStart) {
+          parentProcessDataId = `process-${parentAsProcessStart.id}`;
+        } else {
+          // If direct parent is not a process node (e.g. a measurement, or not in states array properly)
+          // try to trace further up like before, but this case should be less common now.
+          let FarthestKnownParentProcessStartStateId: number | null = null;
+          let currentAncestorId: number | null = startState.parent_id;
+          const visitedAncestorIds = new Set<number>();
+          while (currentAncestorId !== null && !visitedAncestorIds.has(currentAncestorId)) {
+            visitedAncestorIds.add(currentAncestorId);
+            const ancestorState = states.find(s => s.id === currentAncestorId);
+            if (!ancestorState) break;
+            if (getOperationType(ancestorState) !== null) {
+              FarthestKnownParentProcessStartStateId = ancestorState.id;
+              break;
+            }
+            currentAncestorId = ancestorState.parent_id;
           }
-          if (getOperationType(ancestorState) !== null) {
-            FarthestKnownParentProcessStartStateId = ancestorState.id;
-            break; 
+          if (FarthestKnownParentProcessStartStateId !== null) {
+            parentProcessDataId = `process-${FarthestKnownParentProcessStartStateId}`;
           }
-          currentAncestorId = ancestorState.parent_id;
-        }
-        
-        if (FarthestKnownParentProcessStartStateId !== null) {
-          parentId = `process-${FarthestKnownParentProcessStartStateId}`;
         }
       }
       
@@ -282,37 +275,61 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         startState,
         endState,
         processType,
-        status: endState ? 'completed' : 'open',
-        measurements,
+        // For a 'split' operation node, status is 'completed' if it has children.
+        // Otherwise, status is based on endState.
+        status: (processType === 'split') 
+                  ? (states.some(s => s.parent_id === startState.id && getOperationType(s) !== null) ? 'completed' : 'open') 
+                  : (endState ? 'completed' : 'open'),
+        measurements: associatedMeasurements,
         position,
-        parentId
+        parentId: parentProcessDataId
       });
     }
     
-    // Deduplicate processes by ID to ensure no duplicates
     const uniqueProcessMap = new Map<string, ProcessData>();
     for (const process of processDataList) {
       uniqueProcessMap.set(process.id, process);
     }
-    
-    // Use the unique processes for rendering
     const uniqueProcessList = Array.from(uniqueProcessMap.values());
-    console.log(`Filtered ${processDataList.length} processes to ${uniqueProcessList.length} unique processes`);
-    
+    console.log(`[ProcessGraph] Final uniqueProcessList (${uniqueProcessList.length}):`, uniqueProcessList.map(p => ({id: p.id, type: p.processType, parent: p.parentId, status: p.status, startId: p.startState.id, endId: p.endState?.id, posX: p.position.x, posY: p.position.y })));
     return uniqueProcessList;
   }, [states]);
 
   // Extract parent-child relationships for edges
   const processRelationships = useMemo(() => {
-    return processes
-      .filter(process => process.parentId)
-      .map(process => ({
-        id: `edge-${process.parentId}-to-${process.id}`,
-        sourceId: process.parentId!,
-        targetId: process.id,
-        sourceDomRect: null,
-        targetDomRect: null
-      }));
+    const relationships: EdgeData[] = [];
+    const validProcessIds = new Set(processes.map(p => p.id));
+
+    for (const process of processes) {
+      // Standard parent linking
+      if (process.parentId && validProcessIds.has(process.parentId) && validProcessIds.has(process.id)) {
+        relationships.push({
+          id: `edge-${process.parentId}-to-${process.id}`,
+          sourceId: process.parentId,
+          targetId: process.id,
+          sourceDomRect: null,
+          targetDomRect: null
+        });
+      }
+    }
+    console.log('[ProcessGraph] processRelationships created:', JSON.parse(JSON.stringify(relationships)));
+    return relationships;
+  }, [processes]);
+
+  // Clear node refs that are no longer in the processes list
+  useEffect(() => {
+    // Get a set of all current valid process IDs
+    const validProcessIds = new Set(processes.map(p => p.id));
+    
+    // Remove any node refs that are no longer in processes
+    Array.from(nodeRefs.current.keys()).forEach(nodeId => {
+      if (!validProcessIds.has(nodeId)) {
+        nodeRefs.current.delete(nodeId);
+      }
+    });
+    
+    // Force edge recalculation after node deletion
+    setForceUpdate(prev => prev + 1);
   }, [processes]);
 
   // Handle node click to select the state and open details panel
@@ -333,7 +350,21 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   const handleDeleteClick = useCallback((stateId: number) => {
     if (window.confirm("Are you sure you want to delete this state?")) {
+      // Find the process ID that corresponds to this state ID
+      const processId = `process-${stateId}`;
+      
+      // Clean up edges that reference this node
+      setEdges(prevEdges => 
+        prevEdges.filter(edge => 
+          edge.sourceId !== processId && edge.targetId !== processId
+        )
+      );
+      
+      // Delete the node
       onDeleteState(stateId);
+      
+      // Force edge recalculation after deletion
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
     }
   }, [onDeleteState]);
 

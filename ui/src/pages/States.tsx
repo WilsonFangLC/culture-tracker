@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStates, useSafeCreateState, useUpdateState } from '../api'
+import { useStates, useUpdateState, useCreateState } from '../api'
 import { CellState, CellStateCreate } from '../api'
 import CreateStateForm from '../components/CreateStateForm'
 import StateLineage from '../components/StateLineage'
@@ -25,7 +25,8 @@ export default function States() {
   const [predictionTimeInput, setPredictionTimeInput] = useState<string>('');
   const [predictionResult, setPredictionResult] = useState<string | null>(null);
 
-  const createState = useSafeCreateState()
+  // Use the basic useCreateState hook to avoid duplicate-prevention logic interfering with split submissions
+  const { mutateAsync: createStateMutateAsync } = useCreateState()
   const updateState = useUpdateState()
 
   // Ensure states are always arrays
@@ -266,7 +267,8 @@ export default function States() {
         }
       }
 
-      createState.safeCreate(stateData).then(
+      // Use mutateAsync directly to allow sequential creation of multiple states without accidental blocking
+      createStateMutateAsync(stateData).then(
         () => {
           // Create next state
           createNextState(index + 1)

@@ -1,4 +1,4 @@
-import { CellState, deleteCellState, useSafeCreateState, CellStateCreate } from '../api'
+import { CellState, deleteCellState, useCreateState, CellStateCreate } from '../api'
 import LineageGraph from './LineageGraph'
 import { useState, useEffect, useCallback } from 'react'
 import EditStateForm from './EditStateForm'
@@ -29,7 +29,7 @@ export default function StateLineage({
 }: StateLineageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('process')
   const [editingState, setEditingState] = useState<CellState | null>(null)
-  const createStateMutation = useSafeCreateState();
+  const { mutateAsync: createStateMutateAsync } = useCreateState();
 
   // Sync editingState if the state prop updates after an update
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function StateLineage({
     try {
       // Create all states in sequence
       for (const data of stateData) {
-        await createStateMutation.safeCreate(data);
+        await createStateMutateAsync(data);
       }
       // Refresh state list
       if (states.length > 0) {
@@ -151,7 +151,7 @@ export default function StateLineage({
       console.error("Failed to create state:", error);
       window.alert("Failed to create state. Please try again.");
     }
-  }, [createStateMutation, states, onStatesChange]);
+  }, [createStateMutateAsync, states, onStatesChange]);
 
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">

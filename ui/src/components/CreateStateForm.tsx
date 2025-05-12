@@ -279,6 +279,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     if (newTransitionType === 'split') {
       // Add initial state if switching to split and none exist
       if (splitStates.length === 0) {
+        // For split, add two states by default to make it obvious it's a split
+        addSplitState();
         addSplitState();
       }
     } else {
@@ -497,8 +499,9 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       
       // Create array of states to submit
       const statesToSubmit = splitStates.map(state => {
-        // Get the corresponding transition type for this split's operation
-        const splitTransitionType = operationToTransitionType[state.operation_type];
+        // Note: We always use 'split' as the transition_type for all states created from a split operation
+        // This ensures they are properly displayed in the process view
+        const splitTransitionType: 'split' = 'split';
         // Get automatic notes based on operation type if none provided
         let stateNotes = formData.additional_notes;
         if (!stateNotes) {
@@ -516,8 +519,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
         
         // For harvest operations, we need to use cell_density as end_density in transition_parameters
         const transitionParams = { 
-          operation_type: state.operation_type,
+          operation_type: state.operation_type, // Keep the original operation type
           parent_end_density: formData.parent_end_density, // Include parent_end_density for all split states
+          // Add a marker that this was created through a split
+          from_split: true,
           ...(state.operation_type === 'harvest' ? { 
             end_density: state.cell_density,
             cell_type: parentState?.parameters?.transition_parameters?.cell_type || ''
@@ -555,11 +560,12 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             // Add transition parameters inside parameters
             transition_parameters: transitionParams
           },
-          transition_type: splitTransitionType, // Use the appropriate transition type
+          transition_type: splitTransitionType, // Always use 'split' type for states created from split operation
           // Remove from root level
           additional_notes: stateNotes,
         };
       });
+      console.log('[CreateStateForm] Submitting ALL children:', JSON.parse(JSON.stringify(statesToSubmit)));
       onSubmit(statesToSubmit)
 
     } else if (transitionType === 'measurement') {
