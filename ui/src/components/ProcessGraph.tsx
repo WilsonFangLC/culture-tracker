@@ -31,7 +31,7 @@ interface ProcessGraphProps {
 }
 
 // Define node types
-type ProcessNodeType = 'passage' | 'freeze' | 'thaw' | 'split' | 'start_new_culture';
+type ProcessNodeType = 'passage' | 'freeze' | 'thaw' | 'split' | 'start_new_culture' | 'harvest';
 type ProcessStatus = 'open' | 'completed';
 
 // Interface for process data
@@ -87,7 +87,7 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
     const operationType = state.parameters?.transition_parameters?.operation_type;
     if (!operationType) return null;
     
-    if (['passage', 'freeze', 'thaw', 'split', 'start_new_culture'].includes(operationType)) {
+    if (['passage', 'freeze', 'thaw', 'split', 'start_new_culture', 'harvest'].includes(operationType)) {
       return operationType as ProcessNodeType;
     }
     return null;
