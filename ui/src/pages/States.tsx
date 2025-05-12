@@ -49,11 +49,8 @@ export default function States() {
   // Function to handle CSV export
   const handleExportCSV = async () => {
     try {
-      console.log("Starting CSV export request...");
-      
       // Use full URL to bypass any routing issues
       const apiUrl = `${import.meta.env.VITE_API_BASE || ''}/api/export/csv`;
-      console.log(`Requesting CSV from: ${apiUrl}`);
       
       // Fetch the CSV data from the backend
       const response = await fetch(apiUrl, {
@@ -63,14 +60,11 @@ export default function States() {
         }
       });
       
-      console.log(`CSV response status: ${response.status}`);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const blob = await response.blob();
-      console.log(`Got CSV data blob of size: ${blob.size} bytes`);
 
       // Create a link to download the blob
       const url = window.URL.createObjectURL(blob);
@@ -244,8 +238,6 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${formatToSignificantFigures(measuredDoublingTime)} hours`);
-            
             // Update the parent state with measured doubling time
             updateState.mutate({
               id: parentState.id,
@@ -256,7 +248,6 @@ export default function States() {
             }, {
               onSuccess: () => {
                 // Refresh the states list to show the updated measured doubling time
-                console.log("Parent state updated with measured doubling time, invalidating states query");
                 queryClient.invalidateQueries({ queryKey: ['states'] })
               }
             });
@@ -298,12 +289,6 @@ export default function States() {
             parentState.parameters?.cell_density && 
             parameters.transition_parameters?.parent_end_density) {
           
-          console.log(`Attempting to calculate doubling time for parent state ${parentState.id}:`);
-          console.log(`Parent cell_density: ${parentState.parameters.cell_density} (${typeof parentState.parameters.cell_density})`);
-          console.log(`transition_parameters.parent_end_density: ${parameters.transition_parameters.parent_end_density} (${typeof parameters.transition_parameters.parent_end_density})`);
-          console.log(`Parent timestamp: ${parentState.timestamp} (${typeof parentState.timestamp})`);
-          console.log(`Child timestamp: ${stateToUpdate.timestamp} (${typeof stateToUpdate.timestamp})`);
-          
           const initialDensity = parentState.parameters.cell_density;
           const finalDensity = parameters.transition_parameters.parent_end_density;
           const startTime = parentState.timestamp;
@@ -315,8 +300,6 @@ export default function States() {
           
           // Set the measured doubling time if calculation succeeded
           if (measuredDoublingTime !== null) {
-            console.log(`Calculated measured doubling time for parent state ${parentState.id}: ${formatToSignificantFigures(measuredDoublingTime)} hours`);
-            
             // Update the parent state with measured doubling time
             await updateState.mutateAsync({ 
               id: parentState.id, 
@@ -327,7 +310,6 @@ export default function States() {
             });
             
             // Refresh the states list to show the updated measured doubling time
-            console.log("Parent state updated with measured doubling time, invalidating states query");
             queryClient.invalidateQueries({ queryKey: ['states'] });
           } else {
             console.warn(`Could not calculate measured doubling time for parent state ${parentState.id}.`);

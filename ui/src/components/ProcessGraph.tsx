@@ -85,21 +85,18 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   // Find operation type from transition parameters
   const getOperationType = (state: CellState): ProcessNodeType | null => {
     const operationType = state.parameters?.transition_parameters?.operation_type;
-    console.log(`[ProcessGraph] getOperationType for state ${state.id}: raw operation_type from params = ${operationType}, state.transition_type = ${state.transition_type}`);
+    
     if (!operationType) return null;
     
     if (['passage', 'freeze', 'thaw', 'split', 'start_new_culture', 'harvest'].includes(operationType)) {
-      console.log(`[ProcessGraph] getOperationType for state ${state.id}: recognized as ${operationType}`);
       return operationType as ProcessNodeType;
     }
-    console.log(`[ProcessGraph] getOperationType for state ${state.id}: NOT recognized, returning null`);
     return null;
   };
 
   // Determine if a state is a measurement
   const isMeasurement = (state: CellState): boolean => {
     const isItMeasurement = state.parameters?.transition_parameters?.operation_type === 'measurement';
-    // console.log(`[ProcessGraph] isMeasurement for state ${state.id}: ${isItMeasurement}`);
     return isItMeasurement;
   };
   
@@ -107,7 +104,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   const findEndState = (startState: CellState): CellState | null => {
     // If the startState itself is a 'split' operation, it's a split origin.
     if (startState.parameters?.transition_parameters?.operation_type === 'split') {
-      // console.log(`[ProcessGraph] findEndState for SPLIT node ${startState.id}: returning null as it's a split origin.`);
       return null;
     }
 
@@ -116,7 +112,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       getOperationType(s) !== null && // Use getOperationType to ensure it's a process-starting child
       !isMeasurement(s) // Measurements are not end states for processes
     );
-    // console.log(`[ProcessGraph] findEndState for startState ${startState.id}: childProcess = ${childProcess?.id}`);
     if (childProcess) return childProcess;
     return null;
   };
@@ -174,15 +169,11 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
 
   // Transform CellState data into process nodes
   const processes = useMemo(() => {
-    console.log('[ProcessGraph] --- Building process nodes --- Input states:', JSON.parse(JSON.stringify(states)));
-
     const processStartStates = states.filter(s => {
       const operationType = getOperationType(s);
       if (operationType === null) return false;
       return true;
     });
-    
-    console.log(`[ProcessGraph] Found ${processStartStates.length} processStartStates:`, processStartStates.map(s => ({id: s.id, name: s.name, opType: getOperationType(s), transType: s.transition_type, parent: s.parent_id }) ));
     
     const processesByStartId: Record<string, {
       startState: CellState;
@@ -291,7 +282,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
       uniqueProcessMap.set(process.id, process);
     }
     const uniqueProcessList = Array.from(uniqueProcessMap.values());
-    console.log(`[ProcessGraph] Final uniqueProcessList (${uniqueProcessList.length}):`, uniqueProcessList.map(p => ({id: p.id, type: p.processType, parent: p.parentId, status: p.status, startId: p.startState.id, endId: p.endState?.id, posX: p.position.x, posY: p.position.y })));
     return uniqueProcessList;
   }, [states]);
 
@@ -312,7 +302,6 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         });
       }
     }
-    console.log('[ProcessGraph] processRelationships created:', JSON.parse(JSON.stringify(relationships)));
     return relationships;
   }, [processes]);
 

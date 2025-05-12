@@ -565,14 +565,10 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           additional_notes: stateNotes,
         };
       });
-      console.log('[CreateStateForm] Submitting ALL children:', JSON.parse(JSON.stringify(statesToSubmit)));
       onSubmit(statesToSubmit)
 
     } else if (transitionType === 'measurement') {
       // For measurement, add the measurement value to parameters
-      console.log('[CreateStateForm] Submitting measurement:',
-        { ...statePayload, parameters, transition_type: 'measurement' }
-      );
 
       // Submit as measurement transition type
       onSubmit([

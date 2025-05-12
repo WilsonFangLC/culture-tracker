@@ -83,7 +83,6 @@ export default function StateLineage({
   };
 
   const handleAddNote = (stateId: number, notes: string) => {
-    console.log(`Adding note to state ${stateId}:`, notes);
     const stateToUpdate = states.find(s => s.id === stateId);
     if (stateToUpdate) {
        // Call the prop function passed down, ensuring parameters are included
