@@ -12,10 +12,11 @@ interface StateLineageProps {
   state: CellState | null;
   states: CellState[];
   onSelectState: (state: CellState | null) => void;
-  onUpdateState: (stateId: number, updateData: { parameters: any; additional_notes?: string }) => void;
-  onStatesChange: (states: CellState[]) => void;
-  isUpdating?: boolean;
-  updateError?: string;
+  onUpdateState: (stateId: number, formData: { parameters: Record<string, any>, additional_notes?: string }) => Promise<void>;
+  onStatesChange: React.Dispatch<React.SetStateAction<CellState[]>>;
+  isUpdating: boolean;
+  updateError: string | undefined;
+  onEditState?: (state: CellState) => void;
 }
 
 export default function StateLineage({ 
@@ -25,7 +26,8 @@ export default function StateLineage({
   onUpdateState,
   onStatesChange,
   isUpdating,
-  updateError 
+  updateError,
+  onEditState 
 }: StateLineageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('process')
   const [editingState, setEditingState] = useState<CellState | null>(null)
@@ -152,6 +154,17 @@ export default function StateLineage({
     }
   }, [createStateMutateAsync, states, onStatesChange]);
 
+  // Handle edit button click
+  const handleEditClick = (stateToEdit: CellState) => {
+    // If external edit handler is provided, use it
+    if (onEditState) {
+      onEditState(stateToEdit);
+    } else {
+      // Otherwise use internal state
+      setEditingState(stateToEdit);
+    }
+  };
+
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
@@ -176,7 +189,7 @@ export default function StateLineage({
         </div>
       </div>
 
-      {editingState ? (
+      {editingState && !onEditState ? (
         <div className="space-y-4">
           {updateError && (
             <div className="p-4 bg-red-100 text-red-700 rounded-lg">
@@ -215,6 +228,7 @@ export default function StateLineage({
           onSelectState={onSelectState}
           onDeleteState={handleDeleteState}
           onCreateState={handleCreateState}
+          onEditState={onEditState}
         />
       ) : (
         <div className="space-y-4">
@@ -305,7 +319,7 @@ export default function StateLineage({
                         </button>
                         <button
                           className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
-                          onClick={() => setEditingState(s)}
+                          onClick={() => handleEditClick(s)}
                         >
                           Edit
                         </button>

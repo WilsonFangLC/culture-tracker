@@ -1,6 +1,29 @@
-# Lab Passage Tracker
+# Culture Tracker
 
-A minimal viable lab-passage tracker for researchers to record and track cell culture passages.
+This app helps you track your cell cultures, lineage, and measurements.
+
+## Recent Updates
+
+- **May 2024**: Added improved edit functionality. You can now edit states directly from both list view and process view.
+- **May 2024**: Added comprehensive end density tracking and doubling time calculation.
+
+## Features
+
+- Track cell lineage and passage numbers
+- Record measurements and cell parameters
+- Calculate doubling times from growth data
+- Visualize culture relationships
+- Export data as CSV
+
+## Getting Started
+
+1. Clone this repo
+2. Run `npm install`
+3. Start the app with `npm start`
+
+## License
+
+Proprietary, not for redistribution. Built by Lichi Fang.
 
 ## Quick Start
 

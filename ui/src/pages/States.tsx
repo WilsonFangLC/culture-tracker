@@ -8,6 +8,7 @@ import utc from 'dayjs/plugin/utc'
 import { calculateMeasuredDoublingTime, formatToSignificantFigures, formatCellDensity } from '../utils/calculations'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParameters } from '../components/ParameterUtils'
+import EditStateModal from '../components/EditStateModal'
 
 dayjs.extend(utc)
 
@@ -75,6 +76,9 @@ export default function States() {
 
   // Ensure states are always arrays
   const [states, setStates] = useState<CellState[]>([]); // Manage states locally
+
+  // State for editing a state
+  const [editingState, setEditingState] = useState<CellState | null>(null);
 
   // --- Update local states when API data changes ---
   useEffect(() => {
@@ -252,6 +256,16 @@ export default function States() {
           alert('Could not calculate doubling time. Make sure the state has both initial cell density and end density values.');
         }
       });
+  };
+
+  // Function to handle editing a state from any view
+  const handleEditState = (state: CellState) => {
+    setEditingState(state);
+  };
+
+  // Function to close the edit modal
+  const handleCloseEditModal = () => {
+    setEditingState(null);
   };
 
   if (statesLoading) {
@@ -587,7 +601,7 @@ export default function States() {
                         )}
                       </div>
                       
-                      {/* Prediction & Calculation Buttons */} 
+                      {/* Buttons section */}
                       <div className="mt-2 pt-2 border-t border-gray-200 flex flex-wrap gap-2">
                         <button 
                           onClick={(e) => { 
@@ -597,6 +611,17 @@ export default function States() {
                           className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
                         >
                           Predict Density...
+                        </button>
+                        
+                        {/* Edit button */}
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); // Prevent state selection when clicking button
+                            handleEditState(state); 
+                          }}
+                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        >
+                          Edit
                         </button>
                         
                         {/* Only show calculate button if the state has cell_density */}
@@ -627,11 +652,12 @@ export default function States() {
             <StateLineage 
               state={selectedState} 
               states={states} 
-              onSelectState={handleSelectState} 
+              onSelectState={handleSelectState}
               onUpdateState={handleUpdateState}
-              onStatesChange={setStates} // Pass the state setter
-              isUpdating={updateState.isPending} // Use isPending for loading status
-              updateError={updateState.error?.message} // Pass error message
+              onStatesChange={setStates}
+              isUpdating={updateState.isPending}
+              updateError={updateState.error?.message}
+              onEditState={handleEditState} // Add prop to pass down edit functionality
             />
           )}
         </div>
@@ -641,6 +667,25 @@ export default function States() {
       <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
         Culture Tracker built by Lichi Fang
       </div>
+
+      {/* Edit State Modal */}
+      <EditStateModal
+        isOpen={editingState !== null}
+        state={editingState}
+        onClose={handleCloseEditModal}
+        onSubmit={async (stateId, formData) => {
+          try {
+            await handleUpdateState(stateId, formData);
+            // Close the modal only after successful update
+            setEditingState(null);
+          } catch (error) {
+            console.error('Error in edit modal submit:', error);
+            // Modal will stay open if there's an error
+          }
+        }}
+        isUpdating={updateState.isPending}
+        updateError={updateState.error?.message || null}
+      />
 
       {/* Prediction Modal */} 
       {predictingStateId !== null && stateForModal && (

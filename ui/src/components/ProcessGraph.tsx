@@ -20,6 +20,7 @@ interface ProcessGraphProps {
   states: CellState[];
   onSelectState: (state: CellState) => void;
   onDeleteState: (stateId: number) => void;
+  onEditState?: (state: CellState) => void;
   onCreateState?: (data: Array<{
     name: string;
     timestamp: string;
@@ -55,7 +56,7 @@ interface EdgeData {
   targetDomRect: DOMRect | null;
 }
 
-export default function ProcessGraph({ state, states, onSelectState, onDeleteState, onCreateState }: ProcessGraphProps) {
+export default function ProcessGraph({ state, states, onSelectState, onDeleteState, onEditState, onCreateState }: ProcessGraphProps) {
   const { getParameterDisplayName } = useParameters();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -322,20 +323,31 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
   }, [processes]);
 
   // Handle node click to select the state and open details panel
-  const handleNodeClick = useCallback((processData: ProcessData, e: React.MouseEvent) => {
+  const handleNodeClick = useCallback((processData: ProcessData, event: React.MouseEvent) => {
     // If we're panning, don't select nodes
     if (isPanning) return;
     
-    // Select the state
-    onSelectState(processData.startState);
-    
-    // Set the selected node and open the details panel
-    setSelectedNode(processData.startState);
-    setDetailsPanelOpen(true);
-    
-    // Force edge recalculation after click
-    setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+    // Only proceed if we didn't click a button
+    if (event.target instanceof Element && !event.target.closest('button')) {
+      // Select the state
+      onSelectState(processData.startState);
+      
+      // Set the selected node and open the details panel
+      setSelectedNode(processData.startState);
+      setDetailsPanelOpen(true);
+      
+      // Force edge recalculation after click
+      setTimeout(() => setForceUpdate(prev => prev + 1), 50);
+    }
   }, [onSelectState, isPanning]);
+
+  // Handle edit click
+  const handleEditClick = useCallback((processData: ProcessData, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (onEditState) {
+      onEditState(processData.startState);
+    }
+  }, [onEditState]);
 
   const handleDeleteClick = useCallback((stateId: number) => {
     if (window.confirm("Are you sure you want to delete this state?")) {
@@ -867,6 +879,15 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
                   ({processData.status === 'open' ? 'active' : 'complete'})
                 </span>
                 <div className="node-actions">
+                  {onEditState && (
+                    <button 
+                      className="edit-button"
+                      onClick={(e) => handleEditClick(processData, e)}
+                      title="Edit State"
+                    >
+                      ✎
+                    </button>
+                  )}
                   <button 
                     className="delete-button"
                     onClick={(e) => {
