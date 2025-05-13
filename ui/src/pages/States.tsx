@@ -11,6 +11,50 @@ import { useParameters } from '../components/ParameterUtils'
 
 dayjs.extend(utc)
 
+// Helper function to calculate and update doubling time for a state
+const calculateAndUpdateDoublingTime = async (
+  state: CellState, 
+  childState: CellState | null,
+  updateState: any,
+  queryClient: any
+) => {
+  // Use the new signature of calculateMeasuredDoublingTime which takes a state with both densities
+  console.log('Calculating doubling time for state:', state.id);
+  
+  // Use type casting to any to avoid TypeScript errors with complex state structure
+  const measuredDoublingTime = calculateMeasuredDoublingTime(state as any, childState as any);
+  
+  if (measuredDoublingTime !== null) {
+    console.log(`SUCCESS: Calculated doubling time: ${measuredDoublingTime} hours for state ${state.id}`);
+    
+    try {
+      // Update the state with measured doubling time
+      await updateState.mutateAsync({ 
+        id: state.id, 
+        parameters: {
+          ...state.parameters,
+          measured_doubling_time: measuredDoublingTime
+        }
+      });
+      
+      console.log(`SUCCESS: Updated state ${state.id} with doubling time ${measuredDoublingTime}`);
+      // Show a simpler alert that won't have formatting issues
+      alert(`Doubling time: ${measuredDoublingTime.toFixed(2)} hours`);
+      
+      // Refresh the states list to show the updated measured doubling time
+      queryClient.invalidateQueries({ queryKey: ['states'] });
+      return true;
+    } catch (error) {
+      console.error(`FAILED: Update state ${state.id} with doubling time:`, error);
+      return false;
+    }
+  } else {
+    console.warn(`FAILED: Could not calculate measured doubling time for state ${state.id}.`);
+    console.log(`Required input missing or invalid`);
+    return false;
+  }
+};
+
 export default function States() {
   const queryClient = useQueryClient()
   const { data: statesData, isLoading: statesLoading, error: statesError, refetch: refetchStates } = useStates()
@@ -192,7 +236,23 @@ export default function States() {
 
     setPredictionResult(formatCellDensity(predictedDensity));
   };
-  // --- End Prediction Handlers ---
+
+  // Function to handle direct calculation of doubling time from a state with end_density
+  const handleCalculateDoublingTime = (state: CellState) => {
+    // Find the relevant child state if any (for timestamps)
+    const childStates = states.filter(s => s.parent_id === state.id);
+    const firstChildState = childStates.length > 0 
+      ? childStates.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())[0]
+      : null;
+    
+    // Calculate doubling time for this state if it has both densities
+    calculateAndUpdateDoublingTime(state, firstChildState, updateState, queryClient)
+      .then(success => {
+        if (!success) {
+          alert('Could not calculate doubling time. Make sure the state has both initial cell density and end density values.');
+        }
+      });
+  };
 
   if (statesLoading) {
     return <div>Loading states...</div>
@@ -225,49 +285,65 @@ export default function States() {
             parentState.parameters?.cell_density && 
             stateData.parameters?.transition_parameters?.parent_end_density) {
           
-          const initialDensity = parentState.parameters.cell_density;
-          const finalDensity = stateData.parameters.transition_parameters.parent_end_density;
-          const startTime = parentState.timestamp;
-          // Use the timestamp from the state being created
-          const endTime = stateData.timestamp;
+          console.log(`DOUBLING TIME CALCULATION - Creating child state:
+            - Parent ID: ${parentState.id}
+            - Parent name: ${parentState.name}
+            - Initial density: ${parentState.parameters.cell_density}
+            - Final density: ${stateData.parameters.transition_parameters.parent_end_density}
+            - Start time: ${parentState.timestamp}
+            - End time: ${stateData.timestamp}`);
           
-          // Calculate the measured doubling time
-          const measuredDoublingTime = calculateMeasuredDoublingTime(
-            initialDensity, finalDensity, startTime, endTime
+          // Create the state first so we have a complete child state to work with
+          createStateMutateAsync(stateData).then(
+            (createdChild) => {
+              // Find the newly created child state
+              const childState = createdChild || states.find(s => 
+                s.parent_id === parentState.id && s.timestamp === stateData.timestamp
+              );
+              
+              // Calculate doubling time for the parent
+              calculateAndUpdateDoublingTime(parentState, childState, updateState, queryClient)
+                .then(() => {
+                  // Continue with next state creation
+                  createNextState(index + 1);
+                });
+            },
+            (error) => {
+              console.error('handleCreateState error', error);
+              // Continue even if there was an error
+              createNextState(index + 1);
+            }
           );
+        } else {
+          console.log(`SKIPPED: Doubling time calculation - missing required data:
+            parentState: ${!!parentState}
+            parent_id: ${stateData.parent_id}
+            parent cell_density: ${!!parentState?.parameters?.cell_density}
+            child parent_end_density: ${!!stateData.parameters?.transition_parameters?.parent_end_density}`);
           
-          // Set the measured doubling time if calculation succeeded
-          if (measuredDoublingTime !== null) {
-            // Update the parent state with measured doubling time
-            updateState.mutate({
-              id: parentState.id,
-              parameters: {
-                ...parentState.parameters,
-                measured_doubling_time: measuredDoublingTime
-              }
-            }, {
-              onSuccess: () => {
-                // Refresh the states list to show the updated measured doubling time
-                queryClient.invalidateQueries({ queryKey: ['states'] })
-              }
-            });
-          } else {
-            console.warn(`Could not calculate measured doubling time for parent state ${parentState.id}.`);
-            console.log(`Calculation inputs: initialDensity=${initialDensity}, finalDensity=${finalDensity}, startTime=${startTime}, endTime=${endTime}`);
+          // Just create the state without doubling time calculation
+          createStateMutateAsync(stateData).then(
+            () => {
+              createNextState(index + 1);
+            },
+            (error) => {
+              console.error('handleCreateState error', error);
+              createNextState(index + 1);
+            }
+          );
+        }
+      } else {
+        // No parent ID means a new root state, just create it
+        createStateMutateAsync(stateData).then(
+          () => {
+            createNextState(index + 1);
+          },
+          (error) => {
+            console.error('handleCreateState error', error);
+            createNextState(index + 1);
           }
-        }
+        );
       }
-
-      // Use mutateAsync directly to allow sequential creation of multiple states without accidental blocking
-      createStateMutateAsync(stateData).then(
-        () => {
-          // Create next state
-          createNextState(index + 1)
-        },
-        (error) => {
-          console.error('handleCreateState error', error)
-        }
-      );
     }
 
     // Start creating states
@@ -289,44 +365,60 @@ export default function States() {
             parentState.parameters?.cell_density && 
             parameters.transition_parameters?.parent_end_density) {
           
-          const initialDensity = parentState.parameters.cell_density;
-          const finalDensity = parameters.transition_parameters.parent_end_density;
-          const startTime = parentState.timestamp;
-          const endTime = stateToUpdate.timestamp;
+          console.log(`DOUBLING TIME CALCULATION - Updating state:
+            - Parent ID: ${parentState.id}
+            - Parent name: ${parentState.name}
+            - Initial density: ${parentState.parameters.cell_density}
+            - Final density: ${parameters.transition_parameters.parent_end_density}
+            - Start time: ${parentState.timestamp}
+            - End time: ${stateToUpdate.timestamp}`);
           
-          const measuredDoublingTime = calculateMeasuredDoublingTime(
-            initialDensity, finalDensity, startTime, endTime
-          );
+          // First update the state with new parameters
+          await updateState.mutateAsync({
+            id: stateId,
+            parameters,
+            additional_notes
+          });
           
-          // Set the measured doubling time if calculation succeeded
-          if (measuredDoublingTime !== null) {
-            // Update the parent state with measured doubling time
-            await updateState.mutateAsync({ 
-              id: parentState.id, 
-              parameters: {
-                ...parentState.parameters,
-                measured_doubling_time: measuredDoublingTime
-              }
-            });
-            
-            // Refresh the states list to show the updated measured doubling time
-            queryClient.invalidateQueries({ queryKey: ['states'] });
-          } else {
-            console.warn(`Could not calculate measured doubling time for parent state ${parentState.id}.`);
-            console.log(`Calculation inputs: initialDensity=${initialDensity}, finalDensity=${finalDensity}, startTime=${startTime}, endTime=${endTime}`);
+          // Re-fetch the state we just updated to ensure we have latest data
+          await queryClient.invalidateQueries({ queryKey: ['states'] });
+          
+          // Get the refreshed states and find the updated state
+          const refreshedStates = queryClient.getQueryData(['states']) as CellState[];
+          const updatedState = refreshedStates?.find(s => s.id === stateId);
+          
+          if (updatedState) {
+            // Calculate doubling time for the parent using updated state
+            await calculateAndUpdateDoublingTime(parentState, updatedState, updateState, queryClient);
           }
+        } else {
+          console.log(`SKIPPED: Doubling time calculation on update - missing required data:
+            parentState: ${!!parentState}
+            parent_id: ${stateToUpdate.parent_id}
+            parent cell_density: ${!!parentState?.parameters?.cell_density}
+            child parent_end_density: ${!!parameters.transition_parameters?.parent_end_density}`);
+            
+          // Just update the state without doubling time calculation
+          await updateState.mutateAsync({ 
+            id: stateId, 
+            parameters, 
+            additional_notes 
+          });
+          
+          // Invalidate states query 
+          queryClient.invalidateQueries({ queryKey: ['states'] });
         }
+      } else {
+        // No parent or no parent ID, just update the state
+        await updateState.mutateAsync({ 
+          id: stateId, 
+          parameters, 
+          additional_notes 
+        });
+        
+        // Invalidate states query
+        queryClient.invalidateQueries({ queryKey: ['states'] });
       }
-      
-      // Call the mutation with the correct structure for the primary state update
-      await updateState.mutateAsync({ 
-        id: stateId, 
-        parameters, 
-        additional_notes 
-      });
-      // Invalidate states query after the primary update as well, in case it changed data relevant to the list
-      queryClient.invalidateQueries({ queryKey: ['states'] });
-
     } catch (error) {
       console.error('handleUpdateState error', error)
     }
@@ -464,8 +556,8 @@ export default function States() {
                         )}
                       </div>
                       
-                      {/* Prediction Button */} 
-                      <div className="mt-2 pt-2 border-t border-gray-200">
+                      {/* Prediction & Calculation Buttons */} 
+                      <div className="mt-2 pt-2 border-t border-gray-200 flex flex-wrap gap-2">
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); // Prevent state selection when clicking button
@@ -475,6 +567,19 @@ export default function States() {
                         >
                           Predict Density...
                         </button>
+                        
+                        {/* Only show calculate button if the state has cell_density */}
+                        {state.parameters?.cell_density && (
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); // Prevent state selection when clicking button
+                              handleCalculateDoublingTime(state); 
+                            }}
+                            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                          >
+                            Calculate Doubling Time
+                          </button>
+                        )}
                       </div>
                     </div>
                   );

@@ -101,6 +101,24 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
             />
           </div>
 
+          {/* End Density */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {getParameterDisplayName('end_density')} (million cells/ml)
+            </label>
+            <input
+              type="number"
+              name="end_density"
+              value={parameters.end_density ? parameters.end_density / 1000000 : ''}
+              onChange={(e) => {
+                const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                setParameters({ ...parameters, end_density: value ? value * 1000000 : null });
+              }}
+              className="mt-1 block w-full p-2 border rounded"
+              placeholder="Final cell density"
+            />
+          </div>
+
           {/* Viability */}
           <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
             {/* Start Viability */}
@@ -207,7 +225,8 @@ export default function EditStateForm({ state, onSubmit, onCancel }: EditStateFo
       <DynamicParameters 
         parameters={Object.entries(parameters)
           .filter(([key]) => !['temperature_c', 'volume_ml', 'location', 'cell_density', 
-                              'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time'].includes(key))
+                              'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time',
+                              'end_density'].includes(key))
           .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})}
         onChange={(newCustomParams) => {
           // Merge the custom parameters with the common ones

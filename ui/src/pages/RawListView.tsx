@@ -103,7 +103,22 @@ const RawListView: React.FC = () => {
     const isApplicable = isParameterApplicable(paramKey, operationType);
     
     // Get the value
-    const value = state.flatParams[paramKey];
+    let value = state.flatParams[paramKey];
+    
+    // Special case for "end_density" - if not present in parent nodes, check if any of its children
+    // have a parent_end_density that refers to this node
+    if (paramKey === 'end_density' && (value === undefined || value === null)) {
+      // Look for any child states that have this state as a parent
+      const childStates = states ? states.filter(s => s.parent_id === state.id) : [];
+      const childWithParentEndDensity = childStates.find(childState => 
+        childState.parameters?.transition_parameters?.parent_end_density !== undefined
+      );
+      
+      // If found, use the parent_end_density value from the child's transition parameters
+      if (childWithParentEndDensity && childWithParentEndDensity.parameters?.transition_parameters?.parent_end_density) {
+        value = childWithParentEndDensity.parameters.transition_parameters.parent_end_density;
+      }
+    }
     
     if (!isApplicable) {
       // Parameter doesn't apply to this operation type

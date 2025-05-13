@@ -88,6 +88,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     parent_id: initialParentId, // Use initialParentId if provided
     cell_density: 1e5, // Default: 100,000
     timestamp: new Date().toISOString().slice(0, 16), // Default to current date/time
+    end_density: undefined, // Add end_density with default undefined
     
     // Optional parameters defaulting to undefined
     // All optional fields are left out of the initial state
@@ -180,6 +181,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     total_cells?: number;
     storage_location?: string;
     viability?: number;
+    end_density?: number; // Add end_density property
   }>>([])
 
   // --- Calculation Logic --- 
@@ -360,6 +362,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
     if (formData.doubling_time !== undefined) parameters.doubling_time = formData.doubling_time;
     if (formData.density_limit !== undefined) parameters.density_limit = formData.density_limit;
     if (formData.cell_type !== undefined) parameters.cell_type = formData.cell_type;
+    if (formData.end_density !== undefined) parameters.end_density = formData.end_density;
     
     // Special case for measurement operation
     if (operationType === 'measurement' && measuredParameter) {
@@ -560,6 +563,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             parent_end_viability: state.parent_end_viability,
             growth_rate: state.growth_rate,
             density_limit: state.density_limit,
+            end_density: state.end_density,
             // Add cell_type to main parameters for consistency
             cell_type: parentState?.parameters?.transition_parameters?.cell_type || '',
             // Add transition parameters inside parameters
@@ -598,6 +602,7 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
           growth_rate: formData.growth_rate,
           doubling_time: formData.doubling_time,
           density_limit: formData.density_limit,
+          end_density: formData.end_density,
           // Include cell_type in main parameters for display purposes
           ...(operationType === 'start_new_culture' ? { cell_type: formData.cell_type } : {}),
           // Add transition parameters inside the parameters object
@@ -627,7 +632,8 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
       operation_type: 'passage',
       showOptionalParams: false,
       number_of_vials: 1,
-      total_cells: 0
+      total_cells: 0,
+      end_density: undefined // Add end_density property initialization
     }])
   }
 
@@ -836,6 +842,32 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                   />
                 </div>
                 
+                {/* End Density - Add for all operations */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('end_density')}</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.001"
+                    className="mt-1 w-full p-2 border rounded"
+                    value={formData.end_density ? formData.end_density / 1000000 : ''} 
+                    onChange={(e) => {
+                      // Ensure we convert to a valid number
+                      let value = e.target.value.trim();
+                      if (value === '') {
+                        setFormData({ ...formData, end_density: undefined });
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          // Store as absolute cell count, not millions
+                          setFormData({ ...formData, end_density: numValue * 1000000 });
+                        }
+                      }
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Final cell density at the end of this process</p>
+                </div>
+                
                 {/* Viability */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('start_viability')}</label>
@@ -936,14 +968,31 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
               <input 
                 type="number" 
                 min="0" 
-                step="any"
+                step="0.001"
                 className="mt-1 w-full p-2 border rounded"
                 value={formData.parent_end_density ? formData.parent_end_density / 1000000 : ''} 
-                onChange={(e) => handleNumericInput('parent_end_density', e.target.value, 1000000)}
+                onChange={(e) => {
+                  // Ensure we convert to a valid number
+                  let value = e.target.value.trim();
+                  if (value === '') {
+                    setFormData({ ...formData, parent_end_density: undefined });
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      // Store as absolute cell count, not millions
+                      setFormData({ ...formData, parent_end_density: numValue * 1000000 });
+                    }
+                  }
+                }}
                 required
                 disabled={!hasParent}
               />
-              <p className="mt-1 text-xs text-gray-500">Cell density at the time of passage</p>
+              <p className="mt-1 text-xs text-gray-500">Cell density at the time of freezing</p>
+              <div className="mt-1 bg-yellow-50 p-2 rounded border border-yellow-200">
+                <p className="text-sm text-yellow-800 font-medium">
+                  <span role="img" aria-label="Important">⚠️</span> Important: This value is required to calculate doubling time. The doubling time will be automatically calculated when you create this state.
+                </p>
+              </div>
             </div>
             
             {/* New Passage Start Cell Density */}
@@ -1063,6 +1112,32 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
                 </div>
+                
+                {/* End Density - Add for all operations */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('end_density')}</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.001"
+                    className="mt-1 w-full p-2 border rounded"
+                    value={formData.end_density ? formData.end_density / 1000000 : ''} 
+                    onChange={(e) => {
+                      // Ensure we convert to a valid number
+                      let value = e.target.value.trim();
+                      if (value === '') {
+                        setFormData({ ...formData, end_density: undefined });
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          // Store as absolute cell count, not millions
+                          setFormData({ ...formData, end_density: numValue * 1000000 });
+                        }
+                      }
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Final cell density reached in this passage (if different from parent_end_density)</p>
+                </div>
               </div>
             )}
           </div>
@@ -1131,6 +1206,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                 disabled={!hasParent}
               />
               <p className="mt-1 text-xs text-gray-500">Cell density at the time of freezing</p>
+              <div className="mt-1 bg-yellow-50 p-2 rounded border border-yellow-200">
+                <p className="text-sm text-yellow-800 font-medium">
+                  <span role="img" aria-label="Important">⚠️</span> Important: This value is required to calculate doubling time. The doubling time will be automatically calculated when you create this state.
+                </p>
+              </div>
             </div>
             
             {/* Frozen Vial Name */}
@@ -1269,6 +1349,32 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                     className="mt-1 w-full p-2 border rounded"
                     placeholder="e.g., 1.5 (million cells/ml)"
                   />
+                </div>
+                
+                {/* End Density - Add for all operations */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{getParameterDisplayName('end_density')}</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.001"
+                    className="mt-1 w-full p-2 border rounded"
+                    value={formData.end_density ? formData.end_density / 1000000 : ''} 
+                    onChange={(e) => {
+                      // Ensure we convert to a valid number
+                      let value = e.target.value.trim();
+                      if (value === '') {
+                        setFormData({ ...formData, end_density: undefined });
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                          // Store as absolute cell count, not millions
+                          setFormData({ ...formData, end_density: numValue * 1000000 });
+                        }
+                      }
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Final cell density when freezing</p>
                 </div>
               </div>
             )}
@@ -1834,6 +1940,11 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
             <p className="mt-1 text-xs text-gray-500">
               Cell density of the parent culture at the time of splitting (required)
             </p>
+            <div className="mt-1 bg-yellow-50 p-2 rounded border border-yellow-200">
+              <p className="text-sm text-yellow-800 font-medium">
+                <span role="img" aria-label="Important">⚠️</span> Important: This value is required to calculate the parent's doubling time. The doubling time will be automatically calculated when you create these split states.
+              </p>
+            </div>
           </div>
           
           {splitStates.map((state, index) => (
@@ -2126,6 +2237,31 @@ export default function CreateStateForm({ onSubmit, onCancel, existingStates, in
                       className="mt-1 w-full p-2 border rounded"
                       placeholder="e.g., 1.5 (million cells/ml)"
                     />
+                  </div>
+                  
+                  {/* End Density - add for split operations too */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">End Density (million cells/ml)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      className="mt-1 w-full p-2 border rounded"
+                      value={state.end_density ? state.end_density / 1000000 : ''}
+                      onChange={(e) => {
+                        let value = e.target.value.trim();
+                        if (value === '') {
+                          updateSplitState(index, 'end_density', undefined);
+                        } else {
+                          const numValue = parseFloat(value);
+                          if (!isNaN(numValue)) {
+                            updateSplitState(index, 'end_density', numValue * 1000000);
+                          }
+                        }
+                      }}
+                      placeholder="Final cell density (million cells/ml)"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">Final cell density at the end of this split</p>
                   </div>
                   
                   {/* Additional operation-specific optional parameters */}

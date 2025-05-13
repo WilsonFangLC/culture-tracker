@@ -5,12 +5,12 @@ OperationType = str  # 'start_new_culture' | 'passage' | 'freeze' | 'thaw' | 'me
 
 # Define which parameters apply to which operation types
 OPERATION_PARAMETER_MAPPING: Dict[str, List[str]] = {
-    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type'],
-    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type'],
-    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
-    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type'],
-    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type'],
-    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type'],
+    'start_new_culture': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type', 'end_density'],
+    'passage': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type', 'end_density'],
+    'freeze': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type', 'end_density'],
+    'thaw': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type', 'end_density'],
+    'measurement': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type', 'end_density'],
+    'split': ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type', 'end_density'],
     'harvest': ['temperature_c', 'volume_ml', 'location', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'end_density', 'cell_type', 'example_parameter', 'operation_type'],
 }
 
@@ -35,7 +35,7 @@ ALL_PARAMETER_METADATA: Dict[str, Dict[str, Union[str, bool, List[str]]]] = {
     "number_of_vials": {"displayName": "Number of Vials", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
     "total_cells": {"displayName": "Total Cells", "applicableToAllNodes": False, "operationSpecific": ['freeze']},
     "number_of_passages": {"displayName": "Number of Passages", "applicableToAllNodes": False, "operationSpecific": ['thaw']},
-    "end_density": {"displayName": "End Density", "applicableToAllNodes": False, "operationSpecific": ['harvest']},
+    "end_density": {"displayName": "End Density", "applicableToAllNodes": True},
     "measured_value": {"displayName": "Measured Value", "applicableToAllNodes": False, "operationSpecific": ['measurement']},
     
     # Former transition parameters, now regular parameters

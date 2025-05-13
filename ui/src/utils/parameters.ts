@@ -10,12 +10,12 @@ export interface ParameterMetadata {
 
 // Define which parameters apply to which operation types
 export const OPERATION_PARAMETER_MAPPING: Record<OperationType, string[]> = {
-  start_new_culture: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type'],
-  passage: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type'],
-  freeze: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type'],
-  thaw: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type'],
-  measurement: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type'],
-  split: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type'],
+  start_new_culture: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'cell_type', 'operation_type', 'end_density'],
+  passage: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'example_parameter', 'operation_type', 'end_density'],
+  freeze: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'number_of_vials', 'total_cells', 'cell_type', 'operation_type', 'end_density'],
+  thaw: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'start_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'number_of_passages', 'cell_type', 'operation_type', 'end_density'],
+  measurement: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'measured_value', 'cell_type', 'operation_type', 'end_density'],
+  split: ['temperature_c', 'volume_ml', 'location', 'cell_density', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'parent_end_density', 'cell_type', 'operation_type', 'end_density'],
   harvest: ['temperature_c', 'volume_ml', 'location', 'parent_end_viability', 'growth_rate', 'doubling_time', 'density_limit', 'measured_doubling_time', 'end_density', 'cell_type', 'example_parameter', 'operation_type'],
 };
 
@@ -40,7 +40,7 @@ export const ALL_PARAMETER_METADATA: Record<string, ParameterMetadata> = {
   "number_of_vials": { displayName: "Number of Vials", applicableToAllNodes: false, operationSpecific: ['freeze'] },
   "total_cells": { displayName: "Total Cells", applicableToAllNodes: false, operationSpecific: ['freeze'] },
   "number_of_passages": { displayName: "Number of Passages", applicableToAllNodes: false, operationSpecific: ['thaw'] },
-  "end_density": { displayName: "End Density", applicableToAllNodes: false, operationSpecific: ['harvest'] },
+  "end_density": { displayName: "End Density", applicableToAllNodes: true },
   "measured_value": { displayName: "Measured Value", applicableToAllNodes: false, operationSpecific: ['measurement'] },
   
   // Former transition parameters, now regular parameters

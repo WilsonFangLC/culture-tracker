@@ -68,18 +68,106 @@ export const calculatePredictedDensity = (
  * Uses the exponential growth model: N = N₀ * e^(r*t)
  * Doubling time = ln(2)/r
  * 
- * @param initialDensity The initial cell density
- * @param finalDensity The final cell density
+ * This function has two signatures:
+ * 1. Four parameters: initial/final density and start/end time for two different states
+ * 2. Two parameters: state with both initial and end density, plus a timestamp
+ * 
+ * @param initialDensity The initial cell density or state containing both densities
+ * @param finalDensity The final cell density or null if using the single state method
  * @param startTime The timestamp when the initial density was recorded
- * @param endTime The timestamp when the final density was recorded
+ * @param endTime The timestamp when the final density was recorded or null if using the single state method
  * @returns The calculated doubling time in hours, or null if calculation is not possible
  */
 export const calculateMeasuredDoublingTime = (
-  initialDensity: number | string | null | undefined,
-  finalDensity: number | string | null | undefined,
-  startTime: string | Date | null | undefined,
-  endTime: string | Date | null | undefined
+  initialDensity: number | string | null | undefined | { 
+    parameters?: { 
+      cell_density?: number;
+      end_density?: number;
+    }; 
+    timestamp?: string 
+  },
+  finalDensity?: number | string | null | undefined | { 
+    parameters?: { 
+      transition_parameters?: { 
+        parent_end_density?: number 
+      } 
+    };
+    timestamp?: string 
+  },
+  startTime?: string | Date | null | undefined,
+  endTime?: string | Date | null | undefined
 ): number | null => {
+  // Check if this is using the "single state" signature where the first argument is a state object
+  // with both initial and end density
+  if (initialDensity !== null && 
+      initialDensity !== undefined && 
+      typeof initialDensity === 'object' && 
+      'parameters' in initialDensity) {
+    const state = initialDensity;
+    
+    console.log(`calculateMeasuredDoublingTime called with single state:`, state);
+    
+    // Check if we have the required data in the state
+    if (!state.parameters?.cell_density) {
+      console.log('Single State Doubling Time Calc: Missing cell_density');
+      return null;
+    }
+    
+    // Look for end density either directly in parameters or in a child node
+    let endDensityValue = null;
+    
+    // First try to find it directly in the state
+    if (state.parameters.end_density) {
+      endDensityValue = state.parameters.end_density;
+    } 
+    // Otherwise check for transition_parameters.parent_end_density in a child
+    else if (finalDensity && 
+        typeof finalDensity === 'object' && 
+        'parameters' in finalDensity &&
+        finalDensity.parameters?.transition_parameters?.parent_end_density) {
+      endDensityValue = finalDensity.parameters.transition_parameters.parent_end_density;
+    }
+    
+    // If we couldn't find an end density, we can't calculate
+    if (!endDensityValue) {
+      console.log('Single State Doubling Time Calc: Missing end_density value');
+      return null;
+    }
+    
+    // Get the timestamp from the state
+    if (!state.timestamp) {
+      console.log('Single State Doubling Time Calc: Missing timestamp');
+      return null;
+    }
+    
+    // For end time, use either the provided end time or the child's timestamp
+    let endTimeValue = null;
+    if (endTime) {
+      endTimeValue = endTime;
+    } else if (typeof startTime === 'string' || startTime instanceof Date) {
+      endTimeValue = startTime;
+    } else if (finalDensity && 
+        typeof finalDensity === 'object' && 
+        'timestamp' in finalDensity &&
+        finalDensity.timestamp) {
+      endTimeValue = finalDensity.timestamp;
+    }
+    
+    if (!endTimeValue) {
+      console.log('Single State Doubling Time Calc: Missing end time');
+      return null;
+    }
+    
+    // Call recursive with the extracted values
+    return calculateMeasuredDoublingTime(
+      state.parameters.cell_density, 
+      endDensityValue,
+      state.timestamp,
+      endTimeValue
+    );
+  }
+  
+  // Original implementation for the four parameter signature
   console.log(`calculateMeasuredDoublingTime called with:
     - initialDensity: ${initialDensity} (type: ${typeof initialDensity})
     - finalDensity: ${finalDensity} (type: ${typeof finalDensity})
@@ -88,8 +176,27 @@ export const calculateMeasuredDoublingTime = (
   `);
 
   // Convert potential string values to numbers
-  const initialDensityNum = initialDensity !== null && initialDensity !== undefined ? Number(initialDensity) : null;
-  const finalDensityNum = finalDensity !== null && finalDensity !== undefined ? Number(finalDensity) : null;
+  let initialDensityNum: number | null = null;
+  let finalDensityNum: number | null = null;
+  
+  try {
+    // Handle different data types for initial density
+    if (initialDensity !== null && initialDensity !== undefined) {
+      initialDensityNum = typeof initialDensity === 'string' 
+        ? parseFloat(initialDensity) 
+        : (typeof initialDensity === 'number' ? initialDensity : null);
+    }
+    
+    // Handle different data types for final density
+    if (finalDensity !== null && finalDensity !== undefined) {
+      finalDensityNum = typeof finalDensity === 'string' 
+        ? parseFloat(finalDensity) 
+        : (typeof finalDensity === 'number' ? finalDensity : null);
+    }
+  } catch (error) {
+    console.error("Error parsing density values:", error);
+    return null;
+  }
 
   // Validate essential inputs
   if (initialDensityNum === null || isNaN(initialDensityNum)) {
@@ -120,6 +227,17 @@ export const calculateMeasuredDoublingTime = (
   try {
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
+    
+    // Validate date parsing
+    if (isNaN(startDate.getTime())) {
+      console.log(`Invalid start date format: ${startTime}`);
+      return null;
+    }
+    
+    if (isNaN(endDate.getTime())) {
+      console.log(`Invalid end date format: ${endTime}`);
+      return null;
+    }
     
     console.log(`Parsed dates:
       - startDate: ${startDate.toISOString()}
