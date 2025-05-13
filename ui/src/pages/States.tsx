@@ -435,20 +435,51 @@ export default function States() {
       <details className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6 shadow-sm">
         <summary className="font-semibold text-lg cursor-pointer text-blue-700 hover:text-blue-900">How to Use This Tool</summary>
         <div className="mt-3 text-sm text-gray-700 space-y-2">
-          <p><strong>Purpose:</strong> This tool helps you track the lineage and passage number of your cell cultures.</p>
-          <p><strong>Viewing Cells:</strong> The lineage graph below shows your cell states. Each box represents a specific culture or passage. Click on a box to see its details on the right.</p>
-          <p><strong>Adding a New Culture:</strong> To add a brand new cell line (with no parent), use the 'Create New State' button or form, leave the 'Parent State' selection empty, and fill in the other details.</p>
-          <p><strong>Passaging Cells (Adding a Child):</strong> To record a new passage derived from an existing one:</p>
-          <ol className="list-decimal list-inside ml-4">
-            <li>Use the 'Create New State' button or form.</li>
-            <li>Select the ID of the parent cell state (the one you passaged *from*) in the 'Parent State' selection.</li>
-            <li>Fill in the details for the *new* passage (name, passage number, date, etc.).</li>
-            <li>Submit the form. The new passage will appear connected to its parent in the lineage graph.</li>
-          </ol>
-          <p><strong>Deleting a Cell State:</strong> Click the 'Delete' button on a cell state's details view. <strong className="text-red-600">Important:</strong> You can only delete a cell state if it has *no children* (i.e., you haven't passaged anything *from* it yet).</p>
-          <p><strong>Editing Details:</strong> Click on a cell state in the graph, then use the form on the right to update its parameters or notes.</p>
-          <p><strong>Predicting Density:</strong> Click the 'Predict Density' button on a cell state's details to estimate cell density at a future time point based on its recorded parameters.</p>
-          <p><strong>Exporting Data:</strong> Use the 'Export CSV' button to download all cell state data.</p>
+          <p><strong>Purpose:</strong> Track cell culture lineage, growth parameters, and calculate doubling times.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div>
+              <p className="font-medium text-blue-700">Basic Operations:</p>
+              <ul className="list-disc list-inside ml-2 space-y-1">
+                <li>View cultures in the graph or list views</li>
+                <li>Click on any state to see details and edit it</li>
+                <li>Use "New State" to add a new culture</li>
+                <li>Export all data using "Export CSV"</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-blue-700">Cell Management:</p>
+              <ul className="list-disc list-inside ml-2 space-y-1">
+                <li>Create new culture: Select "New State" without a parent</li>
+                <li>Passage cells: Select "New State" with a parent</li>
+                <li>Record measurements by creating a measurement state</li>
+                <li>Freeze/thaw operations track storage location</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div>
+              <p className="font-medium text-blue-700">Growth Analysis:</p>
+              <ul className="list-disc list-inside ml-2 space-y-1">
+                <li>Click "Calculate Doubling Time" on a state with both cell_density and end_density</li>
+                <li>Doubling time is automatically calculated when adding child states</li>
+                <li>Use "Predict Density" to project future cell counts</li>
+                <li>View growth parameters in state details</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-blue-700">View Options:</p>
+              <ul className="list-disc list-inside ml-2 space-y-1">
+                <li>Process view: Shows visual workflow</li>
+                <li>List view: Shows hierarchical relationship</li>
+                <li>Graph view: Shows the cell lineage tree</li>
+                <li>Raw list: Displays all parameters in a table</li>
+              </ul>
+            </div>
+          </div>
+          
+          <p className="text-xs text-right mt-2 italic">Last updated: May 1, 2024</p>
         </div>
       </details>
       {/* Instructions Section End */}
@@ -604,6 +635,11 @@ export default function States() {
             />
           )}
         </div>
+      </div>
+
+      {/* Footer with credit */}
+      <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
+        Culture Tracker built by Lichi Fang
       </div>
 
       {/* Prediction Modal */} 
