@@ -1,3 +1,23 @@
+// Debounce helper function 
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T, 
+  delay: number
+): ((...args: Parameters<T>) => Promise<ReturnType<T> | null>) => {
+  return (...args: Parameters<T>): Promise<ReturnType<T> | null> => {
+    return new Promise(resolve => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      
+      debounceTimer = setTimeout(() => {
+        resolve(func(...args));
+      }, delay);
+    });
+  };
+};
+
 /**
  * Calculates the predicted cell density using the logistic growth model.
  *
@@ -38,12 +58,8 @@ export const calculatePredictedDensity = (
     const timeElapsedHours = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
 
     if (timeElapsedHours < 0) {
-      console.log('Predicted Density Calc: Start time is in the future. Returning initial density.');
       return initialDensity; // If current time is before start time, return initial density
     }
-
-    // Log the calculated time elapsed
-    console.log(`Predicted Density Calc: startTime=${startDate.toISOString()}, currentTime=${now.toISOString()}, timeElapsedHours=${timeElapsedHours.toFixed(2)}`);
 
     // Logistic growth formula parts
     const K = densityLimit;
@@ -62,6 +78,9 @@ export const calculatePredictedDensity = (
     return null; // Return null on any calculation error (e.g., invalid date)
   }
 };
+
+// Debounced version of calculatePredictedDensity that prevents excessive calculations
+export const debouncedCalculatePredictedDensity = debounce(calculatePredictedDensity, 300);
 
 /**
  * Calculates the measured doubling time based on actual growth data.
@@ -105,11 +124,8 @@ export const calculateMeasuredDoublingTime = (
       'parameters' in initialDensity) {
     const state = initialDensity;
     
-    console.log(`calculateMeasuredDoublingTime called with single state:`, state);
-    
     // Check if we have the required data in the state
     if (!state.parameters?.cell_density) {
-      console.log('Single State Doubling Time Calc: Missing cell_density');
       return null;
     }
     
@@ -130,13 +146,11 @@ export const calculateMeasuredDoublingTime = (
     
     // If we couldn't find an end density, we can't calculate
     if (!endDensityValue) {
-      console.log('Single State Doubling Time Calc: Missing end_density value');
       return null;
     }
     
     // Get the timestamp from the state
     if (!state.timestamp) {
-      console.log('Single State Doubling Time Calc: Missing timestamp');
       return null;
     }
     
@@ -154,7 +168,6 @@ export const calculateMeasuredDoublingTime = (
     }
     
     if (!endTimeValue) {
-      console.log('Single State Doubling Time Calc: Missing end time');
       return null;
     }
     
@@ -168,13 +181,6 @@ export const calculateMeasuredDoublingTime = (
   }
   
   // Original implementation for the four parameter signature
-  console.log(`calculateMeasuredDoublingTime called with:
-    - initialDensity: ${initialDensity} (type: ${typeof initialDensity})
-    - finalDensity: ${finalDensity} (type: ${typeof finalDensity})
-    - startTime: ${startTime} (type: ${typeof startTime})
-    - endTime: ${endTime} (type: ${typeof endTime})
-  `);
-
   // Convert potential string values to numbers
   let initialDensityNum: number | null = null;
   let finalDensityNum: number | null = null;
@@ -200,27 +206,21 @@ export const calculateMeasuredDoublingTime = (
 
   // Validate essential inputs
   if (initialDensityNum === null || isNaN(initialDensityNum)) {
-    console.log('Measured Doubling Time Calc: initialDensity is null, undefined or not a number');
     return null;
   }
   if (finalDensityNum === null || isNaN(finalDensityNum)) {
-    console.log('Measured Doubling Time Calc: finalDensity is null, undefined or not a number');
     return null;
   }
   if (startTime == null) {
-    console.log('Measured Doubling Time Calc: startTime is null or undefined');
     return null;
   }
   if (endTime == null) {
-    console.log('Measured Doubling Time Calc: endTime is null or undefined');
     return null;
   }
   if (initialDensityNum <= 0) {
-    console.log(`Measured Doubling Time Calc: initialDensity must be positive, got ${initialDensityNum}`);
     return null;
   }
   if (finalDensityNum <= 0) {
-    console.log(`Measured Doubling Time Calc: finalDensity must be positive, got ${finalDensityNum}`);
     return null;
   }
 
@@ -230,46 +230,34 @@ export const calculateMeasuredDoublingTime = (
     
     // Validate date parsing
     if (isNaN(startDate.getTime())) {
-      console.log(`Invalid start date format: ${startTime}`);
+      console.error(`Invalid start date format: ${startTime}`);
       return null;
     }
     
     if (isNaN(endDate.getTime())) {
-      console.log(`Invalid end date format: ${endTime}`);
+      console.error(`Invalid end date format: ${endTime}`);
       return null;
     }
-    
-    console.log(`Parsed dates:
-      - startDate: ${startDate.toISOString()}
-      - endDate: ${endDate.toISOString()}
-    `);
 
     // Calculate time elapsed in hours
     const timeElapsedHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-    console.log(`Calculated timeElapsedHours: ${timeElapsedHours.toFixed(2)}`);
 
     if (timeElapsedHours <= 0) {
-      console.log('Measured Doubling Time Calc: End time is not after start time.');
       return null; // Cannot calculate if end time is before or equal to start time
     }
 
     // For non-growing cultures (final density <= initial density)
     if (finalDensityNum <= initialDensityNum) {
-      console.log('Measured Doubling Time Calc: No growth or negative growth detected.');
       return null; // No doubling time for non-growing cultures
     }
 
     // Calculate growth rate from exponential growth model
     // N = N₀ * e^(r*t) => log(N/N₀) = r*t => r = log(N/N₀)/t
     const growthRate = Math.log(finalDensityNum / initialDensityNum) / timeElapsedHours;
-    console.log(`Calculated growthRate: ${growthRate.toFixed(6)}`);
 
     // Calculate doubling time
     // doubling_time = ln(2)/r
     const doublingTime = Math.log(2) / growthRate;
-    console.log(`Calculated doublingTime: ${doublingTime.toFixed(2)}`);
-
-    console.log(`Measured Doubling Time Calc: initialDensity=${initialDensityNum}, finalDensity=${finalDensityNum}, timeElapsedHours=${timeElapsedHours.toFixed(2)}, growthRate=${growthRate.toFixed(6)}, doublingTime=${doublingTime.toFixed(2)}`);
 
     return doublingTime;
 

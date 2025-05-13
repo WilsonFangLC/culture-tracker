@@ -5,6 +5,7 @@ import { useParameters } from '../components/ParameterUtils';
 const RawListView: React.FC = () => {
   const { data: states, isLoading, error } = useStates();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   
   // Get parameter utilities
   const { 
@@ -22,15 +23,10 @@ const RawListView: React.FC = () => {
     
     const paramKeys = new Set<string>(allPossibleParameters);
     
-    // Debug output
-    console.log('Processing states for parameters:', states);
-    
     // Process states to extract all possible parameter keys and flatten nested structures
     const processed = states.map(state => {
       const flatState = { ...state };
       const flatParams: Record<string, any> = {};
-      
-      console.log(`Processing state ${state.id}, params:`, state.parameters);
       
       // Extract regular parameters
       if (state.parameters) {
@@ -44,7 +40,6 @@ const RawListView: React.FC = () => {
       
       // Extract transition parameters if they exist and merge with regular parameters
       if (state.parameters?.transition_parameters) {
-        console.log(`State ${state.id} transition params:`, state.parameters.transition_parameters);
         Object.entries(state.parameters.transition_parameters).forEach(([key, value]) => {
           // Don't overwrite existing params unless the value is empty or null
           if (!(key in flatParams) || flatParams[key] === null || flatParams[key] === '') {
@@ -59,8 +54,6 @@ const RawListView: React.FC = () => {
         flatParams
       };
     });
-    
-    console.log('Final parameter keys:', Array.from(paramKeys));
     
     return {
       allParameterKeys: Array.from(paramKeys).sort(),
@@ -139,11 +132,10 @@ const RawListView: React.FC = () => {
   // Function to handle CSV export
   const handleExportCSV = async () => {
     try {
-      console.log("Starting CSV export request...");
+      setIsExporting(true);
       
       // Use full URL to bypass any routing issues
       const apiUrl = `${import.meta.env.VITE_API_BASE || ''}/api/export/csv`;
-      console.log(`Requesting CSV from: ${apiUrl}`);
       
       // Fetch the CSV data from the backend
       const response = await fetch(apiUrl, {
@@ -153,14 +145,11 @@ const RawListView: React.FC = () => {
         }
       });
       
-      console.log(`CSV response status: ${response.status}`);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const blob = await response.blob();
-      console.log(`Got CSV data blob of size: ${blob.size} bytes`);
 
       // Create a link to download the blob
       const url = window.URL.createObjectURL(blob);
@@ -179,11 +168,24 @@ const RawListView: React.FC = () => {
     } catch (error) {
       console.error("Failed to export CSV:", error);
       alert("Failed to export CSV. Check the console for details.");
+    } finally {
+      setIsExporting(false);
     }
   };
   
   if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading data: {(error as Error).message}</div>;
+  if (error) return (
+    <div className="p-4 m-4 bg-red-50 border border-red-300 rounded-md">
+      <h2 className="text-lg font-semibold text-red-700 mb-2">Error loading data</h2>
+      <p className="text-red-600 mb-4">{(error as Error).message}</p>
+      <button 
+        onClick={() => window.location.reload()}
+        className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm"
+      >
+        Refresh Page
+      </button>
+    </div>
+  );
   
   return (
     <div className="container mx-auto p-4">
@@ -192,9 +194,22 @@ const RawListView: React.FC = () => {
         <div className="flex gap-2">
           <button
             onClick={handleExportCSV}
-            className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+            disabled={isExporting}
+            className={`${
+              isExporting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'
+            } text-white py-2 px-4 rounded flex items-center`}
           >
-            Export CSV
+            {isExporting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              'Export CSV'
+            )}
           </button>
         </div>
       </div>
