@@ -4,7 +4,7 @@ globs:
 alwaysApply: false
 ---
 Phase 1: API Endpoint Tests with pytest and httpx
-Step 1.1: Initial Setup & Configuration
+Step 1.1: Initial Setup & Configuration - COMPLETED
 Verify/Install Dependencies:
 Check if pytest and httpx are in api/venv/lib/python3.9/site-packages/.
 If not, propose a command to install them into the virtual environment: api/venv/bin/python -m pip install pytest httpx
@@ -23,7 +23,7 @@ Propose creating a api/tests/conftest.py. This file will be used for shared fixt
 Environment Configuration for Tests:
 Identify how the main application reads its database configuration (e.g., environment variables, .env file).
 Plan to override this configuration during tests to point to the test database. This can often be done in conftest.py or by setting environment variables before running pytest.
-Step 1.2: Implement conftest.py for API Tests
+Step 1.2: Implement conftest.py for API Tests - COMPLETED
 HTTP Client Fixture:
 In api/tests/conftest.py, create a pytest fixture that provides an instance of httpx.AsyncClient (assuming FastAPI is async, which is typical) configured to talk to the test instance of your application.
 Database Setup/Teardown Fixture:
@@ -31,11 +31,11 @@ In api/tests/conftest.py, create a fixture that:
 Setup: Before each test (or session), ensures the test database is in a clean state (e.g., creates tables based on your models, potentially truncates tables).
 Teardown: After each test (or session), cleans up (e.g., drops tables or removes the SQLite file if a new one is created each time).
 This fixture should be used by test functions that interact with the database.
-Step 1.3: Identify Main Resources and Endpoints
+Step 1.3: Identify Main Resources and Endpoints - COMPLETED
 Scan Routers:
 Use codebase_search or read_file to examine files in api/app/routers/ to list all API resources (e.g., "users", "posts", "items") and their corresponding HTTP methods and paths (e.g., POST /users, GET /users/{user_id}).
 Prioritize: Identify 2-3 core resources to start with.
-Step 1.4: Write API Tests for Core Resources (Happy Paths)
+Step 1.4: Write API Tests for Core Resources (Happy Paths) - COMPLETED
 For each prioritized resource (e.g., resource_name):
 Create Test File: Propose creating api/tests/api_tests/test_{resource_name}.py.
 Test Create (POST):
@@ -68,7 +68,7 @@ Make a GET request for the deleted resource and assert a 404 Not Found.
 
 Note that authentication is actually not implemented in the app yet no test needed.
 
-Step 1.5: Write API Tests for Authentication & Basic Authorization
+Step 1.5: Write API Tests for Authentication & Basic Authorization - SKIPPED (Authentication not implemented in the app yet)
 Identify Auth Endpoints: Locate login, logout (if any), and registration endpoints from api/app/routers/.
 Test Login:
 Create api/tests/api_tests/test_auth.py.
@@ -92,7 +92,7 @@ Send requests with fields of incorrect data types. Assert 422 or 400.
 Check if the error response body contains useful information about which field failed validation.
 Resource Not Found:
 For GET (by ID), PUT/PATCH, DELETE, try to operate on a non-existent ID. Assert 404 Not Found.
-Step 1.7: Running API Tests
+Step 1.7: Running API Tests - COMPLETED
 Propose a command to run all API tests: cd api && ../venv/bin/pytest tests/api_tests/ (adjust path to pytest and test directory as needed).
 Phase 2: Key UI End-to-End (E2E) Tests
 Step 2.1: Setup UI E2E Testing Framework

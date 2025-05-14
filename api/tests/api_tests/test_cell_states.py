@@ -249,3 +249,81 @@ async def test_delete_cell_state(client: AsyncClient):
     # Try to delete the parent state which now has a child
     delete_parent_response = await client.delete(f"/api/cell_states/{parent_id}")
     assert delete_parent_response.status_code == 409 # Conflict 
+
+# Step 1.6: Tests for Important Error Conditions
+
+@pytest.mark.asyncio
+async def test_create_cell_state_missing_timestamp(client: AsyncClient):
+    """Test creating a cell state with a missing timestamp."""
+    response = await client.post("/api/states/", json={
+        "name": "Error State No Timestamp",
+        # "timestamp": "2023-01-01T12:00:00Z", # Missing
+        "parameters": {"param1": "value1"},
+        "transition_type": "passage"
+    })
+    assert response.status_code == 422  # Unprocessable Entity
+    # Optionally, check the error detail
+    response_data = response.json()
+    assert any(err["loc"] == ["body", "timestamp"] and err["type"] == "missing" for err in response_data["detail"])
+
+
+@pytest.mark.asyncio
+async def test_create_cell_state_missing_parameters(client: AsyncClient):
+    """Test creating a cell state with missing parameters."""
+    response = await client.post("/api/states/", json={
+        "name": "Error State No Params",
+        "timestamp": "2023-01-01T12:00:00Z",
+        # "parameters": {"param1": "value1"}, # Missing
+        "transition_type": "passage"
+    })
+    assert response.status_code == 422
+    response_data = response.json()
+    assert any(err["loc"] == ["body", "parameters"] and err["type"] == "missing" for err in response_data["detail"])
+
+
+@pytest.mark.asyncio
+async def test_create_cell_state_invalid_timestamp_format(client: AsyncClient):
+    """Test creating a cell state with an invalid timestamp format."""
+    response = await client.post("/api/states/", json={
+        "name": "Error State Invalid Timestamp",
+        "timestamp": "not-a-valid-date",
+        "parameters": {"param1": "value1"},
+        "transition_type": "passage"
+    })
+    assert response.status_code == 422
+    response_data = response.json()
+    # Depending on FastAPI/Pydantic version, the error type might be different
+    # e.g., 'datetime_parsing', 'value_error.datetime'
+    # We'll check for location 'timestamp' and that there's an error message
+    assert any(err["loc"] == ["body", "timestamp"] and "msg" in err for err in response_data["detail"])
+
+
+@pytest.mark.asyncio
+async def test_create_cell_state_invalid_parameters_type(client: AsyncClient):
+    """Test creating a cell state with parameters not being a dictionary."""
+    response = await client.post("/api/states/", json={
+        "name": "Error State Invalid Params Type",
+        "timestamp": "2023-01-01T12:00:00Z",
+        "parameters": "not-a-dictionary",
+        "transition_type": "passage"
+    })
+    assert response.status_code == 422
+    response_data = response.json()
+    assert any(err["loc"] == ["body", "parameters"] and ("msg" in err or "type" in err) for err in response_data["detail"])
+
+@pytest.mark.asyncio
+async def test_delete_non_existent_cell_state(client: AsyncClient):
+    """Test deleting a cell state that does not exist."""
+    non_existent_id = 999999
+    response = await client.delete(f"/api/cell_states/{non_existent_id}")
+    assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_update_non_existent_cell_state(client: AsyncClient):
+    """Test updating a cell state that does not exist using PUT (expecting 405)."""
+    non_existent_id = 999999
+    update_data = {"parameters": {"updated_param": "new_value"}}
+    response = await client.put(f"/api/states/{non_existent_id}", json=update_data)
+    assert response.status_code == 405 # Method Not Allowed, as PUT is not defined
+
+# Add further error condition tests below 
