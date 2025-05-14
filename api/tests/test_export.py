@@ -1,23 +1,21 @@
 import pytest
-from fastapi.testclient import TestClient
+from fastapi import testclient as fastapi_testclient
 import csv
 import io
 
 # Assuming the main app object is accessible via from app.main import app
 # Adjust the import path if necessary
-from ..app.main import app 
+from app.main import app 
+
+# client = fastapi_testclient.TestClient(app) # Comment out module-level client
 
 # We might need to mock the database session and authentication
 # For simplicity, this test assumes the endpoint is accessible
 # and might rely on data in the actual dev database if not mocked.
 
-client = TestClient(app)
-
-# TODO: Implement proper test setup with a test database and mock authentication
-# For now, this test will run against the configured database and auth.
-
 @pytest.mark.skip(reason="Test needs proper DB and auth mocking")
 def test_export_cell_states_csv_authenticated():
+    client = fastapi_testclient.TestClient(app) # Instantiate here for testing
     """Tests the CSV export endpoint with authentication (mocked/skipped for now)."""
     # Replace with actual authenticated client setup
     # headers = {"Authorization": "Bearer <your_test_token>"}
@@ -52,6 +50,7 @@ def test_export_cell_states_csv_authenticated():
 # Add a test for the case when no data exists (optional)
 @pytest.mark.skip(reason="Test needs proper DB setup for empty state")
 def test_export_empty_csv():
+    client = fastapi_testclient.TestClient(app) # Instantiate here for testing
     """Tests the CSV export when there is no data."""
     # Setup: Ensure the database is empty for this test
     

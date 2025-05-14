@@ -1,0 +1,113 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+{
+  "rules": [
+    {
+      "type": "file",
+      "path": "README.md",
+      "reason": "Project overview, setup, and structure documentation for the Lab Passage Tracker."
+    },
+    {
+      "type": "file",
+      "path": "api/app/main.py",
+      "reason": "Main entry point for the FastAPI backend application with endpoints and middleware configuration."
+    },
+    {
+      "type": "file",
+      "path": "api/app/models.py",
+      "reason": "Contains backend data models (SQLModel) including the CellState class with its relationships and validation logic."
+    },
+    {
+      "type": "file",
+      "path": "api/app/schemas.py",
+      "reason": "Contains Pydantic schemas for request/response validation including CellStateCreate, CellStateRead, and CellStateUpdate."
+    },
+    {
+      "type": "file",
+      "path": "api/app/database.py",
+      "reason": "Database connection setup, session management, and table creation logic."
+    },
+    {
+      "type": "file",
+      "path": "api/app/crud.py",
+      "reason": "Contains backend CRUD operations for interacting with the database including create_cell_state, get_cell_states, delete_cell_state, etc."
+    },
+    {
+      "type": "file",
+      "path": "api/app/migrations.py",
+      "reason": "Handles database migrations including migrate_old_to_new for schema evolution."
+    },
+    {
+      "type": "directory",
+      "path": "api/app/routers/",
+      "reason": "Contains API endpoint route definitions organized by functionality."
+    },
+    {
+      "type": "file",
+      "path": "api/app/routers/cell_states.py",
+      "reason": "API routes for CRUD operations on cell states including delete cell state endpoint."
+    },
+    {
+      "type": "file",
+      "path": "api/app/routers/export.py",
+      "reason": "API routes for exporting cell state data in various formats including CSV, with elaborate parameter formatting logic."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/main.tsx",
+      "reason": "Main entry point for the React frontend application using Vite."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/api.ts",
+      "reason": "Frontend API client using axios and React Query hooks for data fetching, including interfaces for CellState and CellStateCreate."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/App.tsx",
+      "reason": "Main React component that defines the application routes and layout."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/types.ts",
+      "reason": "TypeScript type definitions shared across the frontend."
+    },
+    {
+      "type": "directory",
+      "path": "ui/src/components/",
+      "reason": "Contains reusable React components including CreateStateForm, StateLineage, etc."
+    },
+    {
+      "type": "directory",
+      "path": "ui/src/pages/",
+      "reason": "Top-level page components including States.tsx, RawListView.tsx, and Passages.tsx."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/pages/States.tsx",
+      "reason": "Main page for managing cell states with lineage visualization, forms for creating/updating states, and prediction functionality."
+    },
+    {
+      "type": "file",
+      "path": "ui/src/pages/RawListView.tsx",
+      "reason": "Alternative view showing cell states in a tabular format rather than a lineage graph."
+    },
+    {
+      "type": "directory",
+      "path": "ui/src/utils/",
+      "reason": "Utility functions including calculations.ts for computing growth parameters, doubling time, etc."
+    },
+    {
+      "type": "file",
+      "path": "docker-compose.yml",
+      "reason": "Defines services for local development environment including API and UI containers."
+    },
+    {
+      "type": "global_description",
+      "reason": "This is a Lab Passage Tracker application designed to help researchers track cell culture passages. The backend uses FastAPI with SQLModel for ORM, connected to a SQLite database (with plans to migrate to PostgreSQL). The frontend is built with React, TypeScript, and Tailwind CSS. The application allows users to record cell culture states with various parameters (e.g., cell density, growth rate, temperature), view their lineage relationships, predict future cell densities based on growth models, and export data to CSV. Key features include tracking cell lineage through parent-child relationships, different operation types (passage, freeze, thaw, etc.), and calculated growth parameters."
+    }
+  ]
+} 

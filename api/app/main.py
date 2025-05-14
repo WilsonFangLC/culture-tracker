@@ -82,11 +82,6 @@ async def direct_export_csv(session: Session = Depends(get_session)):
             "detail": str(e)
         }
 
-# Dependency to get database session
-def get_session():
-    with Session(engine) as session:
-        yield session
-
 @app.get("/")
 async def root():
     return {"message": "Cell Culture Tracker API"}

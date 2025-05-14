@@ -1,0 +1,155 @@
+---
+description: Parameter Management Guide (IMPORTANT)
+globs: 
+alwaysApply: false
+---
+Phase 1: API Endpoint Tests with pytest and httpx
+Step 1.1: Initial Setup & Configuration
+Verify/Install Dependencies:
+Check if pytest and httpx are in api/venv/lib/python3.9/site-packages/.
+If not, propose a command to install them into the virtual environment: api/venv/bin/python -m pip install pytest httpx
+Create Test Directory Structure:
+Propose creating the following directories if they don't exist:
+api/tests/
+api/tests/api_tests/ (or a similar name for API specific tests)
+Test Database Strategy:
+Decision Point: How will the test database be handled?
+Option A (Recommended for Simplicity): Use a separate SQLite database file for tests (e.g., test_app.db). This is often the easiest to set up.
+Option B: Use an in-memory SQLite database.
+Option C: Use a separate, dedicated test instance of the primary database type (if not SQLite).
+Action: Based on the decision, plan for database setup/teardown. For Option A, this might involve copying a schema or running migrations against test_app.db.
+pytest Configuration (Basic):
+Propose creating a api/tests/conftest.py. This file will be used for shared fixtures, like an httpx client instance and database setup/teardown logic.
+Environment Configuration for Tests:
+Identify how the main application reads its database configuration (e.g., environment variables, .env file).
+Plan to override this configuration during tests to point to the test database. This can often be done in conftest.py or by setting environment variables before running pytest.
+Step 1.2: Implement conftest.py for API Tests
+HTTP Client Fixture:
+In api/tests/conftest.py, create a pytest fixture that provides an instance of httpx.AsyncClient (assuming FastAPI is async, which is typical) configured to talk to the test instance of your application.
+Database Setup/Teardown Fixture:
+In api/tests/conftest.py, create a fixture that:
+Setup: Before each test (or session), ensures the test database is in a clean state (e.g., creates tables based on your models, potentially truncates tables).
+Teardown: After each test (or session), cleans up (e.g., drops tables or removes the SQLite file if a new one is created each time).
+This fixture should be used by test functions that interact with the database.
+Step 1.3: Identify Main Resources and Endpoints
+Scan Routers:
+Use codebase_search or read_file to examine files in api/app/routers/ to list all API resources (e.g., "users", "posts", "items") and their corresponding HTTP methods and paths (e.g., POST /users, GET /users/{user_id}).
+Prioritize: Identify 2-3 core resources to start with.
+Step 1.4: Write API Tests for Core Resources (Happy Paths)
+For each prioritized resource (e.g., resource_name):
+Create Test File: Propose creating api/tests/api_tests/test_{resource_name}.py.
+Test Create (POST):
+Write a test function (e.g., async def test_create_resource_name(client):).
+Use the client fixture to make a POST request with valid sample data.
+Assert the HTTP status code (e.g., 201 Created or 200 OK).
+Assert the structure and/or content of the response JSON.
+Store the ID of the created resource for subsequent tests.
+Test Read List (GET):
+Write async def test_read_resource_names_list(client):.
+Make a GET request to the list endpoint.
+Assert status code 200 OK.
+Assert the response is a list and potentially check the structure of one item.
+Test Read Detail (GET by ID):
+Write async def test_read_single_resource_name(client): (ensure a resource has been created).
+Make a GET request to the detail endpoint using the stored ID.
+Assert status code 200 OK.
+Assert the response data matches the data used for creation.
+Test Update (PUT/PATCH):
+Write async def test_update_resource_name(client): (ensure a resource has been created).
+Make a PUT or PATCH request with valid update data.
+Assert status code 200 OK.
+Assert the response reflects the changes.
+(Optional but good) Make another GET request to verify the update persisted.
+Test Delete (DELETE):
+Write async def test_delete_resource_name(client): (ensure a resource has been created).
+Make a DELETE request.
+Assert status code (e.g., 200 OK or 204 No Content).
+Make a GET request for the deleted resource and assert a 404 Not Found.
+
+Note that authentication is actually not implemented in the app yet no test needed.
+
+Step 1.5: Write API Tests for Authentication & Basic Authorization
+Identify Auth Endpoints: Locate login, logout (if any), and registration endpoints from api/app/routers/.
+Test Login:
+Create api/tests/api_tests/test_auth.py.
+Test successful login with valid credentials: assert 200 OK and token in response.
+Test failed login with invalid credentials: assert appropriate error status code (e.g., 400, 401).
+Test Authenticated Endpoints:
+Pick a representative endpoint that requires authentication.
+Test accessing it with a valid token (obtained from a successful login test or a fixture).
+Test accessing it with an invalid/expired token: assert 401 Unauthorized.
+Test accessing it with no token: assert 401 Unauthorized.
+Test Basic Authorization (if applicable):
+If your app has roles/permissions (e.g., admin vs. regular user):
+Create test users with different roles.
+Test that a user can perform actions they are allowed.
+Test that a user cannot perform actions they are not allowed (e.g., a regular user trying to access an admin-only endpoint should get a 403 Forbidden).
+Step 1.6: Write API Tests for Important Error Conditions
+For critical endpoints (especially POST and PUT/PATCH):
+Invalid Input Data:
+Send requests with missing required fields. Assert 422 Unprocessable Entity (common in FastAPI for validation errors) or 400 Bad Request.
+Send requests with fields of incorrect data types. Assert 422 or 400.
+Check if the error response body contains useful information about which field failed validation.
+Resource Not Found:
+For GET (by ID), PUT/PATCH, DELETE, try to operate on a non-existent ID. Assert 404 Not Found.
+Step 1.7: Running API Tests
+Propose a command to run all API tests: cd api && ../venv/bin/pytest tests/api_tests/ (adjust path to pytest and test directory as needed).
+Phase 2: Key UI End-to-End (E2E) Tests
+Step 2.1: Setup UI E2E Testing Framework
+Choose Framework: Discuss with the user or make a recommendation (Playwright is a modern, good choice. Cypress is also popular. Selenium is older but widely known).
+Install: Propose commands to install the chosen framework and its browser drivers (e.g., npm install -D playwright @playwright/test then npx playwright install). This will likely modify package.json.
+Configuration:
+Create a configuration file for the E2E framework (e.g., playwright.config.js or cypress.json).
+Set the baseURL to where the frontend application runs during testing (e.g., http://localhost:3000 if that's where the UI dev server runs).
+Test Directory: Propose creating ui/tests/e2e/ (or similar, depending on where the UI code lives, e.g., src/tests/e2e/).
+Step 2.2: Identify 3-5 Critical User Journeys
+Collaboration: Ask the user to list these. Examples:
+User registration + login.
+Creating the main type of item in the application.
+Viewing a list of these items.
+Viewing the details of one item.
+Editing an item.
+Confirm these journeys.
+Step 2.3: Implement UI E2E Tests for these Journeys
+For each identified journey:
+Create Test File: E.g., ui/tests/e2e/auth.spec.js or ui/tests/e2e/item_creation.spec.js.
+Write Test Script:
+Use the chosen framework's API to:
+Navigate to pages (await page.goto('/')).
+Find elements (using selectors like CSS selectors, text, roles, test IDs).
+Interact with elements (await page.click('button'), await page.fill('input#email', 'user@example.com')).
+Make assertions about the UI state (expect(page.locator('h1')).toHaveText('Welcome')) or data displayed.
+Focus on the "happy path."
+Important: Use clear and robust selectors. data-testid attributes are often recommended for resilience against UI refactoring.
+Data Management: Consider how test data is managed. API calls might be needed to set up prerequisite data before a UI test runs, or a UI test might need to clean up after itself.
+Step 2.4: Running UI E2E Tests
+Propose a command to run UI E2E tests (e.g., npx playwright test or npx cypress run). This command will likely be run from the UI directory or project root.
+Phase 3: Selective Unit Tests (Python Backend)
+Step 3.1: Identify Complex/Critical Backend Logic
+Code Review: Use codebase_search or read_file to examine Python files outside of the API routers, particularly in utility directories (api/app/utils/), service layers, or any modules containing complex business logic.
+Criteria for Selection:
+Functions with multiple conditional branches (many if/elif/else).
+Functions performing complex calculations or data transformations.
+Critical utility functions used in many places.
+Logic that is hard to trigger or verify comprehensively through API tests alone.
+Prioritize: Select 1-2 such functions/modules to start with.
+Step 3.2: Implement Unit Tests
+Test File Location: Create test files alongside the modules they test (e.g., if testing api/app/utils/helpers.py, create api/app/utils/test_helpers.py) or in a dedicated unit test directory like api/tests/unit/.
+Write Test Functions:
+Use pytest.
+Name test functions clearly (e.g., test_calculate_complex_value_with_specific_input()).
+Mocking: If the function interacts with external services (database, other APIs, file system), use pytest-mock (may need installation: api/venv/bin/python -m pip install pytest-mock) or unittest.mock to replace these dependencies with controlled mock objects. This isolates the unit under test.
+Provide various inputs to cover different execution paths and edge cases.
+Assert that the function returns the expected output or has the expected side effects (if any, though pure functions are easier to test).
+Step 3.3: Running Unit Tests
+Propose a command to run unit tests, possibly by targeting their specific directory: cd api && ../venv/bin/pytest tests/unit/ (or just ../venv/bin/pytest if all tests are to be run).
+General AI Execution Notes:
+Iterate and Confirm: After proposing each major step (e.g., creating conftest.py, writing the first API test for a resource), show the proposed code/command and confirm with the user before proceeding.
+Tool Usage:
+read_file: To understand existing code and structure.
+edit_file: To create new files or add/modify code. Be very specific with instructions for edit_file.
+run_terminal_cmd: For installations, running tests, and potentially database management commands.
+codebase_search: To find relevant files or code snippets.
+Error Handling: If a command fails or tests don't pass, analyze the output and propose fixes.
+Commit Often (Conceptually): After each significant chunk of work (e.g., tests for one API resource are complete and passing), that would be a good point for a conceptual "commit."
+This plan provides a structured approach. The actual implementation will involve generating code for test files, configuration files, and running commands.
