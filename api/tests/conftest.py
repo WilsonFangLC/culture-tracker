@@ -6,6 +6,8 @@ from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session
 from typing import Generator, Any
 
+SQLModel.metadata.clear() # Attempt to clear metadata very early, before app import
+
 # Adjust the import path based on your project structure
 # This assumes your main app object is accessible for the TestClient
 # For FastAPI, you'd typically import your `app` instance
@@ -39,6 +41,7 @@ def test_db_setup_session():
     #     os.makedirs(db_dir)
 
     test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    SQLModel.metadata.clear() # Clear metadata before creating tables for tests
     SQLModel.metadata.create_all(test_engine)
     print(f"Test database schema created at {TEST_DATABASE_URL}")
 

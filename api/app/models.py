@@ -6,7 +6,7 @@ from sqlalchemy import Column, JSON
 from pydantic import model_validator, ValidationError  # Import validator
 
 
-class CellState(SQLModel, table=True):
+class CellState(SQLModel, table=True, extend_existing=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(default="")
     # Use default DateTime column type for SQLite, keep Python type hint
