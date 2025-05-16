@@ -28,8 +28,8 @@ def check_parameter_exists(name: str) -> bool:
         frontend_content = f.read()
     
     # Look for the parameter in both files - use proper string formatting to avoid partial matches
-    backend_pattern = rf'"({name})":\s*{{'
-    frontend_pattern = rf'"({name})":\s*{{'
+    backend_pattern = rf'"({name})"\s*:\s*{{'
+    frontend_pattern = rf'"({name})"\s*:\s*{{'
     
     return bool(re.search(backend_pattern, backend_content)) and bool(re.search(frontend_pattern, frontend_content))
 
