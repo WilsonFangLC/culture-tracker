@@ -41,7 +41,6 @@ def test_db_setup_session():
     #     os.makedirs(db_dir)
 
     test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-    SQLModel.metadata.clear() # Clear metadata before creating tables for tests
     SQLModel.metadata.create_all(test_engine)
     print(f"Test database schema created at {TEST_DATABASE_URL}")
 

@@ -258,14 +258,15 @@ def generate_csv_rows(states: List[CellState]) -> Iterator[str]:
                 row.append(format_value(
                     param_data['value'], 
                     header_key, 
-                    operation_type if param_data['is_applicable'] else None
+                    operation_type # Ensure the state's operation_type is passed directly
                 ))
             else:
-                # Check if the parameter is applicable
+                # This parameter is in the global list of headers but not in the current state's flattened parameters.
+                # We check its general applicability to the current operation type.
                 if is_parameter_applicable(header_key, operation_type):
-                    row.append("")  # Empty but applicable
+                    row.append("")  # Applicable but not provided for this specific state (empty)
                 else:
-                    row.append("N/A")  # Not applicable
+                    row.append("N/A")  # Not applicable to this operation type
         
         writer.writerow(row)
         yield output.getvalue()

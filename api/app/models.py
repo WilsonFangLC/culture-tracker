@@ -27,12 +27,18 @@ class CellState(SQLModel, table=True, extend_existing=True):
     children: List["CellState"] = Relationship(back_populates="parent")
 
     @model_validator(mode='before')
-    @classmethod
-    def calculate_growth_parameters(cls, values):
-        params = values.get('parameters', {})
-        if not isinstance(params, dict):
-            # Or handle error appropriately
-            return values
+    def calculate_growth_parameters(cls, data):
+        # If data is already a dict (e.g., from DB JSON), use it. Otherwise, model_dump it.
+        if isinstance(data, dict):
+            values_dict = data.copy() # Work on a copy
+        else: # It's likely a Pydantic model instance (e.g., CellStateCreate)
+            values_dict = data.model_dump() # Convert the input model to a dict
+
+        params = values_dict.get('parameters') or {}
+        # Ensure 'transition_parameters' exists and is a dict
+        transition_params = params.get('transition_parameters')
+        if not isinstance(transition_params, dict):
+            transition_params = {}
 
         growth_rate = params.get('growth_rate')
         doubling_time = params.get('doubling_time')
@@ -64,8 +70,8 @@ class CellState(SQLModel, table=True, extend_existing=True):
             # Option 2: Raise a validation error
             # raise ValueError("growth_rate and doubling_time must be numeric.")
 
-        values['parameters'] = params
-        return values
+        values_dict['parameters'] = params # Modify the dictionary
+        return values_dict # Return the dictionary
 
 
 # Pydantic models for request/response validation
