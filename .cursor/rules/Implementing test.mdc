@@ -84,7 +84,7 @@ If your app has roles/permissions (e.g., admin vs. regular user):
 Create test users with different roles.
 Test that a user can perform actions they are allowed.
 Test that a user cannot perform actions they are not allowed (e.g., a regular user trying to access an admin-only endpoint should get a 403 Forbidden).
-Step 1.6: Write API Tests for Important Error Conditions
+Step 1.6: Write API Tests for Important Error Conditions - COMPLETED
 For critical endpoints (especially POST and PUT/PATCH):
 Invalid Input Data:
 Send requests with missing required fields. Assert 422 Unprocessable Entity (common in FastAPI for validation errors) or 400 Bad Request.
@@ -94,55 +94,32 @@ Resource Not Found:
 For GET (by ID), PUT/PATCH, DELETE, try to operate on a non-existent ID. Assert 404 Not Found.
 Step 1.7: Running API Tests - COMPLETED
 Propose a command to run all API tests: cd api && ../venv/bin/pytest tests/api_tests/ (adjust path to pytest and test directory as needed).
-Phase 2: Key UI End-to-End (E2E) Tests
-Step 2.1: Setup UI E2E Testing Framework
-Choose Framework: Discuss with the user or make a recommendation (Playwright is a modern, good choice. Cypress is also popular. Selenium is older but widely known).
-Install: Propose commands to install the chosen framework and its browser drivers (e.g., npm install -D playwright @playwright/test then npx playwright install). This will likely modify package.json.
-Configuration:
-Create a configuration file for the E2E framework (e.g., playwright.config.js or cypress.json).
-Set the baseURL to where the frontend application runs during testing (e.g., http://localhost:3000 if that's where the UI dev server runs).
-Test Directory: Propose creating ui/tests/e2e/ (or similar, depending on where the UI code lives, e.g., src/tests/e2e/).
-Step 2.2: Identify 3-5 Critical User Journeys
-Collaboration: Ask the user to list these. Examples:
-User registration + login.
-Creating the main type of item in the application.
-Viewing a list of these items.
-Viewing the details of one item.
-Editing an item.
-Confirm these journeys.
-Step 2.3: Implement UI E2E Tests for these Journeys
-For each identified journey:
-Create Test File: E.g., ui/tests/e2e/auth.spec.js or ui/tests/e2e/item_creation.spec.js.
-Write Test Script:
-Use the chosen framework's API to:
-Navigate to pages (await page.goto('/')).
-Find elements (using selectors like CSS selectors, text, roles, test IDs).
-Interact with elements (await page.click('button'), await page.fill('input#email', 'user@example.com')).
-Make assertions about the UI state (expect(page.locator('h1')).toHaveText('Welcome')) or data displayed.
-Focus on the "happy path."
-Important: Use clear and robust selectors. data-testid attributes are often recommended for resilience against UI refactoring.
-Data Management: Consider how test data is managed. API calls might be needed to set up prerequisite data before a UI test runs, or a UI test might need to clean up after itself.
-Step 2.4: Running UI E2E Tests
-Propose a command to run UI E2E tests (e.g., npx playwright test or npx cypress run). This command will likely be run from the UI directory or project root.
-Phase 3: Selective Unit Tests (Python Backend)
-Step 3.1: Identify Complex/Critical Backend Logic
-Code Review: Use codebase_search or read_file to examine Python files outside of the API routers, particularly in utility directories (api/app/utils/), service layers, or any modules containing complex business logic.
+
+Phase 2: Key UI End-to-End (E2E) Tests - SKIPPED (User preference to focus on backend unit tests for higher ROI)
+// Phase 2 steps can be removed or left as skipped
+// Step 2.1: Setup UI E2E Testing Framework
+// ... (rest of Phase 2 steps commented out or marked skipped)
+
+Phase 3: Selective Unit Tests (Python Backend - Focused on `api/app/utils/`)
+Step 3.1: Identify Complex/Critical Logic in `api/app/utils/`
+Code Review: Use read_file to examine Python files in `api/app/utils/`, starting with `add_parameter.py` and then `parameters.py`.
 Criteria for Selection:
 Functions with multiple conditional branches (many if/elif/else).
 Functions performing complex calculations or data transformations.
 Critical utility functions used in many places.
 Logic that is hard to trigger or verify comprehensively through API tests alone.
-Prioritize: Select 1-2 such functions/modules to start with.
-Step 3.2: Implement Unit Tests
-Test File Location: Create test files alongside the modules they test (e.g., if testing api/app/utils/helpers.py, create api/app/utils/test_helpers.py) or in a dedicated unit test directory like api/tests/unit/.
+Prioritize: Select 1-2 such functions/modules to start with from `add_parameter.py` or `parameters.py`.
+Step 3.2: Implement Unit Tests for Selected Functions
+Test File Location: Create test files alongside the modules they test or in a dedicated unit test directory (e.g., `api/tests/unit/utils/test_add_parameter.py`, `api/tests/unit/utils/test_parameters.py`).
 Write Test Functions:
 Use pytest.
-Name test functions clearly (e.g., test_calculate_complex_value_with_specific_input()).
-Mocking: If the function interacts with external services (database, other APIs, file system), use pytest-mock (may need installation: api/venv/bin/python -m pip install pytest-mock) or unittest.mock to replace these dependencies with controlled mock objects. This isolates the unit under test.
+Name test functions clearly (e.g., `test_function_name_with_specific_input()`).
+Mocking: If the function interacts with external services (database, other APIs, file system) or other complex internal functions, use `pytest-mock` (may need installation: `api/venv/bin/python -m pip install pytest-mock`) or `unittest.mock` to replace these dependencies with controlled mock objects. This isolates the unit under test.
 Provide various inputs to cover different execution paths and edge cases.
 Assert that the function returns the expected output or has the expected side effects (if any, though pure functions are easier to test).
 Step 3.3: Running Unit Tests
-Propose a command to run unit tests, possibly by targeting their specific directory: cd api && ../venv/bin/pytest tests/unit/ (or just ../venv/bin/pytest if all tests are to be run).
+Propose a command to run unit tests, possibly by targeting their specific directory: `cd api && venv/bin/python -m pytest app/utils/` or `cd api && venv/bin/python -m pytest tests/unit/` (adjust path to pytest and test directory as needed).
+
 General AI Execution Notes:
 Iterate and Confirm: After proposing each major step (e.g., creating conftest.py, writing the first API test for a resource), show the proposed code/command and confirm with the user before proceeding.
 Tool Usage:
