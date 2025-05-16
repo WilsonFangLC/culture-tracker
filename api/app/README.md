@@ -56,11 +56,13 @@ To add a new parameter manually:
 The frontend uses a context-based parameter system:
 
 1. Import the parameter utilities:
+
    ```tsx
    import { useParameters } from '../components/ParameterUtils';
    ```
 
 2. Use the hook in your component:
+
    ```tsx
    const { 
      parameterMetadata,
@@ -71,6 +73,7 @@ The frontend uses a context-based parameter system:
    ```
 
 3. For form fields, use the `ParameterField` component:
+
    ```tsx
    <ParameterField
      paramKey="temperature_c"
@@ -81,6 +84,7 @@ The frontend uses a context-based parameter system:
    ```
 
 4. For complete parameter forms, use the `ParameterForm` component:
+
    ```tsx
    <ParameterForm
      operationType="start_new_culture"
@@ -99,6 +103,7 @@ GET /api/parameters/definitions
 ```
 
 This returns:
+
 - `operation_parameter_mapping`: Which parameters apply to which operations
 - `parameter_metadata`: Metadata about each parameter
 - `all_possible_parameters`: List of all parameter keys
@@ -109,4 +114,4 @@ Parameter components and utilities can be tested using the test framework:
 
 ```
 npm test -- parameters.test.tsx
-``` 
+```
