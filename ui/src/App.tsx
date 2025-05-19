@@ -9,10 +9,10 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <Link 
       to={to} 
-      className={`px-4 py-2 rounded-md ${
+      className={`px-5 py-2.5 rounded-md font-medium transition-colors duration-200 ${
         isActive 
-          ? 'bg-blue-500 text-white' 
-          : 'text-gray-700 hover:bg-gray-100'
+          ? 'bg-blue-600 text-white shadow-sm' 
+          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
       }`}
     >
       {children}
@@ -22,11 +22,11 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Cell Culture Tracker</h1>
-          <nav className="flex space-x-4">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <header className="mb-6 pb-4 border-b border-gray-200">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Cell Culture Tracker</h1>
+          <nav className="flex space-x-3">
             <NavLink to="/states">Cell States</NavLink>
             <NavLink to="/raw-list">Raw List View</NavLink>
           </nav>

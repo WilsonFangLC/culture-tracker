@@ -17,6 +17,7 @@ interface StateLineageProps {
   isUpdating: boolean;
   updateError: string | undefined;
   onEditState?: (state: CellState) => void;
+  hideTitle?: boolean;
 }
 
 export default function StateLineage({ 
@@ -27,7 +28,8 @@ export default function StateLineage({
   onStatesChange,
   isUpdating,
   updateError,
-  onEditState 
+  onEditState,
+  hideTitle = false
 }: StateLineageProps) {
   const [viewMode, setViewMode] = useState<'list' | 'graph' | 'process'>('process')
   const [editingState, setEditingState] = useState<CellState | null>(null)
@@ -168,8 +170,8 @@ export default function StateLineage({
   return (
     <div className="mt-4 p-4 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">State Lineage</h3>
-        <div className="flex space-x-2">
+        {!hideTitle && <h3 className="text-lg font-semibold">State Lineage</h3>}
+        <div className={`flex space-x-2 ${hideTitle ? 'ml-auto' : ''}`}>
           <button
             className={`px-3 py-1 rounded ${
               viewMode === 'list' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'

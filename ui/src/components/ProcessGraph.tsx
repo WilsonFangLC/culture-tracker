@@ -817,12 +817,12 @@ export default function ProcessGraph({ state, states, onSelectState, onDeleteSta
         </div>
       </div>
       
-      <div className="process-graph-legend">
-        <div className="legend-item">
-          <span className="legend-icon open"></span> Open Process (active)
+      <div className="process-graph-legend p-2 bg-gray-50 rounded-md shadow flex flex-col space-y-1 md:flex-row md:space-y-0 md:space-x-3 text-xs">
+        <div className="legend-item flex items-center">
+          <span className="legend-icon open w-3 h-3 mr-1.5"></span> Open Process (active)
         </div>
-        <div className="legend-item">
-          <span className="legend-icon completed"></span> Completed Process (has next step)
+        <div className="legend-item flex items-center">
+          <span className="legend-icon completed w-3 h-3 mr-1.5"></span> Completed Process (has next step)
         </div>
       </div>
       

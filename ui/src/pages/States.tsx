@@ -442,18 +442,16 @@ export default function States() {
   const stateForModal = states.find(s => s.id === predictingStateId);
 
   return (
-    <div className="space-y-8 p-4 md:p-6 lg:p-8">
-      <h1 className="text-3xl font-bold text-gray-800">Cell Culture States</h1>
-
+    <div className="space-y-6 p-0 md:p-0 lg:p-0">
       {/* Instructions Section Start */}
       <details className="bg-sky-50 border border-sky-200 rounded-lg p-4 mb-6 shadow">
-        <summary className="font-semibold text-lg cursor-pointer text-sky-700 hover:text-sky-900 focus:outline-none">How to Use This Tool</summary>
-        <div className="mt-3 text-sm text-gray-700 space-y-2">
+        <summary className="font-semibold text-xl cursor-pointer text-sky-700 hover:text-sky-900 focus:outline-none">How to Use This Tool</summary>
+        <div className="mt-3 text-base text-gray-700 space-y-2">
           <p><strong>Purpose:</strong> Track cell culture lineage, growth parameters, and calculate doubling times.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div>
-              <p className="font-medium text-blue-700">Basic Operations:</p>
+              <p className="font-medium text-blue-700 text-base">Basic Operations:</p>
               <ul className="list-disc list-inside ml-2 space-y-1">
                 <li>View cultures in the graph or list views</li>
                 <li>Click on any state to see details and edit it</li>
@@ -462,7 +460,7 @@ export default function States() {
               </ul>
             </div>
             <div>
-              <p className="font-medium text-blue-700">Cell Management:</p>
+              <p className="font-medium text-blue-700 text-base">Cell Management:</p>
               <ul className="list-disc list-inside ml-2 space-y-1">
                 <li>Create new culture: Select "New State" without a parent</li>
                 <li>Passage cells: Select "New State" with a parent</li>
@@ -474,7 +472,7 @@ export default function States() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
             <div>
-              <p className="font-medium text-blue-700">Growth Analysis:</p>
+              <p className="font-medium text-blue-700 text-base">Growth Analysis:</p>
               <ul className="list-disc list-inside ml-2 space-y-1">
                 <li>Click "Calculate Doubling Time" on a state with both cell_density and end_density</li>
                 <li>Doubling time is automatically calculated when adding child states</li>
@@ -483,7 +481,7 @@ export default function States() {
               </ul>
             </div>
             <div>
-              <p className="font-medium text-blue-700">View Options:</p>
+              <p className="font-medium text-blue-700 text-base">View Options:</p>
               <ul className="list-disc list-inside ml-2 space-y-1">
                 <li>Process view: Shows visual workflow</li>
                 <li>List view: Shows hierarchical relationship</li>
@@ -526,7 +524,7 @@ export default function States() {
               existingStates={states}
             />
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-4">
               {states.length === 0 ? (
                 <div className="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
                   No states found
@@ -567,11 +565,11 @@ export default function States() {
                   return (
                     <div
                       key={state.id}
-                      className={`p-3 rounded-lg shadow-sm mb-3 cursor-pointer transition-all duration-150 ease-in-out ${
+                      className={`p-4 mb-4 rounded-lg border ${
                         selectedState?.id === state.id 
-                          ? 'bg-blue-100 ring-2 ring-blue-500 scale-[1.01]' 
-                          : 'bg-white hover:bg-gray-50 hover:shadow-md'
-                      }`}
+                          ? 'bg-blue-50 border-blue-400 shadow-md scale-[1.01]' 
+                          : 'bg-white hover:bg-gray-50 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      } cursor-pointer transition-all duration-150 ease-in-out overflow-visible`}
                       onClick={() => setSelectedState(state)}
                     >
                       <div className="flex justify-between items-start">
@@ -610,9 +608,9 @@ export default function States() {
                             e.stopPropagation(); // Prevent state selection when clicking button
                             handleOpenPredictModal(state.id); 
                           }}
-                          className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+                          className="text-xs px-3 py-1.5 rounded-md shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
                         >
-                          Predict Density
+                          Predict
                         </button>
                         
                         {/* Edit button */}
@@ -621,7 +619,7 @@ export default function States() {
                             e.stopPropagation(); // Prevent state selection when clicking button
                             handleEditState(state); 
                           }}
-                          className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-sky-500 text-white hover:bg-sky-600 transition-colors"
+                          className="text-xs px-3 py-1.5 rounded-md shadow-sm bg-sky-500 text-white hover:bg-sky-600 transition-colors"
                         >
                           Edit
                         </button>
@@ -633,9 +631,9 @@ export default function States() {
                               e.stopPropagation(); // Prevent state selection when clicking button
                               handleCalculateDoublingTime(state); 
                             }}
-                            className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-teal-500 text-white hover:bg-teal-600 transition-colors"
+                            className="text-xs px-3 py-1.5 rounded-md shadow-sm bg-teal-500 text-white hover:bg-teal-600 transition-colors"
                           >
-                            Calc Doubling Time
+                            Doubling Time
                           </button>
                         )}
                       </div>
@@ -649,7 +647,7 @@ export default function States() {
 
         {/* State Details / Lineage Column */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-2xl font-semibold text-gray-700 mb-4">State Lineage & Details</h2>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">State Lineage</h2>
           {!showCreateState && selectedState && (
             <StateLineage 
               state={selectedState} 
@@ -659,7 +657,8 @@ export default function States() {
               onStatesChange={setStates}
               isUpdating={updateState.isPending}
               updateError={updateState.error?.message}
-              onEditState={handleEditState} // Add prop to pass down edit functionality
+              onEditState={handleEditState}
+              hideTitle={true}
             />
           )}
         </div>
