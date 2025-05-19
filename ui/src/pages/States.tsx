@@ -442,12 +442,12 @@ export default function States() {
   const stateForModal = states.find(s => s.id === predictingStateId);
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold">Cell Culture States</h1>
+    <div className="space-y-8 p-4 md:p-6 lg:p-8">
+      <h1 className="text-3xl font-bold text-gray-800">Cell Culture States</h1>
 
       {/* Instructions Section Start */}
-      <details className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6 shadow-sm">
-        <summary className="font-semibold text-lg cursor-pointer text-blue-700 hover:text-blue-900">How to Use This Tool</summary>
+      <details className="bg-sky-50 border border-sky-200 rounded-lg p-4 mb-6 shadow">
+        <summary className="font-semibold text-lg cursor-pointer text-sky-700 hover:text-sky-900 focus:outline-none">How to Use This Tool</summary>
         <div className="mt-3 text-sm text-gray-700 space-y-2">
           <p><strong>Purpose:</strong> Track cell culture lineage, growth parameters, and calculate doubling times.</p>
           
@@ -498,20 +498,20 @@ export default function States() {
       </details>
       {/* Instructions Section End */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         {/* States List Column */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">States</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-gray-700">States</h2>
             <div className="flex space-x-2">
               <button
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-sm transition-colors"
                 onClick={handleExportCSV}
               >
                 Export CSV
               </button>
               <button
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm transition-colors"
                 onClick={() => setShowCreateState(true)}
               >
                 New State
@@ -528,7 +528,7 @@ export default function States() {
           ) : (
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
               {states.length === 0 ? (
-                <div className="p-4 bg-gray-100 rounded-lg text-gray-500">
+                <div className="p-4 bg-gray-100 rounded-lg text-gray-500 text-center">
                   No states found
                 </div>
               ) : (
@@ -567,31 +567,33 @@ export default function States() {
                   return (
                     <div
                       key={state.id}
-                      className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                        selectedState?.id === state.id ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-white hover:bg-gray-50'
+                      className={`p-3 rounded-lg shadow-sm mb-3 cursor-pointer transition-all duration-150 ease-in-out ${
+                        selectedState?.id === state.id 
+                          ? 'bg-blue-100 ring-2 ring-blue-500 scale-[1.01]' 
+                          : 'bg-white hover:bg-gray-50 hover:shadow-md'
                       }`}
                       onClick={() => setSelectedState(state)}
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-medium">{state.name || `State ${state.id}`}</div>
+                          <div className="font-semibold text-gray-800">{state.name || `State ${state.id}`}</div>
                           <div className="text-sm text-gray-500">
                             {dayjs.utc(state.timestamp).local().format('DD/MM/YYYY, HH:mm:ss')}
                           </div>
                         </div>
                         {selectedState?.id === state.id && (
-                          <span className="text-blue-500 text-sm">Selected</span>
+                          <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Selected</span>
                         )}
                       </div>
                       
                       {/* Display operation type prominently if available */}
                       {operationType && (
-                        <div className="mt-1 mb-2 text-sm inline-block bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
+                        <div className="mt-2 mb-2 text-xs inline-block bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full font-medium">
                           {operationType.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </div>
                       )}
                       
-                      <div className="mt-2 text-sm space-y-1">
+                      <div className="mt-2 text-sm space-y-1 text-gray-700">
                         {/* Show cell type, checking both direct and transition parameters */}
                         {(isParameterApplicable('cell_type', operationType)) && (
                           <div>
@@ -602,15 +604,15 @@ export default function States() {
                       </div>
                       
                       {/* Buttons section */}
-                      <div className="mt-2 pt-2 border-t border-gray-200 flex flex-wrap gap-2">
+                      <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap gap-2">
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); // Prevent state selection when clicking button
                             handleOpenPredictModal(state.id); 
                           }}
-                          className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                          className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
                         >
-                          Predict Density...
+                          Predict Density
                         </button>
                         
                         {/* Edit button */}
@@ -619,7 +621,7 @@ export default function States() {
                             e.stopPropagation(); // Prevent state selection when clicking button
                             handleEditState(state); 
                           }}
-                          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-sky-500 text-white hover:bg-sky-600 transition-colors"
                         >
                           Edit
                         </button>
@@ -631,9 +633,9 @@ export default function States() {
                               e.stopPropagation(); // Prevent state selection when clicking button
                               handleCalculateDoublingTime(state); 
                             }}
-                            className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                            className="text-xs px-2.5 py-1.5 rounded shadow-sm bg-teal-500 text-white hover:bg-teal-600 transition-colors"
                           >
-                            Calculate Doubling Time
+                            Calc Doubling Time
                           </button>
                         )}
                       </div>
@@ -647,7 +649,7 @@ export default function States() {
 
         {/* State Details / Lineage Column */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-semibold">State Lineage & Details</h2>
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">State Lineage & Details</h2>
           {!showCreateState && selectedState && (
             <StateLineage 
               state={selectedState} 
@@ -664,7 +666,7 @@ export default function States() {
       </div>
 
       {/* Footer with credit */}
-      <div className="mt-8 pt-4 border-t border-gray-200 text-center text-xs text-gray-500">
+      <div className="mt-12 pt-6 border-t border-gray-300 text-center text-sm text-gray-600">
         Culture Tracker built by Lichi Fang
       </div>
 
@@ -697,44 +699,46 @@ export default function States() {
             className="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
           >
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Predict Cell Density</h3>
-            <div className="mt-2 text-sm text-gray-600">
-              Predicting from State {stateForModal.id} ({stateForModal.name || 'Unnamed'}) <br/>
+            <h3 className="text-xl leading-6 font-semibold text-gray-900">Predict Cell Density</h3>
+            <div className="mt-3 text-sm text-gray-600 space-y-1">
+              Predicting for <strong>{stateForModal.name || `State ${stateForModal.id}`}</strong> <br/>
               Initial Time: {dayjs.utc(stateForModal.timestamp).local().format('DD/MM/YYYY, HH:mm')} <br/>
               Initial Density: {formatCellDensity(stateForModal.parameters?.cell_density)} million cells/ml <br/>
-              Hypothesized Growth Rate: {formatToSignificantFigures(stateForModal.parameters?.growth_rate, 'N/A')} /hr (or Hypothesized Doubling Time: {formatToSignificantFigures(stateForModal.parameters?.doubling_time, 'N/A')} hr)
+              Growth Rate (g): {formatToSignificantFigures(stateForModal.parameters?.growth_rate, 'N/A')} /hr 
+              (Doubling Time (DT): {formatToSignificantFigures(stateForModal.parameters?.doubling_time, 'N/A')} hr)
               {stateForModal.parameters?.measured_doubling_time && (
-                <><br/>Measured Doubling Time: {formatToSignificantFigures(stateForModal.parameters.measured_doubling_time)} hr</>
+                <><br/>Measured DT: <span className="font-semibold">{formatToSignificantFigures(stateForModal.parameters.measured_doubling_time)} hr</span></>
               )}
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="predictionTime" className="block text-sm font-medium text-gray-700 mb-1">
                 Predict density at time:
               </label>
               <input
+                id="predictionTime"
                 type="datetime-local"
-                className="mt-1 w-full p-2 border rounded"
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 value={predictionTimeInput}
                 onChange={handlePredictionTimeChange}
               />
             </div>
-            <div className="mt-4">
+            <div className="mt-6">
               <button 
                 onClick={handleCalculatePrediction}
-                className="w-full px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                Calculate
+                Calculate Prediction
               </button>
             </div>
             {predictionResult !== null && (
-              <div className={`mt-4 p-3 rounded ${predictionResult.startsWith('Error:') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                {predictionResult.startsWith('Error:') ? predictionResult : `Predicted Density: ${predictionResult} million cells/ml`}
+              <div className={`mt-4 p-3 rounded-md text-sm ${predictionResult.startsWith('Error:') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                {predictionResult.startsWith('Error:') ? predictionResult : <>Predicted Density: <span className="font-semibold">{predictionResult}</span> million cells/ml</>}
               </div>
             )}
-             <div className="mt-4 text-right">
+             <div className="mt-6 text-right">
                <button 
                  onClick={handleClosePredictModal}
-                 className="text-sm text-gray-500 hover:text-gray-700"
+                 className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                >
                  Close
                </button>
